@@ -18,12 +18,12 @@ public class SystemProperties {
         this.caches = new ConcurrentHashMap<>();
     }
 
-    public <T> T getValue(SystemPropertyKey propertyKey, Supplier<T> supplier, Function<String, T> function){
+    public <T> T getValue(SystemPropertyKey propertyKey, String defaultValue, Function<String, T> function){
         T cacheValue = (T)caches.get(propertyKey);
         if (cacheValue == null){
             String systemValue = System.getProperty(propertyKey.property);
             if (systemValue == null){
-                cacheValue = supplier.get();
+                cacheValue = function.apply(defaultValue);
             }
             else {
                 cacheValue = function.apply(systemValue);

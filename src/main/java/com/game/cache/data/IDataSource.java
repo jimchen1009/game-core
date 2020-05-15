@@ -1,9 +1,13 @@
 package com.game.cache.data;
 
+import com.game.common.lock.LockKey;
+
 import java.util.Collection;
 import java.util.List;
 
 public interface IDataSource<PK, K, V extends Data<K>> {
+
+    LockKey getLockKey();
 
     V get(PK primaryKey, K key);
 

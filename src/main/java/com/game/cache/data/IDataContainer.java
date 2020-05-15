@@ -1,28 +1,24 @@
 package com.game.cache.data;
 
-import com.game.cache.data.IData;
-
 import java.util.Collection;
 
 public interface IDataContainer<PK, K, V extends IData<K>> {
 
-    PK primaryKey();
+    int count(PK primaryKey);
 
-    int count();
+    V get(PK primaryKey, K key);
 
-    V get(K key);
+    V get(PK primaryKey, K key, boolean isClone);
 
-    V get(K key, boolean isClone);
+    Collection<V> getAll(PK primaryKey);
 
-    Collection<V> getAll();
+    Collection<V> getAll(PK primaryKey, boolean isClone);
 
-    Collection<V> getAll(boolean isClone);
+    V replaceOne(PK primaryKey, V value);
 
-    V replaceOne(V value);
+    void replaceBatch(PK primaryKey, Collection<V> values);
 
-    void replaceBatch(Collection<V> values);
+    V removeOne(PK primaryKey, K key);
 
-    V removeOne(K key);
-
-    void removeBatch(Collection<K> keys);
+    void removeBatch(PK primaryKey, Collection<K> keys);
 }

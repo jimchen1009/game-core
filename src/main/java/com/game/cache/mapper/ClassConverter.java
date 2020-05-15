@@ -10,42 +10,46 @@ import java.util.Map;
 
 public class ClassConverter<K,V extends Data<K>> implements IClassConverter<K, V> {
 
-    private final ClassDescription classDescription;
+    private final ClassDescription clsDescription;
     private final ValueConvertMapper mapper;
 
     public ClassConverter(Class<V> aClass, ValueConvertMapper convertMapper) {
-        this.classDescription = ClassDescription.get(aClass);
+        this.clsDescription = ClassDescription.get(aClass);
         this.mapper = convertMapper;
     }
 
-    public Class<V> getConvertedClass() {
-        return (Class<V>)classDescription.describedClass();
+    public ClassDescription getClsDescription() {
+        return clsDescription;
     }
 
-    public V convert(Map<String, Object> cacheValue){
+    public Class<V> getConvertedClass() {
+        return (Class<V>) clsDescription.describedClass();
+    }
+
+    public V convert(Map<String, Object> cacheValues){
         Class<V> convertedClass = getConvertedClass();
         try {
             V newInstance = convertedClass.newInstance();
-            for (FieldDescription description : classDescription.fieldDescriptions()) {
+            for (FieldDescription description : clsDescription.fieldDescriptions()) {
                 Field field = description.getField();
                 ValueConverter<?> converter = mapper.getOrDefault(description.getType());
-                Object object = converter.decode(cacheValue.get(description.getAnnotationName()));
+                Object object = converter.decode(cacheValues.get(description.getAnnotationName()));
                 field.set(newInstance, object);
             }
             return newInstance;
         }
         catch (Throwable e) {
-            throw new CacheException("cls:%s cacheValue:%s", convertedClass.getName(), LogUtil.toJSONString(cacheValue), e);
+            throw new CacheException("cls:%s cacheValue:%s", convertedClass.getName(), LogUtil.toJSONString(cacheValues), e);
         }
     }
 
     public Map<String, Object> convert(V dataValue){
         try {
             Map<String, Object> cacheValue = new HashMap<>();
-            for (FieldDescription description : classDescription.getKeysDescriptions()) {
+            for (FieldDescription description : clsDescription.getKeysDescriptions()) {
                 encodeValue(dataValue, cacheValue, description, true);
             }
-            for (FieldDescription description : classDescription.getNormalDescriptions()) {
+            for (FieldDescription description : clsDescription.getNormalDescriptions()) {
                 if (dataValue.getIndexChangedBits() == 0L || dataValue.isFieldValueModified(description.getIndex())){
                     encodeValue(dataValue, cacheValue, description, false);
                 }

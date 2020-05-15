@@ -1,10 +1,10 @@
 package com.game.cache.mapper;
 
+import com.game.cache.InformationName;
 import com.game.cache.exception.CacheException;
 import com.game.cache.mapper.annotation.CacheFiled;
 import com.game.cache.mapper.annotation.CacheIndex;
 import com.game.cache.mapper.annotation.IndexField;
-import com.game.cache.source.FieldName;
 import jodd.util.StringUtil;
 
 import java.lang.reflect.Field;
@@ -32,19 +32,21 @@ public class ClassDescription {
     private final Class<?> aClass;
     private List<String> primaryKeys;
     private List<String> secondaryKeys;
-    private List<String> primaryAndSecondaryKeys;
+    private List<String> primarySecondaryKeys;
     private List<FieldDescription> descriptions;
     private List<FieldDescription> keysDescriptions;
     private List<FieldDescription> normalDescriptions;
+    private final Field sourceFiled;
 
     private ClassDescription(Class<?> aClass) {
         this.aClass = aClass;
         this.primaryKeys = new ArrayList<>();
         this.secondaryKeys = new ArrayList<>();
-        this.primaryAndSecondaryKeys = new ArrayList<>();
+        this.primarySecondaryKeys = new ArrayList<>();
         this.descriptions = new ArrayList<>();
         this.keysDescriptions = new ArrayList<>();
         this.normalDescriptions = new ArrayList<>();
+        this.sourceFiled = searchClassField(aClass, "isCacheResource");
         this.searchAnnotationFieldsAndInit(aClass);
     }
 
@@ -60,8 +62,8 @@ public class ClassDescription {
         return secondaryKeys;
     }
 
-    public List<String> getPrimaryAndSecondaryKeys() {
-        return primaryAndSecondaryKeys;
+    public List<String> getPrimarySecondaryKeys() {
+        return primarySecondaryKeys;
     }
 
     public List<FieldDescription> fieldDescriptions() {
@@ -89,6 +91,10 @@ public class ClassDescription {
         return aClass.getAnnotation(CacheIndex.class);
     }
 
+    public Field getSourceFiled() {
+        return sourceFiled;
+    }
+
     private void searchAnnotationFieldsAndInit(Class<?> aClass){
         //字段处理~
         searchAnnotationFields(aClass, descriptions);
@@ -105,13 +111,13 @@ public class ClassDescription {
             if (!indexes.add(description.getIndex())){
                 throw new CacheException("multiple index:%s, class:%s", description.getIndex(), aClass.getName());
             }
-            if (FieldName.SpecialNames.contains(description.getAnnotationName())){
+            if (InformationName.Names.contains(description.getAnnotationName())){
                 throw new CacheException("annotation annotation name can't be %s, class:%s", description.getAnnotationName(), aClass.getName());
             }
             if (description.getIndex() > 63){
                 throw new CacheException("field count is exceeds the maximum of 64, class:%s", aClass.getName());
             }
-            if (primaryAndSecondaryKeys.contains(description.getAnnotationName())){
+            if (primarySecondaryKeys.contains(description.getAnnotationName())){
                 keysDescriptions.add(description);
             }
             else {
@@ -123,11 +129,12 @@ public class ClassDescription {
         //索引处理~
         CacheIndex cacheIndex = aClass.getAnnotation(CacheIndex.class);
         this.primaryKeys = getCacheIndexNames(cacheIndex, IndexField::isPrimary, annotationName2FieldMap);
-        this.secondaryKeys = getCacheIndexNames(cacheIndex, field -> !field.isPrimary(), annotationName2FieldMap);
-        this.primaryAndSecondaryKeys = getCacheIndexNames(cacheIndex, field-> true, annotationName2FieldMap);
-        Set<String> primaryAndSecondaryKeys = new HashSet<>(this.primaryAndSecondaryKeys);
-        if (primaryAndSecondaryKeys.size() != this.primaryAndSecondaryKeys.size()){
-            throw new CacheException("primaryAndSecondaryKeys:%s, class:%s", this.primaryAndSecondaryKeys, aClass.getName());
+        List<String> secondaryKeys = getCacheIndexNames(cacheIndex, field -> !field.isPrimary(), annotationName2FieldMap);
+        this.secondaryKeys = secondaryKeys.isEmpty() ? primaryKeys : secondaryKeys;
+        this.primarySecondaryKeys = getCacheIndexNames(cacheIndex, field-> true, annotationName2FieldMap);
+        Set<String> primaryAndSecondaryKeys = new HashSet<>(this.primarySecondaryKeys);
+        if (primaryAndSecondaryKeys.size() != this.primarySecondaryKeys.size()){
+            throw new CacheException("primarySecondaryKeys:%s, class:%s", this.primarySecondaryKeys, aClass.getName());
         }
         for (FieldDescription description : descriptions) {
             if (primaryAndSecondaryKeys.contains(description.getAnnotationName())){
@@ -155,12 +162,12 @@ public class ClassDescription {
         return Collections.unmodifiableList(descriptions);
     }
 
-    private static void searchAnnotationFields(Class<?> clazz, List<FieldDescription> descriptions) {
-        if (clazz == null || clazz == Object.class) {
+    private static void searchAnnotationFields(Class<?> aClass, List<FieldDescription> descriptions) {
+        if (aClass == null || aClass == Object.class) {
             return;
         }
-        searchAnnotationFields(clazz.getSuperclass(), descriptions);
-        for (Field field : clazz.getDeclaredFields()) {
+        searchAnnotationFields(aClass.getSuperclass(), descriptions);
+        for (Field field : aClass.getDeclaredFields()) {
             CacheFiled cacheFiled = field.getAnnotation(CacheFiled.class);
             if (cacheFiled == null) {
                 continue;
@@ -171,5 +178,18 @@ public class ClassDescription {
             FieldDescription description = new FieldDescription(cacheFiled.index(), field, annotationName);
             descriptions.add(description);
         }
+    }
+
+    private static Field searchClassField(Class<?> aClass, String name) {
+        while (!aClass.equals(Object.class)){
+            for (Field field : aClass.getDeclaredFields()) {
+                if (field.getName().equals(name)) {
+                    field.setAccessible(true);
+                    return field;
+                }
+            }
+            aClass = aClass.getSuperclass();
+        }
+        throw new CacheException("no filed name:%s class:%s", name, aClass.getName());
     }
 }

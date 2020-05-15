@@ -3,7 +3,6 @@ package com.game.common.property;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 public class SystemPropertyKey {
 
@@ -22,15 +21,19 @@ public class SystemPropertyKey {
     }
 
     public final String getString(){
-        return getValue(()-> defaultValue, string -> string);
+        return getValue(string -> string);
     }
 
     public final Boolean getBoolean(){
-        return getValue(()-> Boolean.parseBoolean(defaultValue), Boolean::parseBoolean);
+        return getValue(Boolean::parseBoolean);
     }
 
-    public <T> T getValue(Supplier<T> supplier, Function<String, T> function){
-        return SystemProperties.getValue(this, supplier, function);
+    public final Integer getInteger(){
+        return getValue(Integer::parseInt);
+    }
+
+    public <T> T getValue(Function<String, T> function){
+        return SystemProperties.getValue(this, defaultValue, function);
     }
 
     @Override

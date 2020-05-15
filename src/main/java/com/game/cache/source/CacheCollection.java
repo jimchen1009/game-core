@@ -1,25 +1,29 @@
 package com.game.cache.source;
 
-import com.game.cache.CollectionInfo;
+import com.game.cache.CacheInformation;
 
 import java.util.Collection;
 import java.util.Map;
 
 public class CacheCollection {
 
-    private final Collection<Map<String, Object>> cacheValueList;
-    private final CollectionInfo collectionInfo;
+    private Collection<Map<String, Object>> cacheValueList;
+    private final CacheInformation cacheInformation;
 
-    public CacheCollection(Collection<Map<String, Object>> cacheValueList, CollectionInfo collectionInfo) {
+    public CacheCollection(Collection<Map<String, Object>> cacheValueList, CacheInformation cacheInformation) {
         this.cacheValueList = cacheValueList;
-        this.collectionInfo = collectionInfo;
+        this.cacheInformation = cacheInformation;
     }
 
-    public Collection<Map<String, Object>> getCacheValueList() {
+    public Collection<Map<String, Object>> getCacheValuesList() {
         return cacheValueList;
     }
 
-    public CollectionInfo getCollectionInfo() {
-        return collectionInfo;
+    public void setCacheValueList(Collection<Map<String, Object>> cacheValueList) {
+        this.cacheValueList = cacheValueList;
+    }
+
+    public CacheInformation getCacheInformation() {
+        return cacheInformation;
     }
 }

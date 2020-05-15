@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration monitorInterval="30" status="INFO">
+
+    <appenders>
+        <Console name="STDOUT" target="SYSTEM_OUT">
+        <PatternLayout pattern="[%d{HH:mm:ss:SSS}] [%p] [%t] %l: %m%n"/>
+        </Console>
+
+        <RollingFile name="TRACE" fileName="logs/trace.log" filePattern="logs/$${date:yyyy-MM}/trace_%d{yyyy-MM-dd}_%i.log">
+            <!--控制台只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch）-->
+            <Filters>
+                <ThresholdFilter level="DEBUG"/>
+                <ThresholdFilter level="INFO" onMatch="DENY" onMismatch="NEUTRAL"/>
+            </Filters>
+            <PatternLayout pattern="[%d{HH:mm:ss:SSS}] [%p] [%t] %l: %m%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="1024 MB"/>
+            </Policies>
+        </RollingFile>
+
+        <RollingFile name="DEBUG" fileName="logs/debug.log" filePattern="logs/$${date:yyyy-MM}/debug_%d{yyyy-MM-dd}_%i.log">
+            <!--控制台只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch）-->
+            <Filters>
+                <ThresholdFilter level="DEBUG"/>
+                <ThresholdFilter level="INFO" onMatch="DENY" onMismatch="NEUTRAL"/>
+            </Filters>
+            <PatternLayout pattern="[%d{HH:mm:ss:SSS}] [%p] [%t] %l: %m%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="1024 MB"/>
+            </Policies>
+        </RollingFile>
+
+        <RollingFile name="INFO" fileName="logs/info.log" filePattern="logs/$${date:yyyy-MM}/info_%d{yyyy-MM-dd}_%i.log">
+            <!--控制台只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch）-->
+            <Filters>
+                <ThresholdFilter level="INFO"/>
+                <ThresholdFilter level="WARN" onMatch="DENY" onMismatch="NEUTRAL"/>
+            </Filters>
+            <PatternLayout pattern="[%d{HH:mm:ss:SSS}] [%p] [%t] %l: %m%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="1024 MB"/>
+            </Policies>
+        </RollingFile>
+
+
+        <RollingFile name="WARN" fileName="logs/warn.log" filePattern="logs/$${date:yyyy-MM}/warn_%d{yyyy-MM-dd}_%i.log">
+            <Filters>
+                <ThresholdFilter level="WARN"/>
+                <ThresholdFilter level="ERROR" onMatch="DENY" onMismatch="NEUTRAL"/>
+            </Filters>
+            <PatternLayout pattern="[%d{HH:mm:ss:SSS}] [%p] [%t] %l: %m%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="1024 MB"/>
+            </Policies>
+        </RollingFile>
+
+        <RollingFile name="ERROR" fileName="logs/error.log" filePattern="logs/$${date:yyyy-MM}/error-%d{yyyy-MM-dd}-%i.log">
+            <ThresholdFilter level="ERROR"/>
+          <PatternLayout pattern="[%d{HH:mm:ss:SSS}] [%p] [%t] %l: %m%n"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="1024 MB"/>
+            </Policies>
+        </RollingFile>
+    </appenders>
+
+    <loggers>
+        <logger name="org.apache" level="INFO"/>
+        <logger name="com.mongodb" level="INFO"/>
+        <root level="TRACE">
+            <appender-ref ref="STDOUT"/>
+            <appender-ref ref="TRACE"/>
+            <appender-ref ref="DEBUG"/>
+            <appender-ref ref="INFO"/>
+            <appender-ref ref="WARN"/>
+            <appender-ref ref="ERROR"/>
+        </root>
+    </loggers>
+</configuration>

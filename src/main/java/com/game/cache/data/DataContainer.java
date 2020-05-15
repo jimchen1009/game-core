@@ -1,13 +1,10 @@
 package com.game.cache.data;
 
-import com.game.cache.CollectionInfo;
-import com.game.cache.exception.CacheException;
-import com.game.common.log.LogUtil;
+import com.game.cache.CacheInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -15,38 +12,29 @@ public class DataContainer<PK, K, V extends Data<K>> implements IDataContainer<P
 
     private static final Logger logger = LoggerFactory.getLogger(DataContainer.class);
 
-    private static final CollectionInfo INIT_INFO = new CollectionInfo();
+    private static final CacheInformation INIT_INFO = new CacheInformation();
 
-    private final PK primaryKey;
-    private ConcurrentHashMap<K, V> valueMap;
-    private CollectionInfo information;
+    private ConcurrentHashMap<PK, IPrimaryDataContainer<PK, K, V>> primaryDataMap;
     private final IDataSource<PK, K, V> dataSource;
 
-    public DataContainer(PK primaryKey, IDataSource<PK, K, V> dataSource) {
-        this.primaryKey = primaryKey;
-        this.valueMap = new ConcurrentHashMap<>();
-        this.information = INIT_INFO;
+    public DataContainer(IDataSource<PK, K, V> dataSource) {
+        this.primaryDataMap = new ConcurrentHashMap<>();
         this.dataSource = dataSource;
     }
 
     @Override
-    public PK primaryKey() {
-        return primaryKey;
+    public int count(PK primaryKey) {
+        return primaryDataContainer(primaryKey).count();
     }
 
     @Override
-    public int count() {
-        return currentMap().size();
+    public V get(PK primaryKey, K key) {
+        return get(primaryKey, key, false);
     }
 
     @Override
-    public V get(K key) {
-        return get(key, false);
-    }
-
-    @Override
-    public V get(K key, boolean isClone) {
-        V value = currentMap().get(key);
+    public V get(PK primaryKey, K key, boolean isClone) {
+        V value = primaryDataContainer(primaryKey).get(key);
         if (value != null && isClone){
             value = dataSource.cloneValue(value);
         }
@@ -54,92 +42,36 @@ public class DataContainer<PK, K, V extends Data<K>> implements IDataContainer<P
     }
 
     @Override
-    public Collection<V> getAll() {
-        return currentMap().values();
+    public Collection<V> getAll(PK primaryKey) {
+        return primaryDataContainer(primaryKey).getAll();
     }
 
     @Override
-    public Collection<V> getAll(boolean isClone) {
-        return getAll().stream().map(dataSource::cloneValue).collect(Collectors.toList());
+    public Collection<V> getAll(PK primaryKey, boolean isClone) {
+        return getAll(primaryKey).stream().map(dataSource::cloneValue).collect(Collectors.toList());
     }
 
     @Override
-    public V replaceOne(V value) {
-        boolean success = dataSource.replaceOne(primaryKey, value);
-        if (success){
-            V oldValue = currentMap().put(value.secondaryKey(), value);
-            value.clearIndexChangedBits();
-            if (logger.isTraceEnabled()) {
-                logger.trace("replaceOne: {}", LogUtil.toJSONString(value));
-            }
-            return oldValue;
-        }
-        else {
-            throw new CacheException("replaceOne error, %s", LogUtil.toJSONString(value));
-        }
+    public V replaceOne(PK primaryKey, V value) {
+        return primaryDataContainer(primaryKey).replaceOne(value);
     }
 
     @Override
-    public void replaceBatch(Collection<V> values) {
-        boolean success = dataSource.replaceBatch(primaryKey, values);
-        if (success){
-            ConcurrentHashMap<K, V> currentMap = currentMap();
-            for (V value : values) {
-                currentMap.put(value.secondaryKey(), value);
-                value.clearIndexChangedBits();
-            }
-            if (logger.isTraceEnabled()) {
-                logger.trace("replaceBatch:{}", LogUtil.toJSONString(values));
-            }
-        }
-        else {
-            throw new CacheException("replaceBatch error, %s", LogUtil.toJSONString(values));
-        }
+    public void replaceBatch(PK primaryKey, Collection<V> values) {
+        primaryDataContainer(primaryKey).replaceBatch(values);
     }
 
     @Override
-    public V removeOne(K key) {
-        boolean success = dataSource.deleteOne(primaryKey, key);
-        if (success){
-            V oldValue = currentMap().remove(key);
-            if (oldValue != null && logger.isTraceEnabled()) {
-                logger.trace("removeOne: {}", LogUtil.toJSONString(oldValue));
-            }
-            return oldValue;
-        }
-        else {
-            throw new CacheException("removeOne error, %s", LogUtil.toJSONString(key));
-        }
+    public V removeOne(PK primaryKey, K key) {
+        return primaryDataContainer(primaryKey).removeOne(key);
     }
 
     @Override
-    public void removeBatch(Collection<K> keys) {
-        boolean success = dataSource.deleteBatch(primaryKey, keys);
-        if (success){
-            ConcurrentHashMap<K, V> currentMap = currentMap();
-            for (K key : keys) {
-                currentMap.remove(key);
-            }
-            if (logger.isTraceEnabled()) {
-                logger.trace("removeBatch: {}", LogUtil.toJSONString(keys));
-            }
-        }
-        else {
-            throw new CacheException("removeBatch error, %s", LogUtil.toJSONString(keys));
-        }
+    public void removeBatch(PK primaryKey, Collection<K> keys) {
+        primaryDataContainer(primaryKey).removeBatch(keys);
     }
 
-    private ConcurrentHashMap<K, V> currentMap(){
-        if (INIT_INFO != information){
-            return valueMap;
-        }
-        DataCollection<K, V> collection = dataSource.getCollection(primaryKey);
-        information = collection.getInformation();
-        List<V> valueList = collection.getValueList();
-        for (V value : valueList) {
-//            value.setCacheCreated(true);
-            valueMap.put(value.secondaryKey(), value);
-        }
-        return valueMap;
+    private IPrimaryDataContainer<PK, K, V> primaryDataContainer(PK primaryKey){
+        return primaryDataMap.computeIfAbsent(primaryKey, key -> new PrimaryDataContainer<>(key, dataSource));
     }
 }
