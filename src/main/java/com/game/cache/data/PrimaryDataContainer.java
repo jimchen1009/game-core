@@ -1,5 +1,6 @@
 package com.game.cache.data;
 
+import com.game.cache.CacheContext;
 import com.game.cache.CacheInformation;
 import com.game.cache.exception.CacheException;
 import com.game.common.arg.Args;
@@ -13,7 +14,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-class PrimaryDataContainer<PK, K, V extends Data<K>> implements IPrimaryDataContainer<PK, K, V>{
+public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimaryDataContainer<PK, K, V>{
 
     private static final Logger logger = LoggerFactory.getLogger(PrimaryDataContainer.class);
 
@@ -21,12 +22,14 @@ class PrimaryDataContainer<PK, K, V extends Data<K>> implements IPrimaryDataCont
     private ConcurrentHashMap<K, V> key2Values;
     private CacheInformation information;
     private final IDataSource<PK, K, V> dataSource;
+    private volatile long latestUpdateTime;
 
     public PrimaryDataContainer(PK primaryKey, IDataSource<PK, K, V> dataSource) {
         this.primaryKey = primaryKey;
         this.key2Values = new ConcurrentHashMap<>();
         this.information = null;
         this.dataSource = dataSource;
+        this.latestUpdateTime = CacheContext.getCurrentTime();
     }
 
     @Override
@@ -51,18 +54,17 @@ class PrimaryDataContainer<PK, K, V extends Data<K>> implements IPrimaryDataCont
 
     @Override
     public V replaceOne(V value) {
-        Args.Two<Boolean, V> resultValue = LockUtil.syncLock(dataSource.getLockKey(), "removeOne", () -> {
+        Args.Two<Boolean, V> resultValue = LockUtil.syncLock(dataSource.getLockKey(), "deleteOne", () -> {
             boolean success = dataSource.replaceOne(primaryKey, value);
             V oldValue = null;
             if (success){
-                value.clearIndexChangedBits();
                 oldValue = currentMap().put(value.secondaryKey(), value);
             }
             return Args.create(success, oldValue);
         });
         if (resultValue != null && resultValue.arg0){
             if (logger.isTraceEnabled()) {
-                logger.trace("replaceOne: {}", LogUtil.toJSONString(value));
+                logger.trace("primaryKey:{} replaceOne: {}", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(value));
             }
             return resultValue.arg1;
         }
@@ -73,20 +75,19 @@ class PrimaryDataContainer<PK, K, V extends Data<K>> implements IPrimaryDataCont
 
     @Override
     public void replaceBatch(Collection<V> values) {
-        Boolean isSuccess = LockUtil.syncLock(dataSource.getLockKey(), "removeBatch", () -> {
+        Boolean isSuccess = LockUtil.syncLock(dataSource.getLockKey(), "deleteBatch", () -> {
             boolean success = dataSource.replaceBatch(primaryKey, values);
             if (success){
                 ConcurrentHashMap<K, V> currentMap = currentMap();
                 for (V value : values) {
                     currentMap.put(value.secondaryKey(), value);
-                    value.clearIndexChangedBits();
                 }
             }
             return success;
         });
         if (isSuccess){
             if (logger.isTraceEnabled()) {
-                logger.trace("replaceBatch:{}", LogUtil.toJSONString(values));
+                logger.trace("primaryKey:{} replaceBatch: {}", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(values));
             }
         }
         else {
@@ -96,7 +97,7 @@ class PrimaryDataContainer<PK, K, V extends Data<K>> implements IPrimaryDataCont
 
     @Override
     public V removeOne(K secondaryKey) {
-        Args.Two<Boolean, V> resultValue = LockUtil.syncLock(dataSource.getLockKey(), "removeOne", () -> {
+        Args.Two<Boolean, V> resultValue = LockUtil.syncLock(dataSource.getLockKey(), "deleteOne", () -> {
             boolean success = true;
             V oldValue = null;
             if (currentMap().containsKey(secondaryKey)) {
@@ -109,18 +110,18 @@ class PrimaryDataContainer<PK, K, V extends Data<K>> implements IPrimaryDataCont
         });
         if (resultValue != null && resultValue.arg0){
             if (resultValue.arg1 != null && logger.isTraceEnabled()) {
-                logger.trace("removeOne: {}", LogUtil.toJSONString(resultValue.arg1));
+                logger.trace("primaryKey:{} deleteOne: {}", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(resultValue.arg1));
             }
             return resultValue.arg1;
         }
         else {
-            throw new CacheException("primaryKey:%s secondaryKey:%s removeOne error.", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(secondaryKey));
+            throw new CacheException("primaryKey:%s deleteOne error, %s", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(secondaryKey));
         }
     }
 
     @Override
     public void removeBatch(Collection<K> secondaryKeys) {
-        Boolean isSuccess = LockUtil.syncLock(dataSource.getLockKey(), "removeBatch", () -> {
+        Boolean isSuccess = LockUtil.syncLock(dataSource.getLockKey(), "deleteBatch", () -> {
             boolean success = true;
             ConcurrentHashMap<K, V> currentMap = currentMap();
             List<K> removeSecondaryKeys = secondaryKeys.stream().filter(currentMap::containsKey).collect(Collectors.toList());
@@ -136,12 +137,22 @@ class PrimaryDataContainer<PK, K, V extends Data<K>> implements IPrimaryDataCont
         });
         if (isSuccess){
             if (logger.isTraceEnabled()) {
-                logger.trace("removeBatch: {}", LogUtil.toJSONString(secondaryKeys));
+                logger.trace("primaryKey:{} deleteBatch: {}", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(secondaryKeys));
             }
         }
         else {
-            throw new CacheException("primaryKey:%s removeBatch error.", LogUtil.toJSONString(primaryKey));
+            throw new CacheException("primaryKey:%s deleteBatch error, %s", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(secondaryKeys));
         }
+    }
+
+    @Override
+    public long getLatestUpdateTime() {
+        return latestUpdateTime;
+    }
+
+    @Override
+    public void updateLatestUpdateTime() {
+        latestUpdateTime = CacheContext.getCurrentTime();
     }
 
     private ConcurrentHashMap<K, V> lockCurrentMap(){

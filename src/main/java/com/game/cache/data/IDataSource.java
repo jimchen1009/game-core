@@ -5,7 +5,7 @@ import com.game.common.lock.LockKey;
 import java.util.Collection;
 import java.util.List;
 
-public interface IDataSource<PK, K, V extends Data<K>> {
+public interface IDataSource<PK, K, V extends IData<K>> {
 
     LockKey getLockKey();
 

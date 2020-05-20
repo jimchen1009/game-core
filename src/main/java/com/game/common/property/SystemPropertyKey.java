@@ -32,6 +32,10 @@ public class SystemPropertyKey {
         return getValue(Integer::parseInt);
     }
 
+    public final Long getLong(){
+        return getValue(Long::parseLong);
+    }
+
     public <T> T getValue(Function<String, T> function){
         return SystemProperties.getValue(this, defaultValue, function);
     }

@@ -2,6 +2,7 @@ package com.game.cache.mapper;
 
 import com.game.cache.InformationName;
 import com.game.cache.exception.CacheException;
+import com.game.cache.mapper.annotation.CacheEntity;
 import com.game.cache.mapper.annotation.CacheFiled;
 import com.game.cache.mapper.annotation.CacheIndex;
 import com.game.cache.mapper.annotation.IndexField;
@@ -89,6 +90,10 @@ public class ClassDescription {
 
     public CacheIndex getCacheIndexes(){
         return aClass.getAnnotation(CacheIndex.class);
+    }
+
+    public CacheEntity getCacheEntity(){
+        return aClass.getAnnotation(CacheEntity.class);
     }
 
     public Field getSourceFiled() {

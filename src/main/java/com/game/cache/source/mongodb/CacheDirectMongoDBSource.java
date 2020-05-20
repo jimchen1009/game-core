@@ -1,12 +1,14 @@
 package com.game.cache.source.mongodb;
 
 import com.game.cache.CacheInformation;
-import com.game.cache.data.Data;
+import com.game.cache.data.IData;
 import com.game.cache.key.IKeyValueBuilder;
 import com.game.cache.mapper.annotation.CacheIndex;
 import com.game.cache.source.CacheCollection;
 import com.game.cache.source.CacheDirectUpdateSource;
+import com.game.cache.source.ICacheDelayUpdateSource;
 import com.game.cache.source.KeyCacheValue;
+import com.game.cache.source.executor.ICacheExecutor;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.DeleteOneModel;
@@ -22,17 +24,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class CacheDirectMongoDBSource<PK, K, V extends Data<K>> extends CacheDirectUpdateSource<PK, K, V> {
+public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDirectUpdateSource<PK, K, V> {
 
     private static final Logger logger = LoggerFactory.getLogger(CacheDirectMongoDBSource.class);
 
-    private final String collectionName;
-    private final int primaryKeyId;
 
-    public CacheDirectMongoDBSource(Class<V> aClass, String collectionName, int primaryKeyId, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder) {
+    public CacheDirectMongoDBSource(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder) {
         super(aClass, primaryBuilder, secondaryBuilder);
-        this.collectionName = collectionName;
-        this.primaryKeyId = primaryKeyId;
         MongoCollection<Document> collection = getCollection();
         CacheIndex cacheIndexes = getKeyValueBuilder().getClsDescription().getCacheIndexes();
         CacheMongoDBUtil.ensureIndexes(collection, primaryKeyId, cacheIndexes);
@@ -90,15 +88,12 @@ public class CacheDirectMongoDBSource<PK, K, V extends Data<K>> extends CacheDir
         return writeResult.wasAcknowledged();
     }
 
-    public String getCollectionName() {
-        return collectionName;
-    }
-
-    public int getPrimaryKeyId() {
-        return primaryKeyId;
-    }
-
     public MongoCollection<Document> getCollection(){
-        return MongoDBQueryUtil.getCollection(collectionName);
+        return MongoDBQueryUtil.getCollection(addressName);
+    }
+
+    @Override
+    public ICacheDelayUpdateSource<PK, K, V> createDelayUpdateSource(ICacheExecutor executor) {
+        return new CacheDelayMongoDBSource<>(this, executor);
     }
 }

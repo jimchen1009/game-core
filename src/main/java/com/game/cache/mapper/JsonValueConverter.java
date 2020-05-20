@@ -8,6 +8,7 @@ public class JsonValueConverter extends ValueConverter<Object> {
 
     private static final SerializerFeature[] mySerializerFeatures = new SerializerFeature[] {
             SerializerFeature.WriteMapNullValue,
+            SerializerFeature.WriteNullListAsEmpty,
             SerializerFeature.WriteNullStringAsEmpty,
             SerializerFeature.WriteDateUseDateFormat,
             SerializerFeature.IgnoreNonFieldGetter,

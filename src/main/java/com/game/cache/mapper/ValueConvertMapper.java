@@ -31,7 +31,6 @@ public class ValueConvertMapper {
         add(new ShortValueConverter());
         add(new ByteValueConverter());
         add(new StringValueConverter());
-        add(new DateValueConverter());
         List<ValueConverter<?>> extensionConvertList = getExtensionConvertList();
         for (ValueConverter<?> valueConverter : extensionConvertList) {
             add(valueConverter);

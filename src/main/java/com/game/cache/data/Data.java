@@ -19,7 +19,7 @@ public abstract class Data<K> implements IData<K> {
         return isCacheResource;
     }
 
-    public boolean isFieldValueModified(int uniqueId){
+    public boolean isIndexChanged(int uniqueId){
         return (indexChangedBits & (1L << uniqueId)) != 0;
     }
 
@@ -35,7 +35,7 @@ public abstract class Data<K> implements IData<K> {
         indexChangedBits = indexChangedBits | (1L << index);
     }
 
-    final Object clone(Supplier<Object> supplier) {
+    public final Object clone(Supplier<Object> supplier) {
         try {
             return super.clone();
         }

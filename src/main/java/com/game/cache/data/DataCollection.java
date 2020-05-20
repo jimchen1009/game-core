@@ -4,7 +4,7 @@ import com.game.cache.CacheInformation;
 
 import java.util.List;
 
-public class DataCollection<K, V extends Data<K>> {
+public class DataCollection<K, V extends IData<K>> {
 
     private final List<V> valueList;
     private final CacheInformation information;

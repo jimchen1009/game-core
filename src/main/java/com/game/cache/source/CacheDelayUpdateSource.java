@@ -1,6 +1,6 @@
 package com.game.cache.source;
 
-import com.game.cache.data.Data;
+import com.game.cache.data.IData;
 import com.game.cache.exception.CacheException;
 import com.game.cache.property.CachePropertyKey;
 import com.game.cache.source.executor.CacheCallable;
@@ -28,11 +28,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-public abstract class CacheDelayUpdateSource<PK, K, V extends Data<K>> implements ICacheSource<PK, K, V>, ICacheDelayUpdateSource<PK> {
+public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implements ICacheDelayUpdateSource<PK, K, V> {
 
-    private static final int WRITE_BACK_TRY_COUNT = 2;
-    private static final long WRITE_BACK_TIME_OUT = 500L;
-    private static final int MAX_CACHE_COUNT = 500;
+    public static final int FLUSH_BATCH_COUNT = CachePropertyKey.FLUSH_BATCH_COUNT.getInteger();
+    private static final int FLUSH_PRIMARY_TRY_COUNT = CachePropertyKey.FLUSH_PRIMARY_TRY_COUNT.getInteger();
+    private static final long WRITE_BACK_TIME_OUT = CachePropertyKey.FLUSH_TIME_OUT.getLong();
+    private static final int MAX_CACHE_COUNT = CachePropertyKey.CACHE_MAX_COUNT.getInteger();
 
     private static final Logger logger = LoggerFactory.getLogger(CacheDelayUpdateSource.class);
 
@@ -48,7 +49,9 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends Data<K>> implement
         this.executor = executor;
         //初始化~
         CacheRunnable cacheRunnable = new CacheRunnable(getScheduleName(), this::onSchedule);
-        executor.scheduleAtFixedRate(cacheRunnable, 5, 2, TimeUnit.SECONDS);
+        long randomValue = RandomUtils.nextLong(1000, 2000);
+        long initialDelay = randomValue * 50 / 50;    //取100ms的整数倍
+        executor.scheduleAtFixedRate(cacheRunnable, initialDelay, 2000L, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -111,46 +114,66 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends Data<K>> implement
     }
 
     @Override
-    public void executePrimaryCacheWriteBack(PK primaryKey, Consumer<Boolean> consumer){
-        CacheCallable<Boolean> callable = new CacheCallable<>(getScheduleName(), () -> {
-            Boolean isSuccess = LockUtil.syncLock(getLockKey(), "executePrimaryCacheWriteBack", () -> {
-                PrimaryCache<K> primaryCache = primaryCacheMap.remove(primaryKey);
-                if (primaryCache == null) {
-                    return true;
-                }
-                Collection<KeyCacheValue<K>> keyCacheValues = primaryCache.getAll();
-                return  lockWriteBackKeyCacheValues(Collections.singletonMap(primaryKey, keyCacheValues));
-            });
-            return isSuccess;
-        });
+    public ICacheDelayUpdateSource<PK, K, V> createDelayUpdateSource(ICacheExecutor executor) {
+        return this;
+    }
+
+    @Override
+    public void executePrimaryCacheFlushAsync(PK primaryKey, Consumer<Boolean> consumer){
+        CacheCallable<Boolean> callable = createPrimaryCacheFlushCallable(primaryKey, "executePrimaryCacheFlushAsync", consumer);
+        executor.submit(callable);
+    }
+
+    @Override
+    public boolean executePrimaryCacheFlushSync(PK primaryKey) {
+        CacheCallable<Boolean> callable = createPrimaryCacheFlushCallable(primaryKey, "executePrimaryCacheFlushSync", null);
         boolean isSuccess = false;
-        for (int count = 0; count < WRITE_BACK_TRY_COUNT; count++) {
-            Future<Boolean> future = executor.submit(callable);
+        for (int count = 0; count < FLUSH_PRIMARY_TRY_COUNT; count++) {
             try {
+                Future<Boolean> future = executor.submit(callable);
                 isSuccess = future.get(WRITE_BACK_TIME_OUT, TimeUnit.MILLISECONDS);
                 if (isSuccess){
                     break;
                 }
-                logger.error("primaryKey:{}.{} count:{} write back failure.", getAClass().getName(), count, LogUtil.toJSONString(primaryKey));
+                logger.error("primaryKey:{}.{} count:{} flush failure.", LogUtil.toJSONString(primaryKey), getAClass().getName(), count);
             }
             catch (Throwable t) {
                 throw new CacheException(LogUtil.toJSONString(primaryKey), t);
             }
         }
-        consumer.accept(isSuccess);
+        return isSuccess;
     }
 
-    protected String getScheduleName(){
-        return getLockKey().toLockName();
+    private CacheCallable<Boolean> createPrimaryCacheFlushCallable(PK primaryKey, String message,  Consumer<Boolean> consumer){
+        CacheCallable<Boolean> callable = new CacheCallable<>(getScheduleName(), () -> {
+            Boolean isSuccess = LockUtil.syncLock(getLockKey(), message, () -> {
+                PrimaryCache<K> primaryCache = primaryCacheMap.remove(primaryKey);
+                if (primaryCache == null) {
+                    return true;
+                }
+                Collection<KeyCacheValue<K>> keyCacheValues = primaryCache.getAll();
+                return flushKeyCacheValuesInLock(Collections.singletonMap(primaryKey, keyCacheValues));
+            });
+            return isSuccess;
+        }, consumer);
+        return callable;
     }
 
-    protected ICacheSource<PK, K, V> getCacheSource() {
+    protected String getScheduleName() {
+        return cacheSource.getAddressName();
+    }
+
+    @Override
+    public ICacheSource<PK, K, V> getCacheSource() {
         return cacheSource;
     }
 
-    protected abstract Map<PK, List<KeyCacheValue<K>>> executeWriteBackKeyCacheValues0(Map<PK, Collection<KeyCacheValue<K>>> keyCacheValuesMap);
+    protected abstract Map<PK, List<KeyCacheValue<K>>> executeWriteBackKeyCacheValues(Map<PK, Collection<KeyCacheValue<K>>> keyCacheValuesMap);
 
     private void onSchedule() {
+        if (primaryCacheMap.isEmpty()){
+            return;
+        }
         long currentTime = System.currentTimeMillis();
         Map<PK, Collection<KeyCacheValue<K>>> keyCacheValuesMap = new HashMap<>();
         List<PK> removePrimaryKeyList = new ArrayList<>();
@@ -187,7 +210,7 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends Data<K>> implement
                 }
                 keyCacheValuesMap.put(pk, keyCacheValues);
             }
-            lockWriteBackKeyCacheValues(keyCacheValuesMap);
+            flushKeyCacheValuesInLock(keyCacheValuesMap);
         });
     }
 
@@ -217,11 +240,11 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends Data<K>> implement
     }
 
 
-    private boolean lockWriteBackKeyCacheValues(Map<PK, Collection<KeyCacheValue<K>>> keyCacheValuesMap){
+    private boolean flushKeyCacheValuesInLock(Map<PK, Collection<KeyCacheValue<K>>> keyCacheValuesMap){
         if (keyCacheValuesMap.isEmpty()) {
             return true;
         }
-        Map<PK, List<KeyCacheValue<K>>> failureKeyCacheValuesMap = executeWriteBackKeyCacheValues0(keyCacheValuesMap);
+        Map<PK, List<KeyCacheValue<K>>> failureKeyCacheValuesMap = executeWriteBackKeyCacheValues(keyCacheValuesMap);
         for (Map.Entry<PK, List<KeyCacheValue<K>>> entry : failureKeyCacheValuesMap.entrySet()) {
             int duration = RandomUtils.nextInt(0, 5);
             PrimaryCache<K> kPrimaryCache = primaryCacheMap.computeIfAbsent(entry.getKey(), key -> new PrimaryCache<>(duration));
@@ -232,7 +255,7 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends Data<K>> implement
 
     private static final class PrimaryCache<K>{
 
-        private static final int EXPIRED_DURATION = CachePropertyKey.WRITE_BACK_EXPIRED_DURATION.getInteger();
+        private static final int EXPIRED_DURATION = CachePropertyKey.FLUSH_EXPIRED_DURATION.getInteger();
 
         public static final Map<String, Object> EMPTY = new HashMap<>(0);
 

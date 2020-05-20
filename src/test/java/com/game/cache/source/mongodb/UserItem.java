@@ -1,12 +1,14 @@
 package com.game.cache.source.mongodb;
 
 import com.game.cache.data.Data;
+import com.game.cache.mapper.annotation.CacheEntity;
 import com.game.cache.mapper.annotation.CacheFiled;
 import com.game.cache.mapper.annotation.CacheIndex;
 import com.game.cache.mapper.annotation.IndexField;
 import com.game.cache.mapper.annotation.IndexOptions;
 import com.game.cache.mapper.annotation.IndexType;
 
+@CacheEntity(addressName = "material", primaryId = 1, delayUpdate = true)
 @CacheIndex(fields = {@IndexField(name = "userId", type = IndexType.ASC, isPrimary = true), @IndexField(name = "itemUniqueId", type = IndexType.ASC, isPrimary = false)}, options = @IndexOptions(unique = true))
 public class UserItem extends Data<Long> {
 

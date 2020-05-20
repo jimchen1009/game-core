@@ -10,14 +10,19 @@ import java.lang.annotation.Target;
 public @interface CacheEntity {
 
     /**
-     * 主键的字段名称
      * @return
      */
-    String[] primaryKeys();
+    String addressName();
 
     /**
-     * 子键的字段名称
+     *
      * @return
      */
-    String[] secondaryKeys();
+    int primaryId();
+
+    /**
+     * 是否延迟更新
+     * @return
+     */
+    boolean delayUpdate();
 }

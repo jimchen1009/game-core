@@ -1,6 +1,7 @@
 package com.game.cache.data;
 
 import com.game.cache.CacheInformation;
+import com.game.common.util.Holder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -8,7 +9,7 @@ import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-public class DataContainer<PK, K, V extends Data<K>> implements IDataContainer<PK, K, V> {
+public class DataContainer<PK, K, V extends IData<K>> implements IDataContainer<PK, K, V> {
 
     private static final Logger logger = LoggerFactory.getLogger(DataContainer.class);
 
@@ -28,17 +29,21 @@ public class DataContainer<PK, K, V extends Data<K>> implements IDataContainer<P
     }
 
     @Override
-    public V get(PK primaryKey, K key) {
-        return get(primaryKey, key, false);
+    public V get(PK primaryKey, K secondaryKey) {
+        return  primaryDataContainer(primaryKey).get(secondaryKey);
     }
 
     @Override
-    public V get(PK primaryKey, K key, boolean isClone) {
-        V value = primaryDataContainer(primaryKey).get(key);
-        if (value != null && isClone){
+    public Holder<V> getNoCache(PK primaryKey, K secondaryKey) {
+        IPrimaryDataContainer<PK, K, V> primaryDataContainer = primaryDataMap.get(primaryKey);
+        if (primaryDataContainer == null){
+            return null;
+        }
+        V value = primaryDataContainer.get(secondaryKey);
+        if (value != null){
             value = dataSource.cloneValue(value);
         }
-        return value;
+        return new Holder<>(value);
     }
 
     @Override
@@ -47,8 +52,12 @@ public class DataContainer<PK, K, V extends Data<K>> implements IDataContainer<P
     }
 
     @Override
-    public Collection<V> getAll(PK primaryKey, boolean isClone) {
-        return getAll(primaryKey).stream().map(dataSource::cloneValue).collect(Collectors.toList());
+    public Collection<V> getAllNoCache(PK primaryKey) {
+        IPrimaryDataContainer<PK, K, V> primaryDataContainer = primaryDataMap.get(primaryKey);
+        if (primaryDataContainer == null){
+            return null;
+        }
+        return primaryDataContainer.getAll().stream().map(dataSource::cloneValue).collect(Collectors.toList());
     }
 
     @Override
@@ -62,13 +71,13 @@ public class DataContainer<PK, K, V extends Data<K>> implements IDataContainer<P
     }
 
     @Override
-    public V removeOne(PK primaryKey, K key) {
-        return primaryDataContainer(primaryKey).removeOne(key);
+    public V removeOne(PK primaryKey, K secondaryKeys) {
+        return primaryDataContainer(primaryKey).removeOne(secondaryKeys);
     }
 
     @Override
-    public void removeBatch(PK primaryKey, Collection<K> keys) {
-        primaryDataContainer(primaryKey).removeBatch(keys);
+    public void removeBatch(PK primaryKey, Collection<K> secondaryKeys) {
+        primaryDataContainer(primaryKey).removeBatch(secondaryKeys);
     }
 
     private IPrimaryDataContainer<PK, K, V> primaryDataContainer(PK primaryKey){

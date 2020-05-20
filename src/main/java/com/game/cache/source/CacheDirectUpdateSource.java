@@ -1,6 +1,6 @@
 package com.game.cache.source;
 
-import com.game.cache.data.Data;
+import com.game.cache.data.IData;
 import com.game.cache.key.IKeyValueBuilder;
 
 import java.util.ArrayList;
@@ -8,7 +8,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-public abstract class CacheDirectUpdateSource<PK, K, V extends Data<K>> extends CacheSource<PK, K, V> {
+public abstract class CacheDirectUpdateSource<PK, K, V extends IData<K>> extends CacheSource<PK, K, V> {
 
     public CacheDirectUpdateSource(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder) {
         super(aClass, primaryBuilder, secondaryBuilder);

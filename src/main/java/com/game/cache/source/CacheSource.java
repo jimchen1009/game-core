@@ -1,27 +1,41 @@
 package com.game.cache.source;
 
-import com.game.cache.data.Data;
+import com.game.cache.data.IData;
 import com.game.cache.key.IKeyValueBuilder;
 import com.game.cache.mapper.ClassDescription;
+import com.game.cache.mapper.annotation.CacheEntity;
 import com.game.cache.source.executor.ICacheSource;
 import com.game.common.lock.LockKey;
 
 import java.util.Collection;
 import java.util.Map;
 
-public abstract class CacheSource<PK, K, V extends Data<K>> implements ICacheSource<PK, K, V> {
+public abstract class CacheSource<PK, K, V extends IData<K>> implements ICacheSource<PK, K, V> {
 
     private static final Object[] EMPTY = new Object[0];
 
     private final Class<V> aClass;
     private final LockKey lockKey;
     private final CacheKeyValueBuilder<PK, K> keyValueBuilder;
+    protected final String addressName;
+    protected final int primaryKeyId;
 
     public CacheSource(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder) {
         this.aClass = aClass;
         this.lockKey = LockKey.systemLockKey("cache").createLockKey(aClass.getSimpleName());
         ClassDescription description = ClassDescription.get(aClass);
         this.keyValueBuilder = new CacheKeyValueBuilder<>(description, primaryBuilder, secondaryBuilder);
+        CacheEntity cacheEntity = getKeyValueBuilder().getClsDescription().getCacheEntity();
+        this.addressName = cacheEntity.addressName();
+        this.primaryKeyId = cacheEntity.primaryId();
+    }
+
+    public String getAddressName() {
+        return addressName;
+    }
+
+    public int getPrimaryKeyId() {
+        return primaryKeyId;
     }
 
     @Override

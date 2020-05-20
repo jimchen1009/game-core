@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class DataSource<PK, K, V extends Data<K>> implements IDataSource<PK, K, V>{
+public class DataSource<PK, K, V extends IData<K>> implements IDataSource<PK, K, V>{
 
     private static final Logger logger = LoggerFactory.getLogger(DataSource.class);
 
@@ -51,7 +51,11 @@ public class DataSource<PK, K, V extends Data<K>> implements IDataSource<PK, K, 
     @Override
     public boolean replaceOne(PK primaryKey, V value) {
         KeyCacheValue<K> keyCacheValue = KeyCacheValue.create(value.secondaryKey(), value.isCacheResource(), converter.convert(value));
-        return cacheSource.replaceOne(primaryKey, keyCacheValue);
+        boolean isSuccess = cacheSource.replaceOne(primaryKey, keyCacheValue);
+        if (isSuccess){
+            value.clearIndexChangedBits();
+        }
+        return isSuccess;
     }
 
     @Override
@@ -60,7 +64,13 @@ public class DataSource<PK, K, V extends Data<K>> implements IDataSource<PK, K, 
             Map<String, Object> cacheValue = converter.convert(value);
             return KeyCacheValue.create(value.secondaryKey(), value.isCacheResource(), cacheValue);
         }).collect(Collectors.toList());
-        return cacheSource.replaceBatch(primaryKey, cacheValueList);
+        boolean isSuccess = cacheSource.replaceBatch(primaryKey, cacheValueList);
+        if (isSuccess){
+            for (V value : values) {
+                value.clearIndexChangedBits();
+            }
+        }
+        return isSuccess;
     }
 
     @Override

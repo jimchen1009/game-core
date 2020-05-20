@@ -1,6 +1,7 @@
 package com.game.cache.source.executor;
 
 import com.game.cache.source.CacheCollection;
+import com.game.cache.source.ICacheDelayUpdateSource;
 import com.game.cache.source.KeyCacheValue;
 import com.game.common.lock.LockKey;
 
@@ -27,4 +28,6 @@ public interface ICacheSource<PK, K, V> {
     boolean deleteOne(PK primaryKey, K secondaryKey);
 
     boolean deleteBatch(PK primaryKey, Collection<K> secondaryKeys);
+
+    ICacheDelayUpdateSource<PK, K, V> createDelayUpdateSource(ICacheExecutor executor);
 }

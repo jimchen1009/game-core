@@ -1,6 +1,6 @@
 package com.game.cache.mapper;
 
-import com.game.cache.data.Data;
+import com.game.cache.data.IData;
 import com.game.cache.exception.CacheException;
 import com.game.common.log.LogUtil;
 
@@ -8,7 +8,7 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ClassConverter<K,V extends Data<K>> implements IClassConverter<K, V> {
+public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, V> {
 
     private final ClassDescription clsDescription;
     private final ValueConvertMapper mapper;
@@ -50,7 +50,7 @@ public class ClassConverter<K,V extends Data<K>> implements IClassConverter<K, V
                 encodeValue(dataValue, cacheValue, description, true);
             }
             for (FieldDescription description : clsDescription.getNormalDescriptions()) {
-                if (dataValue.getIndexChangedBits() == 0L || dataValue.isFieldValueModified(description.getIndex())){
+                if (dataValue.getIndexChangedBits() == 0L || dataValue.isIndexChanged(description.getIndex())){
                     encodeValue(dataValue, cacheValue, description, false);
                 }
             }

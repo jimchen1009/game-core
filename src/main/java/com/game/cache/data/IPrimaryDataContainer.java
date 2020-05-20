@@ -2,7 +2,7 @@ package com.game.cache.data;
 
 import java.util.Collection;
 
-interface IPrimaryDataContainer<PK, K, V extends IData<K>> {
+public interface IPrimaryDataContainer<PK, K, V extends IData<K>> {
 
     PK primaryKey();
 
@@ -19,4 +19,8 @@ interface IPrimaryDataContainer<PK, K, V extends IData<K>> {
     V removeOne(K secondaryKey);
 
     void removeBatch(Collection<K> secondaryKeys);
+
+    long getLatestUpdateTime();
+
+    void updateLatestUpdateTime();
 }
