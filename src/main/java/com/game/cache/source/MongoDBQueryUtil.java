@@ -1,6 +1,9 @@
-package com.game.cache.source.mongodb;
+package com.game.cache.source;
 
-import com.game.db.mongodb.MongoDBManager;
+import com.game.cache.source.mongodb.MongoDBManager;
+import com.game.common.config.ConfigKey;
+import com.game.common.config.Configs;
+import com.game.common.config.IConfigs;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -20,8 +23,6 @@ import java.util.Map;
 public class MongoDBQueryUtil {
 
     public static final UpdateOptions UPDATE_OPTIONS = new UpdateOptions().upsert(true);
-    public static final String DB_NAME = "demo";
-
 
     public static Map<String, Object> queryOne(MongoCollection<Document> collection, int primaryKeyId, Map<String, Object> keyValue) {
         Document queryDocument = CacheMongoDBUtil.getQueryDocument(primaryKeyId, keyValue);
@@ -39,7 +40,8 @@ public class MongoDBQueryUtil {
     }
 
     public static MongoCollection<Document> getCollection(String name){
-        MongoDatabase database = MongoDBManager.getInstance().getDb(DB_NAME);
+        String dbName = Configs.getInstance().getString(ConfigKey.Cache.createKeyName("source.mongodb.db"));
+        MongoDatabase database = MongoDBManager.getInstance().getDb(dbName);
         return database.getCollection(name);
     }
 

@@ -2,11 +2,12 @@ package com.game.cache.source;
 
 import com.game.cache.data.IData;
 import com.game.cache.exception.CacheException;
-import com.game.cache.property.CachePropertyKey;
 import com.game.cache.source.executor.CacheCallable;
 import com.game.cache.source.executor.CacheRunnable;
 import com.game.cache.source.executor.ICacheExecutor;
 import com.game.cache.source.executor.ICacheSource;
+import com.game.common.config.ConfigKey;
+import com.game.common.config.Configs;
 import com.game.common.lock.LockKey;
 import com.game.common.lock.LockUtil;
 import com.game.common.log.LogUtil;
@@ -29,11 +30,6 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implements ICacheDelayUpdateSource<PK, K, V> {
-
-    public static final int FLUSH_BATCH_COUNT = CachePropertyKey.FLUSH_BATCH_COUNT.getInteger();
-    private static final int FLUSH_PRIMARY_TRY_COUNT = CachePropertyKey.FLUSH_PRIMARY_TRY_COUNT.getInteger();
-    private static final long WRITE_BACK_TIME_OUT = CachePropertyKey.FLUSH_TIME_OUT.getLong();
-    private static final int MAX_CACHE_COUNT = CachePropertyKey.CACHE_MAX_COUNT.getInteger();
 
     private static final Logger logger = LoggerFactory.getLogger(CacheDelayUpdateSource.class);
 
@@ -128,10 +124,12 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
     public boolean executePrimaryCacheFlushSync(PK primaryKey) {
         CacheCallable<Boolean> callable = createPrimaryCacheFlushCallable(primaryKey, "executePrimaryCacheFlushSync", null);
         boolean isSuccess = false;
-        for (int count = 0; count < FLUSH_PRIMARY_TRY_COUNT; count++) {
+        int flush_try_count = Configs.getInstance().getInt(ConfigKey.Cache.createKeyName("source.flush_try_count"));
+        long flush_time_out = Configs.getInstance().getLong(ConfigKey.Cache.createKeyName("source.flush_time_out"));
+        for (int count = 0; count < flush_try_count; count++) {
             try {
                 Future<Boolean> future = executor.submit(callable);
-                isSuccess = future.get(WRITE_BACK_TIME_OUT, TimeUnit.MILLISECONDS);
+                isSuccess = future.get(flush_time_out, TimeUnit.MILLISECONDS);
                 if (isSuccess){
                     break;
                 }
@@ -189,9 +187,10 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
                 removePrimaryKeyList.add(entry.getKey());
             }
         }
-        if (expiredPrimaryKey.size() > MAX_CACHE_COUNT){
+        int maximum_count = Configs.getInstance().getInt(ConfigKey.Cache.createKeyName("source.maximum_count"));
+        if (expiredPrimaryKey.size() > maximum_count){
             expiredPrimaryKey.sort(Comparator.comparingLong(Map.Entry::getValue));
-            for (int i = MAX_CACHE_COUNT; i < expiredPrimaryKey.size(); i++) {
+            for (int i = maximum_count; i < expiredPrimaryKey.size(); i++) {
                 removePrimaryKeyList.add(expiredPrimaryKey.get(i).getKey());
             }
         }
@@ -255,20 +254,21 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
 
     private static final class PrimaryCache<K>{
 
-        private static final int EXPIRED_DURATION = CachePropertyKey.FLUSH_EXPIRED_DURATION.getInteger();
-
         public static final Map<String, Object> EMPTY = new HashMap<>(0);
 
         private volatile long expiredTime;
         private final Map<K, KeyCacheValue<K>> keyCacheValuesMap;
 
         public PrimaryCache(int duration) {
+            if (duration == 0){
+                int maximum_count = Configs.getInstance().getInt(ConfigKey.Cache.createKeyName("source.flush.expired_duration"));
+            }
             this.expiredTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(duration);
             this.keyCacheValuesMap = new ConcurrentHashMap<>();
         }
 
         public PrimaryCache() {
-            this(EXPIRED_DURATION);
+            this(0);
         }
 
         public long getExpiredTime() {

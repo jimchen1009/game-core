@@ -1,4 +1,4 @@
-package com.game.cache.source.mongodb;
+package com.game.cache.source;
 
 import com.game.cache.data.Data;
 import com.game.cache.mapper.annotation.CacheEntity;
@@ -8,15 +8,15 @@ import com.game.cache.mapper.annotation.IndexField;
 import com.game.cache.mapper.annotation.IndexOptions;
 import com.game.cache.mapper.annotation.IndexType;
 
-@CacheEntity(addressName = "material", primaryId = 2, delayUpdate = true)
-@CacheIndex(fields = {@IndexField(name = "userId", type = IndexType.ASC, isPrimary = true), @IndexField(name = "currencyId", type = IndexType.ASC, isPrimary = false)}, options = @IndexOptions(unique = true))
-public class UserCurrency extends Data<Integer> {
+@CacheEntity(addressName = "material", primaryId = 1, delayUpdate = true)
+@CacheIndex(fields = {@IndexField(name = "userId", type = IndexType.ASC, isPrimary = true), @IndexField(name = "itemUniqueId", type = IndexType.ASC, isPrimary = false)}, options = @IndexOptions(unique = true))
+public class UserItem extends Data<Long> {
 
     @CacheFiled(index = 0)
     private long userId;
 
     @CacheFiled(index = 1)
-    private int currencyId;
+    private long itemUniqueId;
 
     @CacheFiled(index = 2)
     private long count;
@@ -25,14 +25,14 @@ public class UserCurrency extends Data<Integer> {
     private long gainedCount;
 
 
-    public UserCurrency(long userId, int currencyId, int count) {
+    public UserItem(long userId, long itemUniqueId, int count) {
         this.userId = userId;
-        this.currencyId = currencyId;
+        this.itemUniqueId = itemUniqueId;
         this.count = count;
         this.gainedCount = count;
     }
 
-    public UserCurrency() {
+    public UserItem() {
         this(0, 0, 0);
     }
 
@@ -50,22 +50,23 @@ public class UserCurrency extends Data<Integer> {
     }
 
     @Override
-    public Integer secondaryKey() {
-        return currencyId;
+    public Long secondaryKey() {
+        return itemUniqueId;
     }
 
     public long getUserId() {
         return userId;
     }
 
+    public long getItemUniqueId() {
+        return itemUniqueId;
+    }
 
     @Override
     public String toString() {
         return "{" +
                 "userId=" + userId +
-                ", currencyId=" + currencyId +
-                ", count=" + count +
-                ", gainedCount=" + gainedCount +
+                ", itemUniqueId=" + itemUniqueId +
                 '}';
     }
 }

@@ -1,9 +1,9 @@
-package com.game.cache.source.mongodb;
+package com.game.cache.source;
 
 import com.game.cache.dao.DataDaoManager;
 import com.game.cache.dao.IDataMapDao;
 import com.game.cache.key.KeyValueHelper;
-import com.game.db.mongodb.MongoDBManager;
+import com.game.cache.source.mongodb.MongoDBManager;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import jodd.util.ThreadUtil;
@@ -56,9 +56,9 @@ public class CacheRunner {
 
         ThreadUtil.sleep(TimeUnit.SECONDS.toMillis(10));
 
-//        itemDao.deleteBatch(userId, updateItemList.stream().map(UserItem::secondaryKey).collect(Collectors.toList()));
-//        currencyDao.deleteBatch(userId, updateCurrencyList.stream().map(UserCurrency::secondaryKey).collect(Collectors.toList()));
-//        ThreadUtil.sleep(TimeUnit.MINUTES.toMillis(2));
+        itemDao.deleteBatch(userId, updateItemList.stream().map(UserItem::secondaryKey).collect(Collectors.toList()));
+        currencyDao.deleteBatch(userId, updateCurrencyList.stream().map(UserCurrency::secondaryKey).collect(Collectors.toList()));
+        ThreadUtil.sleep(TimeUnit.MINUTES.toMillis(2));
     }
 
     @Test

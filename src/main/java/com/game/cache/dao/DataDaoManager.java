@@ -6,13 +6,18 @@ import com.game.cache.exception.CacheException;
 import com.game.cache.key.IKeyValueBuilder;
 import com.game.cache.mapper.ClassDescription;
 import com.game.cache.mapper.ValueConverter;
+import com.game.cache.mapper.annotation.CacheEntity;
 import com.game.cache.source.executor.CacheExecutor;
 import com.game.cache.source.executor.ICacheExecutor;
 import com.game.cache.source.executor.ICacheSource;
 import com.game.cache.source.mongodb.CacheDirectMongoDBSource;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class DataDaoManager {
 
@@ -29,6 +34,8 @@ public class DataDaoManager {
 
     private final Map<String, IDataValueDao> valueDaoMap = new ConcurrentHashMap<>();
     private final Map<String, IDataCacheValueDao> cacheValueDaoMap = new ConcurrentHashMap<>();
+
+    private final Map<String, ClassDescription> classMap = new ConcurrentHashMap<>();
 
 
     public DataDaoManager() {
@@ -122,9 +129,38 @@ public class DataDaoManager {
             if (!directUpdate && ClassDescription.get(aClass).getCacheEntity().delayUpdate()){
                 cacheSource = cacheSource.createDelayUpdateSource(executor);
             }
+            checkClassCacheEntity(aClass);
             return cacheSource;
         } catch (Throwable t) {
             throw new CacheException("%s", t, aClass.getName());
+        }
+    }
+
+    private void checkClassCacheEntity(Class<?> aClass){
+        if (classMap.containsKey(aClass.getName())){
+            return;
+        }
+
+        classMap.put(aClass.getName(), ClassDescription.get(aClass));
+        Map<String, List<CacheEntity>> address2CacheEntities = new ConcurrentHashMap<>();
+        for (ClassDescription description : classMap.values()) {
+            CacheEntity cacheEntity = description.getCacheEntity();
+            List<CacheEntity> cacheEntityList = address2CacheEntities.computeIfAbsent(cacheEntity.addressName(), key -> new ArrayList<>());
+            cacheEntityList.add(cacheEntity);
+        }
+        for (Map.Entry<String, List<CacheEntity>> entry : address2CacheEntities.entrySet()) {
+            List<CacheEntity> cacheEntityList = entry.getValue();
+            cacheEntityList.sort(Comparator.comparingInt(CacheEntity::primaryId));
+            if (cacheEntityList.size() == 1){
+                continue;
+            }
+            List<Integer> primaryIds = cacheEntityList.stream().map(CacheEntity::primaryId).collect(Collectors.toList());
+            for (int i = 1; i < primaryIds.size(); i++) {
+                if (primaryIds.get(i) != primaryIds.get(i - 1)){
+                    continue;
+                }
+                throw new CacheException("address:%s primaryId:%s", entry.getKey(), primaryIds);
+            }
         }
     }
 }
