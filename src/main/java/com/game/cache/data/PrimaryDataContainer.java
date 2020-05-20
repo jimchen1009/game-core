@@ -39,17 +39,17 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
 
     @Override
     public int count() {
-        return currentMap().size();
+        return lockCurrentMap().size();
     }
 
     @Override
     public V get(K secondaryKey) {
-        return currentMap().get(secondaryKey);
+        return lockCurrentMap().get(secondaryKey);
     }
 
     @Override
     public Collection<V> getAll() {
-        return currentMap().values();
+        return lockCurrentMap().values();
     }
 
     @Override
@@ -59,13 +59,11 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
             V oldValue = null;
             if (success){
                 oldValue = currentMap().put(value.secondaryKey(), value);
+                value.clearIndexChangedBits();
             }
             return Args.create(success, oldValue);
         });
         if (resultValue != null && resultValue.arg0){
-            if (logger.isTraceEnabled()) {
-                logger.trace("primaryKey:{} replaceOne: {}", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(value));
-            }
             return resultValue.arg1;
         }
         else {
@@ -80,15 +78,13 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
             if (success){
                 ConcurrentHashMap<K, V> currentMap = currentMap();
                 for (V value : values) {
+                    value.clearIndexChangedBits();
                     currentMap.put(value.secondaryKey(), value);
                 }
             }
             return success;
         });
         if (isSuccess){
-            if (logger.isTraceEnabled()) {
-                logger.trace("primaryKey:{} replaceBatch: {}", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(values));
-            }
         }
         else {
             throw new CacheException("primaryKey:%s replaceBatch error, %s", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(values));
@@ -109,9 +105,6 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
             return Args.create(success, oldValue);
         });
         if (resultValue != null && resultValue.arg0){
-            if (resultValue.arg1 != null && logger.isTraceEnabled()) {
-                logger.trace("primaryKey:{} deleteOne: {}", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(resultValue.arg1));
-            }
             return resultValue.arg1;
         }
         else {
@@ -136,9 +129,6 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
             return success;
         });
         if (isSuccess){
-            if (logger.isTraceEnabled()) {
-                logger.trace("primaryKey:{} deleteBatch: {}", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(secondaryKeys));
-            }
         }
         else {
             throw new CacheException("primaryKey:%s deleteBatch error, %s", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(secondaryKeys));

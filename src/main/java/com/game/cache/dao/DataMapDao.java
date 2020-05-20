@@ -1,7 +1,8 @@
 package com.game.cache.dao;
 
-import com.game.cache.data.DataSource;
+import com.game.cache.data.DataSourceBuilder;
 import com.game.cache.data.IData;
+import com.game.cache.data.IDataSource;
 import com.game.cache.exception.CacheException;
 import com.game.cache.mapper.ValueConvertMapper;
 import com.game.cache.source.executor.ICacheSource;
@@ -11,10 +12,10 @@ import java.util.Collection;
 
 public class DataMapDao<PK, K, V extends IData<K>> implements IDataMapDao<PK, K, V> {
 
-    private final DataSource<PK, K, V> dataSource;
+    private final IDataSource<PK, K, V> dataSource;
 
     public DataMapDao(Class<V> aClass, ValueConvertMapper convertMapper, ICacheSource<PK, K, V> cacheSource) {
-        this.dataSource = new DataSource<>(aClass, convertMapper, cacheSource);
+        this.dataSource = DataSourceBuilder.newBuilder(aClass, cacheSource).setConvertMapper(convertMapper).build();
     }
 
     @Override
@@ -36,6 +37,7 @@ public class DataMapDao<PK, K, V extends IData<K>> implements IDataMapDao<PK, K,
     public V replaceOne(PK primaryKey, V value) {
         boolean isSuccess = dataSource.replaceOne(primaryKey, value);
         if (isSuccess){
+            value.clearIndexChangedBits();
             return null;
         }
         else {
@@ -47,7 +49,7 @@ public class DataMapDao<PK, K, V extends IData<K>> implements IDataMapDao<PK, K,
     public void replaceBatch(PK primaryKey, Collection<V> values) {
         boolean isSuccess = dataSource.replaceBatch(primaryKey, values);
         if (isSuccess){
-
+            values.forEach(V::clearIndexChangedBits);
         }
         else {
             throw new CacheException("primaryKey:%s replaceBatch error, %s", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(values));

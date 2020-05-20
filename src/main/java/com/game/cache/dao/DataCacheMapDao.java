@@ -1,6 +1,6 @@
 package com.game.cache.dao;
 
-import com.game.cache.data.DataSource;
+import com.game.cache.data.DataSourceBuilder;
 import com.game.cache.data.IData;
 import com.game.cache.data.IDataSource;
 import com.game.cache.data.map.DataMapContainer;
@@ -17,13 +17,14 @@ public class DataCacheMapDao<PK, K, V extends IData<K>> implements IDataCacheMap
     private final DataMapContainer<PK, K, V> mapContainer;
 
     public DataCacheMapDao(Class<V> aClass, ValueConvertMapper convertMapper, ICacheSource<PK, K, V> cacheSource) {
-        DataSource<PK, K, V> dataSource = new DataSource<>(aClass, convertMapper, cacheSource);
+        DataSourceBuilder<PK, K, V> builder = DataSourceBuilder.newBuilder(aClass, cacheSource).setConvertMapper(convertMapper);
+        IDataSource<PK, K, V> dataSource = builder.build();
         if (cacheSource instanceof ICacheDelayUpdateSource){
             @SuppressWarnings("unchecked") ICacheSource<PK, K, V> cacheSource1 = ((ICacheDelayUpdateSource<PK, K, V>) cacheSource).getCacheSource();
-            this.dataSource = new DataSource<>(aClass, convertMapper, cacheSource1);
+            this.dataSource = builder.setCacheSource(cacheSource1).build();
         }
         else {
-            this.dataSource = new DataSource<>(aClass, convertMapper, cacheSource);
+            this.dataSource = dataSource;
         }
         this.mapContainer = new DataMapContainer<>(dataSource);
     }

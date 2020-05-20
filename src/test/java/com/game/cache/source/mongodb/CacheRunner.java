@@ -1,15 +1,8 @@
 package com.game.cache.source.mongodb;
 
 import com.game.cache.dao.DataDaoManager;
-import com.game.cache.dao.IDataCacheMapDao;
-import com.game.cache.data.Data;
-import com.game.cache.data.DataSource;
-import com.game.cache.data.map.DataMapContainer;
-import com.game.cache.key.IKeyValueBuilder;
+import com.game.cache.dao.IDataMapDao;
 import com.game.cache.key.KeyValueHelper;
-import com.game.cache.mapper.mongodb.MongoDBConvertMapper;
-import com.game.cache.source.executor.CacheExecutor;
-import com.game.cache.source.executor.ICacheSource;
 import com.game.db.mongodb.MongoDBManager;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -36,9 +29,11 @@ public class CacheRunner {
 
 //        collection.insertOne(new Document("userId", userId).append("item", Collections.emptyList()));
 
-        IDataCacheMapDao<Long, Long, UserItem> itemDao = DataDaoManager.getInstance().getCacheMapDao(UserItem.class, KeyValueHelper.LongBuilder, KeyValueHelper.LongBuilder);
-        IDataCacheMapDao<Long, Integer, UserCurrency> currencyDao = DataDaoManager.getInstance().getCacheMapDao(UserCurrency.class, KeyValueHelper.LongBuilder, KeyValueHelper.IntegerBuilder);
+        IDataMapDao<Long, Long, UserItem> itemDao = DataDaoManager.getInstance().getMapDao(UserItem.class, KeyValueHelper.LongBuilder, KeyValueHelper.LongBuilder);
+        IDataMapDao<Long, Integer, UserCurrency> currencyDao = DataDaoManager.getInstance().getMapDao(UserCurrency.class, KeyValueHelper.LongBuilder, KeyValueHelper.IntegerBuilder);
 
+        itemDao.getAll(userId);
+        currencyDao.getAll(userId);
         Collection<UserItem> updateItemList = new ArrayList<>();
         Collection<UserCurrency> updateCurrencyList = new ArrayList<>();
 
@@ -61,19 +56,9 @@ public class CacheRunner {
 
         ThreadUtil.sleep(TimeUnit.SECONDS.toMillis(10));
 
-        itemDao.deleteBatch(userId, updateItemList.stream().map(UserItem::secondaryKey).collect(Collectors.toList()));
-        currencyDao.deleteBatch(userId, updateCurrencyList.stream().map(UserCurrency::secondaryKey).collect(Collectors.toList()));
-        ThreadUtil.sleep(TimeUnit.MINUTES.toMillis(2));
-    }
-
-    private <PK, K, V extends Data<K>> DataMapContainer<PK, K, V> createMapContainer(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder,
-                                                                                     CacheExecutor executor){
-        ICacheSource<PK, K, V> cacheSource = new CacheDirectMongoDBSource<>(aClass, primaryBuilder, secondaryBuilder);
-        cacheSource = cacheSource.createDelayUpdateSource(executor);
-        MongoDBConvertMapper convertMapper = new MongoDBConvertMapper();
-        DataSource<PK, K, V> dataSource = new DataSource<>(aClass, convertMapper, cacheSource);
-        DataMapContainer<PK, K, V> mapContainer = new DataMapContainer<>(dataSource);
-        return mapContainer;
+//        itemDao.deleteBatch(userId, updateItemList.stream().map(UserItem::secondaryKey).collect(Collectors.toList()));
+//        currencyDao.deleteBatch(userId, updateCurrencyList.stream().map(UserCurrency::secondaryKey).collect(Collectors.toList()));
+//        ThreadUtil.sleep(TimeUnit.MINUTES.toMillis(2));
     }
 
     @Test

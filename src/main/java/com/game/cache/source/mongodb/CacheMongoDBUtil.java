@@ -108,6 +108,6 @@ public class CacheMongoDBUtil {
             }
             document.put(entry.getKey(), entry.getValue());
         }
-        return new Document("$replace", document);
+        return new Document("$set", document);
     }
 }

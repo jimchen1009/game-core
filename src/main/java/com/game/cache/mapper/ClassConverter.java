@@ -5,8 +5,11 @@ import com.game.cache.exception.CacheException;
 import com.game.common.log.LogUtil;
 
 import java.lang.reflect.Field;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, V> {
 
@@ -26,24 +29,29 @@ public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, 
         return (Class<V>) clsDescription.describedClass();
     }
 
-    public V convert(Map<String, Object> cacheValues){
+    public V convert2Value(Map<String, Object> cacheValue){
         Class<V> convertedClass = getConvertedClass();
         try {
             V newInstance = convertedClass.newInstance();
             for (FieldDescription description : clsDescription.fieldDescriptions()) {
                 Field field = description.getField();
                 ValueConverter<?> converter = mapper.getOrDefault(description.getType());
-                Object object = converter.decode(cacheValues.get(description.getAnnotationName()));
+                Object object = converter.decode(cacheValue.get(description.getAnnotationName()));
                 field.set(newInstance, object);
             }
             return newInstance;
         }
         catch (Throwable e) {
-            throw new CacheException("cls:%s cacheValue:%s", convertedClass.getName(), LogUtil.toJSONString(cacheValues), e);
+            throw new CacheException("cls:%s cacheValue:%s", convertedClass.getName(), LogUtil.toJSONString(cacheValue), e);
         }
     }
 
-    public Map<String, Object> convert(V dataValue){
+    @Override
+    public List<V> convert2ValueList(Collection<Map<String, Object>> cacheValues) {
+        return cacheValues.stream().map(this::convert2Value).collect(Collectors.toList());
+    }
+
+    public Map<String, Object> convert2Cache(V dataValue){
         try {
             Map<String, Object> cacheValue = new HashMap<>();
             for (FieldDescription description : clsDescription.getKeysDescriptions()) {
@@ -59,6 +67,11 @@ public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, 
         catch (Throwable e) {
             throw new CacheException("cls:%s dataValue:%s", e, getConvertedClass().getName(), LogUtil.toJSONString(dataValue));
         }
+    }
+
+    @Override
+    public List<Map<String, Object>> convert2CacheList(Collection<V> dataValues) {
+        return dataValues.stream().map(this::convert2Cache).collect(Collectors.toList());
     }
 
     private void encodeValue(V dataValue, Map<String, Object> cacheValue, FieldDescription description, boolean checkNullObject) throws IllegalAccessException {

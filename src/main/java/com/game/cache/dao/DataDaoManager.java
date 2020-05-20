@@ -53,7 +53,7 @@ public class DataDaoManager {
     @SuppressWarnings("unchecked")
     public <PK, K, V extends IData<K>> IDataMapDao<PK, K, V> getMapDao(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder){
         return mapDaoMap.computeIfAbsent(aClass.getName(), key -> {
-            ICacheSource<PK, K, V> cacheSource = createCacheSource(aClass, primaryBuilder, secondaryBuilder);
+            ICacheSource<PK, K, V> cacheSource = createCacheSource(aClass, primaryBuilder, secondaryBuilder, true);
             return new DataMapDao<>(aClass, cacheType.getValueConvertMapper(), cacheSource);
         });
     }
@@ -71,7 +71,7 @@ public class DataDaoManager {
     @SuppressWarnings("unchecked")
     public <PK, K, V extends IData<K>> IDataCacheMapDao<PK, K, V> getCacheMapDao(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder){
         return cacheMapDaoMap.computeIfAbsent(aClass.getName(), key -> {
-            ICacheSource<PK, K, V> cacheSource = createCacheSource(aClass, primaryBuilder, secondaryBuilder);
+            ICacheSource<PK, K, V> cacheSource = createCacheSource(aClass, primaryBuilder, secondaryBuilder, false);
             return new DataCacheMapDao<>(aClass, cacheType.getValueConvertMapper(), cacheSource);
         });
     }
@@ -87,7 +87,7 @@ public class DataDaoManager {
     @SuppressWarnings("unchecked")
     public <PK, V extends IData<PK>> IDataValueDao<PK, V> getValueDao(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder){
         return valueDaoMap.computeIfAbsent(aClass.getName(), key -> {
-            ICacheSource<PK, PK, V> cacheSource = createCacheSource(aClass, primaryBuilder, primaryBuilder);
+            ICacheSource<PK, PK, V> cacheSource = createCacheSource(aClass, primaryBuilder, primaryBuilder, true);
             return new DataValueDao<>(aClass, cacheType.getValueConvertMapper(), cacheSource);
         });
     }
@@ -103,14 +103,14 @@ public class DataDaoManager {
     @SuppressWarnings("unchecked")
     public <PK, V extends IData<PK>> IDataCacheValueDao<PK, V> getCacheValueDao(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder){
         return cacheValueDaoMap.computeIfAbsent(aClass.getName(), key -> {
-            ICacheSource<PK, PK, V> cacheSource = createCacheSource(aClass, primaryBuilder, primaryBuilder);
+            ICacheSource<PK, PK, V> cacheSource = createCacheSource(aClass, primaryBuilder, primaryBuilder, false);
             return new DataCacheValueDao<>(aClass, cacheType.getValueConvertMapper(), cacheSource);
         });
     }
 
 
     @SuppressWarnings("unchecked")
-    private <PK, K, V extends IData<K>>  ICacheSource<PK, K, V> createCacheSource(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder){
+    private <PK, K, V extends IData<K>>  ICacheSource<PK, K, V> createCacheSource(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder, boolean directUpdate){
         try {
             ICacheSource<PK, K, V> cacheSource;
             if (cacheType.equals(CacheType.MongoDb)) {
@@ -119,8 +119,7 @@ public class DataDaoManager {
             else {
                 throw new CacheException("unexpected cache type:%s", cacheType.name());
             }
-            boolean delayUpdate = ClassDescription.get(aClass).getCacheEntity().delayUpdate();
-            if (delayUpdate) {
+            if (!directUpdate && ClassDescription.get(aClass).getCacheEntity().delayUpdate()){
                 cacheSource = cacheSource.createDelayUpdateSource(executor);
             }
             return cacheSource;
