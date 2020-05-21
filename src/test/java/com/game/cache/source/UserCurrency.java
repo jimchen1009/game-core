@@ -1,14 +1,14 @@
 package com.game.cache.source;
 
 import com.game.cache.data.Data;
-import com.game.cache.mapper.annotation.CacheEntity;
+import com.game.cache.mapper.annotation.CacheClass;
 import com.game.cache.mapper.annotation.CacheFiled;
 import com.game.cache.mapper.annotation.CacheIndex;
 import com.game.cache.mapper.annotation.IndexField;
 import com.game.cache.mapper.annotation.IndexOptions;
 import com.game.cache.mapper.annotation.IndexType;
 
-@CacheEntity(addressName = "material", primaryId = 2, delayUpdate = true)
+@CacheClass(cacheName = "material", primarySharedId = 2, delayUpdate = true, loadOnShared = true)
 @CacheIndex(fields = {@IndexField(name = "userId", type = IndexType.ASC, isPrimary = true), @IndexField(name = "currencyId", type = IndexType.ASC, isPrimary = false)}, options = @IndexOptions(unique = true))
 public class UserCurrency extends Data<Integer> {
 

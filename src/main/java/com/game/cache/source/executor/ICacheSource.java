@@ -1,5 +1,6 @@
 package com.game.cache.source.executor;
 
+import com.game.cache.mapper.annotation.CacheClass;
 import com.game.cache.source.CacheCollection;
 import com.game.cache.source.ICacheDelayUpdateSource;
 import com.game.cache.source.KeyCacheValue;
@@ -10,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 
 public interface ICacheSource<PK, K, V> {
+
+    CacheClass getCacheClass();
 
     LockKey getLockKey();
 

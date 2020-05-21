@@ -2,7 +2,7 @@ package com.game.cache.mapper;
 
 import com.game.cache.InformationName;
 import com.game.cache.exception.CacheException;
-import com.game.cache.mapper.annotation.CacheEntity;
+import com.game.cache.mapper.annotation.CacheClass;
 import com.game.cache.mapper.annotation.CacheFiled;
 import com.game.cache.mapper.annotation.CacheIndex;
 import com.game.cache.mapper.annotation.IndexField;
@@ -37,7 +37,7 @@ public class ClassDescription {
     private List<FieldDescription> descriptions;
     private List<FieldDescription> keysDescriptions;
     private List<FieldDescription> normalDescriptions;
-    private final Field sourceFiled;
+    private final Field cacheSourceFiled;
 
     private ClassDescription(Class<?> aClass) {
         this.aClass = aClass;
@@ -47,7 +47,7 @@ public class ClassDescription {
         this.descriptions = new ArrayList<>();
         this.keysDescriptions = new ArrayList<>();
         this.normalDescriptions = new ArrayList<>();
-        this.sourceFiled = searchClassField(aClass, "isCacheResource");
+        this.cacheSourceFiled = searchClassField(aClass, "isCacheResource");
         this.searchAnnotationFieldsAndInit(aClass);
     }
 
@@ -92,12 +92,12 @@ public class ClassDescription {
         return aClass.getAnnotation(CacheIndex.class);
     }
 
-    public CacheEntity getCacheEntity(){
-        return aClass.getAnnotation(CacheEntity.class);
+    public CacheClass getCacheClass(){
+        return aClass.getAnnotation(CacheClass.class);
     }
 
-    public Field getSourceFiled() {
-        return sourceFiled;
+    public Field getCacheSourceFiled() {
+        return cacheSourceFiled;
     }
 
     private void searchAnnotationFieldsAndInit(Class<?> aClass){

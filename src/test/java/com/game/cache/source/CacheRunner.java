@@ -3,7 +3,7 @@ package com.game.cache.source;
 import com.game.cache.dao.DataDaoManager;
 import com.game.cache.dao.IDataMapDao;
 import com.game.cache.key.KeyValueHelper;
-import com.game.cache.source.mongodb.MongoDBManager;
+import com.game.db.mongodb.MongoDbManager;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import jodd.util.ThreadUtil;
@@ -19,7 +19,7 @@ public class CacheRunner {
 
     @Test
     public void item(){
-        MongoDatabase database = MongoDBManager.getInstance().getDb("demo");
+        MongoDatabase database = MongoDbManager.get("cache").getDb("demo");
         MongoCollection<Document> collection = database.getCollection("material");
 //        collection.drop();
         long userId = 1L;
@@ -29,8 +29,10 @@ public class CacheRunner {
 
 //        collection.insertOne(new Document("userId", userId).append("item", Collections.emptyList()));
 
-        IDataMapDao<Long, Long, UserItem> itemDao = DataDaoManager.getInstance().getMapDao(UserItem.class, KeyValueHelper.LongBuilder, KeyValueHelper.LongBuilder);
-        IDataMapDao<Long, Integer, UserCurrency> currencyDao = DataDaoManager.getInstance().getMapDao(UserCurrency.class, KeyValueHelper.LongBuilder, KeyValueHelper.IntegerBuilder);
+        IDataMapDao<Long, Long, UserItem> itemDao = DataDaoManager.getInstance()
+                .newDataMapDaoBuilder(UserItem.class, KeyValueHelper.LongBuilder, KeyValueHelper.LongBuilder).buildCache();
+        IDataMapDao<Long, Integer, UserCurrency> currencyDao = DataDaoManager.getInstance()
+                .newDataMapDaoBuilder(UserCurrency.class, KeyValueHelper.LongBuilder, KeyValueHelper.IntegerBuilder).build();
 
         itemDao.getAll(userId);
         currencyDao.getAll(userId);
@@ -56,9 +58,9 @@ public class CacheRunner {
 
         ThreadUtil.sleep(TimeUnit.SECONDS.toMillis(10));
 
-        itemDao.deleteBatch(userId, updateItemList.stream().map(UserItem::secondaryKey).collect(Collectors.toList()));
-        currencyDao.deleteBatch(userId, updateCurrencyList.stream().map(UserCurrency::secondaryKey).collect(Collectors.toList()));
-        ThreadUtil.sleep(TimeUnit.MINUTES.toMillis(2));
+//        itemDao.deleteBatch(userId, updateItemList.stream().map(UserItem::secondaryKey).collect(Collectors.toList()));
+//        currencyDao.deleteBatch(userId, updateCurrencyList.stream().map(UserCurrency::secondaryKey).collect(Collectors.toList()));
+//        ThreadUtil.sleep(TimeUnit.MINUTES.toMillis(2));
     }
 
     @Test

@@ -104,13 +104,12 @@ class DataSource<PK, K, V extends IData<K>> implements IDataSource<PK, K, V>{
 
     private List<V> convertAndMarkValueSource(Collection<Map<String, Object>> cacheValuesList){
         List<V> dataList = converter.convert2ValueList(cacheValuesList);
-        Field field = converter.getClsDescription().getSourceFiled();
         dataList.forEach(this::markValueSource);
         return dataList;
     }
 
     private V markValueSource(V dataValue){
-        Field field = converter.getClsDescription().getSourceFiled();
+        Field field = converter.getClsDescription().getCacheSourceFiled();
         try {
             field.set(dataValue, true);
         }

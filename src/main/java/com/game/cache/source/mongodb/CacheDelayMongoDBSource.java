@@ -2,13 +2,11 @@ package com.game.cache.source.mongodb;
 
 import com.game.cache.data.IData;
 import com.game.cache.source.CacheDelayUpdateSource;
-import com.game.cache.source.CacheMongoDBUtil;
 import com.game.cache.source.ICacheKeyValueBuilder;
 import com.game.cache.source.KeyCacheValue;
 import com.game.cache.source.executor.ICacheExecutor;
 import com.game.common.arg.Args;
-import com.game.common.config.ConfigKey;
-import com.game.common.config.Configs;
+import com.game.common.config.Config;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.DeleteOneModel;
@@ -50,15 +48,15 @@ public class CacheDelayMongoDBSource<PK, K, V extends IData<K>> extends CacheDel
 
         Map<PK, List<KeyCacheValue<K>>> failureKeyCacheValuesMap = new HashMap<>();
 
-        int primaryKeyId = mongoDBSource.getPrimaryKeyId();
+        int primarySharedId = mongoDBSource.getCacheClass().primarySharedId();
         ICacheKeyValueBuilder<PK, K> keyValueBuilder = mongoDBSource.getKeyValueBuilder();
-        int batch_count = Configs.getInstance().getInt(ConfigKey.Cache.createKeyName("source.flush.batch_count"));
+        int batchCount = Config.getInstance().getInt("cache.source.flush.batchCount");
         for (Map.Entry<PK, Collection<KeyCacheValue<K>>> entry : keyCacheValuesMap.entrySet()) {
             for (KeyCacheValue<K> keyCacheValue : entry.getValue()) {
                 if (keyCacheValue.isDeleted()) {
-                    if (deleteOneModelList.size() < batch_count){
+                    if (deleteOneModelList.size() < batchCount){
                         Map<String, Object> keyValue = keyValueBuilder.createPrimarySecondaryKeyValue(entry.getKey(), keyCacheValue.getKey());
-                        deleteOneModelList.add(CacheMongoDBUtil.createDeleteOneModel(primaryKeyId, keyValue));
+                        deleteOneModelList.add(CacheMongoDBUtil.createDeleteOneModel(primarySharedId, keyValue));
                         deleteKeyCacheValueList.add(Args.create(entry.getKey(), keyCacheValue));
                     }
                     else {
@@ -66,9 +64,9 @@ public class CacheDelayMongoDBSource<PK, K, V extends IData<K>> extends CacheDel
                     }
                 }
                 else {
-                    if (updateOneModelList.size() < batch_count){
+                    if (updateOneModelList.size() < batchCount){
                         Map<String, Object> keyValue = keyValueBuilder.createPrimarySecondaryKeyValue(keyCacheValue.getCacheValue());
-                        updateOneModelList.add(CacheMongoDBUtil.createUpdateOneModel(primaryKeyId, keyValue, keyCacheValue.getCacheValue()));
+                        updateOneModelList.add(CacheMongoDBUtil.createUpdateOneModel(primarySharedId, keyValue, keyCacheValue.getCacheValue()));
                         updateKeyCacheValueList.add(Args.create(entry.getKey(), keyCacheValue));
                     }
                     else {
@@ -125,4 +123,5 @@ public class CacheDelayMongoDBSource<PK, K, V extends IData<K>> extends CacheDel
     private CacheDirectMongoDBSource<PK, K, V> getMongoDBSource() {
         return (CacheDirectMongoDBSource<PK, K, V>)super.getCacheSource();
     }
+
 }

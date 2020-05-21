@@ -1,4 +1,4 @@
-package com.game.cache.source;
+package com.game.cache.source.mongodb;
 
 import com.game.cache.InformationName;
 import com.game.cache.mapper.annotation.CacheIndex;

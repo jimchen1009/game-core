@@ -2,12 +2,12 @@ package com.game.cache.source;
 
 import com.game.cache.data.IData;
 import com.game.cache.exception.CacheException;
+import com.game.cache.mapper.annotation.CacheClass;
 import com.game.cache.source.executor.CacheCallable;
 import com.game.cache.source.executor.CacheRunnable;
 import com.game.cache.source.executor.ICacheExecutor;
 import com.game.cache.source.executor.ICacheSource;
-import com.game.common.config.ConfigKey;
-import com.game.common.config.Configs;
+import com.game.common.config.Config;
 import com.game.common.lock.LockKey;
 import com.game.common.lock.LockUtil;
 import com.game.common.log.LogUtil;
@@ -48,6 +48,11 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
         long randomValue = RandomUtils.nextLong(1000, 2000);
         long initialDelay = randomValue * 50 / 50;    //取100ms的整数倍
         executor.scheduleAtFixedRate(cacheRunnable, initialDelay, 2000L, TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public CacheClass getCacheClass() {
+        return cacheSource.getCacheClass();
     }
 
     @Override
@@ -124,12 +129,12 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
     public boolean executePrimaryCacheFlushSync(PK primaryKey) {
         CacheCallable<Boolean> callable = createPrimaryCacheFlushCallable(primaryKey, "executePrimaryCacheFlushSync", null);
         boolean isSuccess = false;
-        int flush_try_count = Configs.getInstance().getInt(ConfigKey.Cache.createKeyName("source.flush_try_count"));
-        long flush_time_out = Configs.getInstance().getLong(ConfigKey.Cache.createKeyName("source.flush_time_out"));
-        for (int count = 0; count < flush_try_count; count++) {
+        int flushTryCount = Config.getInstance().getInt("cache.source.flushTryCount");
+        long flushTimeOut = Config.getInstance().getDuration("cache.source.flushTimeOut", TimeUnit.MILLISECONDS);
+        for (int count = 0; count < flushTryCount; count++) {
             try {
                 Future<Boolean> future = executor.submit(callable);
-                isSuccess = future.get(flush_time_out, TimeUnit.MILLISECONDS);
+                isSuccess = future.get(flushTimeOut, TimeUnit.MILLISECONDS);
                 if (isSuccess){
                     break;
                 }
@@ -158,7 +163,7 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
     }
 
     protected String getScheduleName() {
-        return cacheSource.getAddressName();
+        return cacheSource.getCacheName();
     }
 
     @Override
@@ -187,10 +192,10 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
                 removePrimaryKeyList.add(entry.getKey());
             }
         }
-        int maximum_count = Configs.getInstance().getInt(ConfigKey.Cache.createKeyName("source.maximum_count"));
-        if (expiredPrimaryKey.size() > maximum_count){
+        int maximumCount = Config.getInstance().getInt("cache.source.maximumCount");
+        if (expiredPrimaryKey.size() > maximumCount){
             expiredPrimaryKey.sort(Comparator.comparingLong(Map.Entry::getValue));
-            for (int i = maximum_count; i < expiredPrimaryKey.size(); i++) {
+            for (int i = maximumCount; i < expiredPrimaryKey.size(); i++) {
                 removePrimaryKeyList.add(expiredPrimaryKey.get(i).getKey());
             }
         }
@@ -261,7 +266,7 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
 
         public PrimaryCache(int duration) {
             if (duration == 0){
-                int maximum_count = Configs.getInstance().getInt(ConfigKey.Cache.createKeyName("source.flush.expired_duration"));
+                duration = Config.getInstance().getInt("cache.source.flush.expiredDuration");
             }
             this.expiredTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(duration);
             this.keyCacheValuesMap = new ConcurrentHashMap<>();

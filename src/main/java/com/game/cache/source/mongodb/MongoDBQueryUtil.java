@@ -1,9 +1,8 @@
-package com.game.cache.source;
+package com.game.cache.source.mongodb;
 
-import com.game.cache.source.mongodb.MongoDBManager;
-import com.game.common.config.ConfigKey;
-import com.game.common.config.Configs;
-import com.game.common.config.IConfigs;
+import com.game.common.config.Config;
+import com.game.common.config.IConfig;
+import com.game.db.mongodb.MongoDbManager;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -39,10 +38,16 @@ public class MongoDBQueryUtil {
         return documentList;
     }
 
-    public static MongoCollection<Document> getCollection(String name){
-        String dbName = Configs.getInstance().getString(ConfigKey.Cache.createKeyName("source.mongodb.db"));
-        MongoDatabase database = MongoDBManager.getInstance().getDb(dbName);
-        return database.getCollection(name);
+    public static MongoDatabase getDbDatabase(){
+        IConfig config = Config.getInstance().getConfig("cache.source.mongodb");
+        String name = config.getString("name");
+        String dbName = config.getString("db");
+        MongoDbManager dbManager = MongoDbManager.get(name);
+        return dbManager.getDb(dbName);
     }
 
+    public static MongoCollection<Document> getCollection(String name){
+        MongoDatabase dbDatabase = getDbDatabase();
+        return dbDatabase.getCollection(name);
+    }
 }
