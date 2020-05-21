@@ -1,19 +1,16 @@
 package com.game.cache.dao;
 
-import com.game.cache.data.DataSourceBuilder;
 import com.game.cache.data.IData;
 import com.game.cache.data.IDataSource;
 import com.game.cache.exception.CacheException;
-import com.game.cache.mapper.ValueConvertMapper;
-import com.game.cache.source.executor.ICacheSource;
 import com.game.common.log.LogUtil;
 
-public class DataValueDao<PK, V extends IData<PK>> implements IDataValueDao<PK, V> {
+class DataValueDao<PK, V extends IData<PK>> implements IDataValueDao<PK, V> {
 
     private final IDataSource<PK, PK, V> dataSource;
 
-    public DataValueDao(Class<V> aClass, ValueConvertMapper convertMapper, ICacheSource<PK, PK, V> cacheSource) {
-        this.dataSource = DataSourceBuilder.newBuilder(aClass, cacheSource).setConvertMapper(convertMapper).build();
+    public DataValueDao(IDataSource<PK, PK, V> dataSource) {
+        this.dataSource = dataSource;
     }
 
     @Override

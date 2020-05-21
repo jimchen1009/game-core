@@ -6,7 +6,7 @@ import com.game.cache.source.ICacheKeyValueBuilder;
 import com.game.cache.source.KeyCacheValue;
 import com.game.cache.source.executor.ICacheExecutor;
 import com.game.common.arg.Args;
-import com.game.common.config.Config;
+import com.game.common.config.Configs;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.DeleteOneModel;
@@ -50,7 +50,7 @@ public class CacheDelayMongoDBSource<PK, K, V extends IData<K>> extends CacheDel
 
         int primarySharedId = mongoDBSource.getCacheClass().primarySharedId();
         ICacheKeyValueBuilder<PK, K> keyValueBuilder = mongoDBSource.getKeyValueBuilder();
-        int batchCount = Config.getInstance().getInt("cache.source.flush.batchCount");
+        int batchCount = Configs.getInstance().getInt("cache.flush.batchCount");
         for (Map.Entry<PK, Collection<KeyCacheValue<K>>> entry : keyCacheValuesMap.entrySet()) {
             for (KeyCacheValue<K> keyCacheValue : entry.getValue()) {
                 if (keyCacheValue.isDeleted()) {

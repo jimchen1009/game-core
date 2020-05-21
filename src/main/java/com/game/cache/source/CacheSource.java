@@ -28,11 +28,6 @@ public abstract class CacheSource<PK, K, V extends IData<K>> implements ICacheSo
     }
 
     @Override
-    public CacheClass getCacheClass() {
-        return cacheClass;
-    }
-
-    @Override
     public LockKey getLockKey() {
         return lockKey;
     }
@@ -40,6 +35,11 @@ public abstract class CacheSource<PK, K, V extends IData<K>> implements ICacheSo
     @Override
     public Class<V> getAClass() {
         return aClass;
+    }
+
+    @Override
+    public CacheClass getCacheClass() {
+        return cacheClass;
     }
 
     @Override

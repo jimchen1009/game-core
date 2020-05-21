@@ -15,12 +15,14 @@ public class DataContainer<PK, K, V extends IData<K>> implements IDataContainer<
 
     private static final CacheInformation INIT_INFO = new CacheInformation();
 
-    private ConcurrentHashMap<PK, IPrimaryDataContainer<PK, K, V>> primaryDataMap;
     private final IDataSource<PK, K, V> dataSource;
+    private final IDataLoadPredicate<PK> loadPredicate;
+    private ConcurrentHashMap<PK, IPrimaryDataContainer<PK, K, V>> primaryDataMap;
 
-    public DataContainer(IDataSource<PK, K, V> dataSource) {
-        this.primaryDataMap = new ConcurrentHashMap<>();
+    public DataContainer(IDataSource<PK, K, V> dataSource, IDataLoadPredicate<PK> loadPredicate) {
         this.dataSource = dataSource;
+        this.loadPredicate = loadPredicate;
+        this.primaryDataMap = new ConcurrentHashMap<>();
     }
 
     @Override
@@ -81,6 +83,6 @@ public class DataContainer<PK, K, V extends IData<K>> implements IDataContainer<
     }
 
     private IPrimaryDataContainer<PK, K, V> primaryDataContainer(PK primaryKey){
-        return primaryDataMap.computeIfAbsent(primaryKey, key -> new PrimaryDataContainer<>(key, dataSource));
+        return primaryDataMap.computeIfAbsent(primaryKey, key -> new PrimaryDataContainer<>(key, dataSource, loadPredicate));
     }
 }

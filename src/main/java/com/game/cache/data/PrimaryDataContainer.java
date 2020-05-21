@@ -19,16 +19,18 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
     private static final Logger logger = LoggerFactory.getLogger(PrimaryDataContainer.class);
 
     private final PK primaryKey;
-    private ConcurrentHashMap<K, V> key2Values;
+    private ConcurrentHashMap<K, V> secondary2Values;
     private CacheInformation information;
     private final IDataSource<PK, K, V> dataSource;
+    private final IDataLoadPredicate<PK> loadPredicate;
     private volatile long latestUpdateTime;
 
-    public PrimaryDataContainer(PK primaryKey, IDataSource<PK, K, V> dataSource) {
+    public PrimaryDataContainer(PK primaryKey, IDataSource<PK, K, V> dataSource, IDataLoadPredicate<PK> loadPredicate) {
         this.primaryKey = primaryKey;
-        this.key2Values = new ConcurrentHashMap<>();
+        this.secondary2Values = new ConcurrentHashMap<>();
         this.information = null;
         this.dataSource = dataSource;
+        this.loadPredicate = loadPredicate;
         this.latestUpdateTime = CacheContext.getCurrentTime();
     }
 
@@ -155,14 +157,20 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
 
     private ConcurrentHashMap<K, V> currentMap(){
         if (information != null) {
-            return key2Values;
+            return secondary2Values;
         }
-        DataCollection<K, V> collection = dataSource.getCollection(primaryKey);
-        information = collection.getInformation();
-        List<V> valueList = collection.getValueList();
-        for (V value : valueList) {
-            key2Values.put(value.secondaryKey(), value);
+        if (loadPredicate.predicateFirstTime(primaryKey)){
+            information = new CacheInformation();
+            loadPredicate.onPredicateLoaded(primaryKey);
         }
-        return key2Values;
+        else {
+            DataCollection<K, V> collection = dataSource.getCollection(primaryKey);
+            information = collection.getInformation();
+            List<V> valueList = collection.getValueList();
+            for (V value : valueList) {
+                secondary2Values.put(value.secondaryKey(), value);
+            }
+        }
+        return secondary2Values;
     }
 }

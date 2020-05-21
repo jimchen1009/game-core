@@ -1,6 +1,6 @@
 package com.game.cache.source.mongodb;
 
-import com.game.common.config.Config;
+import com.game.common.config.Configs;
 import com.game.common.config.IConfig;
 import com.game.db.mongodb.MongoDbManager;
 import com.mongodb.client.FindIterable;
@@ -39,7 +39,7 @@ public class MongoDBQueryUtil {
     }
 
     public static MongoDatabase getDbDatabase(){
-        IConfig config = Config.getInstance().getConfig("cache.source.mongodb");
+        IConfig config = Configs.getInstance().getConfig("cache.mongodb");
         String name = config.getString("name");
         String dbName = config.getString("db");
         MongoDbManager dbManager = MongoDbManager.get(name);

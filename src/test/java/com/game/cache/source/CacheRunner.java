@@ -2,6 +2,7 @@ package com.game.cache.source;
 
 import com.game.cache.dao.DataDaoManager;
 import com.game.cache.dao.IDataMapDao;
+import com.game.cache.data.IDataLoadPredicate;
 import com.game.cache.key.KeyValueHelper;
 import com.game.db.mongodb.MongoDbManager;
 import com.mongodb.client.MongoCollection;
@@ -13,7 +14,6 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 public class CacheRunner {
 
@@ -21,7 +21,7 @@ public class CacheRunner {
     public void item(){
         MongoDatabase database = MongoDbManager.get("cache").getDb("demo");
         MongoCollection<Document> collection = database.getCollection("material");
-//        collection.drop();
+        collection.drop();
         long userId = 1L;
 //        Document queryDocument = new Document("userId", new Document("$exists", false));
 //        Document document = new Document("$replace", new Document("item", Collections.emptyList()));
@@ -29,10 +29,23 @@ public class CacheRunner {
 
 //        collection.insertOne(new Document("userId", userId).append("item", Collections.emptyList()));
 
+        IDataLoadPredicate<Long> loadPredicate = new IDataLoadPredicate<Long>() {
+            @Override
+            public void onPredicateLoaded(Long primaryKey) {
+            }
+
+            @Override
+            public boolean predicateFirstTime(Long primaryKey) {
+                return true;
+            }
+        };
+
         IDataMapDao<Long, Long, UserItem> itemDao = DataDaoManager.getInstance()
-                .newDataMapDaoBuilder(UserItem.class, KeyValueHelper.LongBuilder, KeyValueHelper.LongBuilder).buildCache();
+                .newDataMapDaoBuilder(UserItem.class, KeyValueHelper.LongBuilder, KeyValueHelper.LongBuilder)
+                .setLoadPredicate(loadPredicate).buildCache();
         IDataMapDao<Long, Integer, UserCurrency> currencyDao = DataDaoManager.getInstance()
-                .newDataMapDaoBuilder(UserCurrency.class, KeyValueHelper.LongBuilder, KeyValueHelper.IntegerBuilder).build();
+                .newDataMapDaoBuilder(UserCurrency.class, KeyValueHelper.LongBuilder, KeyValueHelper.IntegerBuilder)
+                .setLoadPredicate(loadPredicate).buildCache();
 
         itemDao.getAll(userId);
         currencyDao.getAll(userId);

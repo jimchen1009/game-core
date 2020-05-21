@@ -53,7 +53,7 @@ public class CacheInteraction {
         for (Map.Entry<String, List<CacheClass>> entry : name2CacheClassList.entrySet()) {
             List<Integer> primarySharedIds = entry.getValue().stream().map(CacheClass::primarySharedId).collect(Collectors.toList());
             for (int i = 1; i < primarySharedIds.size(); i++) {
-                if (primarySharedIds.get(i) != primarySharedIds.get(i - 1)){
+                if (!primarySharedIds.get(i).equals(primarySharedIds.get(i - 1))){
                     continue;
                 }
                 else {

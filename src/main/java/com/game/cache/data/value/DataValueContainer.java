@@ -2,23 +2,24 @@ package com.game.cache.data.value;
 
 import com.game.cache.data.DataContainer;
 import com.game.cache.data.IData;
+import com.game.cache.data.IDataLoadPredicate;
 import com.game.cache.data.IDataSource;
 import com.game.common.util.Holder;
 
-public class DataValueContainer<K, V extends IData<K>> extends DataContainer<K,K,V> implements IDataValueContainer<K, V> {
+public class DataValueContainer<PK, V extends IData<PK>> extends DataContainer<PK,PK,V> implements IDataValueContainer<PK, V> {
 
-    public DataValueContainer(IDataSource<K, K, V> dataSource) {
-        super(dataSource);
+    public DataValueContainer(IDataSource<PK, PK, V> dataSource, IDataLoadPredicate<PK> loadPredicate) {
+        super(dataSource, loadPredicate);
     }
 
     @Override
-    public V get(K primaryKey) {
-        return get(primaryKey, primaryKey);
+    public V get(PK primaryPKey) {
+        return get(primaryPKey, primaryPKey);
     }
 
     @Override
-    public Holder<V> getNoCache(K primaryKey) {
-        return getNoCache(primaryKey, primaryKey);
+    public Holder<V> getNoCache(PK primaryPKey) {
+        return getNoCache(primaryPKey, primaryPKey);
     }
 
     @Override
@@ -27,7 +28,7 @@ public class DataValueContainer<K, V extends IData<K>> extends DataContainer<K,K
     }
 
     @Override
-    public V remove(K primaryKey) {
-        return removeOne(primaryKey, primaryKey);
+    public V remove(PK primaryPKey) {
+        return removeOne(primaryPKey, primaryPKey);
     }
 }

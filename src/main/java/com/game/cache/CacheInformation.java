@@ -22,5 +22,4 @@ public class CacheInformation {
     public <T> T getValue(InformationName informationName, T defaultValue){
         return (T)name2Values.getOrDefault(informationName, defaultValue);
     }
-
 }

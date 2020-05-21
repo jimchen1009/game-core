@@ -7,7 +7,7 @@ import com.game.cache.source.executor.CacheCallable;
 import com.game.cache.source.executor.CacheRunnable;
 import com.game.cache.source.executor.ICacheExecutor;
 import com.game.cache.source.executor.ICacheSource;
-import com.game.common.config.Config;
+import com.game.common.config.Configs;
 import com.game.common.lock.LockKey;
 import com.game.common.lock.LockUtil;
 import com.game.common.log.LogUtil;
@@ -51,11 +51,6 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
     }
 
     @Override
-    public CacheClass getCacheClass() {
-        return cacheSource.getCacheClass();
-    }
-
-    @Override
     public LockKey getLockKey() {
         return cacheSource.getLockKey();
     }
@@ -63,6 +58,11 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
     @Override
     public Class<V> getAClass() {
         return cacheSource.getAClass();
+    }
+
+    @Override
+    public CacheClass getCacheClass() {
+        return cacheSource.getCacheClass();
     }
 
     @Override
@@ -129,8 +129,8 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
     public boolean executePrimaryCacheFlushSync(PK primaryKey) {
         CacheCallable<Boolean> callable = createPrimaryCacheFlushCallable(primaryKey, "executePrimaryCacheFlushSync", null);
         boolean isSuccess = false;
-        int flushTryCount = Config.getInstance().getInt("cache.source.flushTryCount");
-        long flushTimeOut = Config.getInstance().getDuration("cache.source.flushTimeOut", TimeUnit.MILLISECONDS);
+        int flushTryCount = Configs.getInstance().getInt("cache.flushTryCount");
+        long flushTimeOut = Configs.getInstance().getDuration("cache.flushTimeOut", TimeUnit.MILLISECONDS);
         for (int count = 0; count < flushTryCount; count++) {
             try {
                 Future<Boolean> future = executor.submit(callable);
@@ -192,7 +192,7 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
                 removePrimaryKeyList.add(entry.getKey());
             }
         }
-        int maximumCount = Config.getInstance().getInt("cache.source.maximumCount");
+        int maximumCount = Configs.getInstance().getInt("cache.maximumCount");
         if (expiredPrimaryKey.size() > maximumCount){
             expiredPrimaryKey.sort(Comparator.comparingLong(Map.Entry::getValue));
             for (int i = maximumCount; i < expiredPrimaryKey.size(); i++) {
@@ -266,7 +266,7 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
 
         public PrimaryCache(int duration) {
             if (duration == 0){
-                duration = Config.getInstance().getInt("cache.source.flush.expiredDuration");
+                duration = Configs.getInstance().getInt("cache.flush.expiredDuration");
             }
             this.expiredTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(duration);
             this.keyCacheValuesMap = new ConcurrentHashMap<>();

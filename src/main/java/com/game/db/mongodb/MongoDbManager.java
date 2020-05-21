@@ -1,6 +1,6 @@
 package com.game.db.mongodb;
 
-import com.game.common.config.Config;
+import com.game.common.config.Configs;
 import com.game.common.config.IConfig;
 import com.game.common.util.CommonUtil;
 import com.mongodb.MongoClientSettings;
@@ -47,7 +47,7 @@ public class MongoDbManager {
             synchronized (managers){
                 manager = managers.get(name);
                 if (manager == null){
-                    List<IConfig> configList = Config.getInstance().getConfigList("db.mongodb");
+                    List<IConfig> configList = Configs.getInstance().getConfigList("db.mongodb");
                     IConfig mongodbConfig = CommonUtil.findOneIf(configList, config -> {
                         List<String> names = config.getList("names");
                         return names.contains(name);

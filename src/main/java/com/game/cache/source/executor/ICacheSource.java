@@ -12,11 +12,11 @@ import java.util.Map;
 
 public interface ICacheSource<PK, K, V> {
 
-    CacheClass getCacheClass();
-
     LockKey getLockKey();
 
     Class<V> getAClass();
+
+    CacheClass getCacheClass();
 
     Map<String, Object> get(PK primaryKey, K secondaryKey);
 

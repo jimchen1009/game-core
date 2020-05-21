@@ -1,32 +1,20 @@
 package com.game.cache.dao;
 
-import com.game.cache.data.DataSourceBuilder;
 import com.game.cache.data.IData;
 import com.game.cache.data.IDataSource;
 import com.game.cache.data.map.DataMapContainer;
-import com.game.cache.mapper.ValueConvertMapper;
-import com.game.cache.source.ICacheDelayUpdateSource;
-import com.game.cache.source.executor.ICacheSource;
 import com.game.common.util.Holder;
 
 import java.util.Collection;
 
-public class DataCacheMapDao<PK, K, V extends IData<K>> implements IDataCacheMapDao<PK, K, V> {
+class DataCacheMapDao<PK, K, V extends IData<K>> implements IDataCacheMapDao<PK, K, V> {
 
     private final IDataSource<PK, K, V> dataSource;
     private final DataMapContainer<PK, K, V> mapContainer;
 
-    public DataCacheMapDao(Class<V> aClass, ValueConvertMapper convertMapper, ICacheSource<PK, K, V> cacheSource) {
-        DataSourceBuilder<PK, K, V> builder = DataSourceBuilder.newBuilder(aClass, cacheSource).setConvertMapper(convertMapper);
-        IDataSource<PK, K, V> dataSource = builder.build();
-        if (cacheSource instanceof ICacheDelayUpdateSource){
-            @SuppressWarnings("unchecked") ICacheSource<PK, K, V> cacheSource1 = ((ICacheDelayUpdateSource<PK, K, V>) cacheSource).getCacheSource();
-            this.dataSource = builder.setCacheSource(cacheSource1).build();
-        }
-        else {
-            this.dataSource = dataSource;
-        }
-        this.mapContainer = new DataMapContainer<>(dataSource);
+    public DataCacheMapDao(IDataSource<PK, K, V> dataSource, DataMapContainer<PK, K, V> mapContainer) {
+        this.dataSource = dataSource;
+        this.mapContainer = mapContainer;
     }
 
     @Override
