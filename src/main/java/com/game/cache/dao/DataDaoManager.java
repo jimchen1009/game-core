@@ -1,6 +1,5 @@
 package com.game.cache.dao;
 
-import com.game.cache.CacheInteraction;
 import com.game.cache.CacheType;
 import com.game.cache.data.DataSourceBuilder;
 import com.game.cache.data.IData;
@@ -10,8 +9,10 @@ import com.game.cache.data.map.DataMapContainer;
 import com.game.cache.data.value.DataValueContainer;
 import com.game.cache.exception.CacheException;
 import com.game.cache.key.IKeyValueBuilder;
-import com.game.cache.mapper.ClassDescription;
+import com.game.cache.mapper.ClassInformation;
 import com.game.cache.mapper.ValueConverter;
+import com.game.cache.source.ICacheLoginPredicate;
+import com.game.cache.source.ICacheSourceInteract;
 import com.game.cache.source.executor.CacheExecutor;
 import com.game.cache.source.executor.ICacheExecutor;
 import com.game.cache.source.executor.ICacheSource;
@@ -32,22 +33,29 @@ public class DataDaoManager {
 
     private final CacheType cacheType;
     private final ICacheExecutor executor;
-    private final CacheInteraction cacheInteraction;
+    private final ClassesInformation classesInformation;
     private final Map<String, IDataMapDao> mapDaoMap;
     private final Map<String, IDataCacheMapDao> cacheMapDaoMap;
     private final Map<String, IDataValueDao> valueDaoMap;
     private final Map<String, IDataCacheValueDao> cacheValueDaoMap;
+
+    private final Map<String, ICacheSourceInteract> cacheName2SourceInteracts;
 
 
     public DataDaoManager() {
         this.cacheType = CacheType.valueOf(Configs.getInstance().getString("cache.type"));
         IConfig executorConfig = Configs.getInstance().getConfig("cache.executor");
         this.executor = new CacheExecutor(executorConfig.getInt("threadCount"));
-        this.cacheInteraction = new CacheInteraction();
+        this.classesInformation = new ClassesInformation();
         this.mapDaoMap = new ConcurrentHashMap<>();
         this.cacheMapDaoMap = new ConcurrentHashMap<>();
         this.valueDaoMap = new ConcurrentHashMap<>();
         this.cacheValueDaoMap = new ConcurrentHashMap<>();
+        this.cacheName2SourceInteracts = new ConcurrentHashMap<>();
+    }
+
+    public ClassesInformation getClassesInformation() {
+        return classesInformation;
     }
 
     public void addValueConverter(ValueConverter<?> convert){
@@ -55,7 +63,7 @@ public class DataDaoManager {
     }
 
     public void initClass(Class<?> aClass){
-        cacheInteraction.addClass(aClass);
+        classesInformation.addClass(aClass);
     }
 
     public <PK, K, V extends IData<K>> DataMapDaoBuilder<PK, K, V> newDataMapDaoBuilder(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder){
@@ -66,6 +74,13 @@ public class DataDaoManager {
         return new DataValueDaoBuilder<>(aClass, primaryBuilder);
     }
 
+    public IDataCacheMapDao getDataCacheMapDao(Class<?> aClass){
+        return cacheMapDaoMap.get(aClass.getName());
+    }
+
+    public IDataCacheValueDao getDataCacheValueDao(Class<?> aClass){
+        return cacheValueDaoMap.get(aClass.getName());
+    }
 
     public class DataMapDaoBuilder<PK, K, V extends IData<K>>  extends DataDaoBuilder{
 
@@ -75,6 +90,11 @@ public class DataDaoManager {
 
         public DataMapDaoBuilder<PK, K, V> setLoadPredicate(IDataLoadPredicate<PK> loadPredicate) {
             this.loadPredicate = loadPredicate;
+            return this;
+        }
+
+        public DataMapDaoBuilder<PK, K, V> setCacheLoginPredicate(ICacheLoginPredicate<PK> loginSharedLoad) {
+            this.loginSharedLoad = loginSharedLoad;
             return this;
         }
 
@@ -109,6 +129,11 @@ public class DataDaoManager {
             return this;
         }
 
+        public DataValueDaoBuilder<PK, V> setCacheLoginPredicate(ICacheLoginPredicate<PK> loginSharedLoad) {
+            this.loginSharedLoad = loginSharedLoad;
+            return this;
+        }
+
         @SuppressWarnings("unchecked")
         public IDataValueDao<PK, V> buildNoCache(){
             return valueDaoMap.computeIfAbsent(aClass.getName(), key -> {
@@ -135,6 +160,7 @@ public class DataDaoManager {
         private final IKeyValueBuilder<PK> primaryBuilder;
         private final IKeyValueBuilder<K> secondaryBuilder;
         protected IDataLoadPredicate<PK> loadPredicate;
+        protected ICacheLoginPredicate<PK> loginSharedLoad;
 
         private DataDaoBuilder(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder) {
             this.aClass = aClass;
@@ -146,16 +172,20 @@ public class DataDaoManager {
             if (loadPredicate == null){
                 return new IDataLoadPredicate<PK>() {
                     @Override
-                    public void onPredicateLoaded(PK primaryKey) {
+                    public void onPredicateCacheLoaded(PK primaryKey) {
                     }
 
                     @Override
-                    public boolean predicateFirstTime(PK primaryKey) {
+                    public boolean predicateNoCache(PK primaryKey) {
                         return false;
                     }
                 };
             }
             return loadPredicate;
+        }
+
+        public ICacheLoginPredicate<PK> getLoginSharedLoad() {
+            return loginSharedLoad == null ? (key, name) -> false : loginSharedLoad;
         }
 
         protected DataSourceBuilder<PK, K, V> newDataSourceBuilder(){
@@ -169,20 +199,23 @@ public class DataDaoManager {
         private ICacheSource<PK, K, V> createCacheSource(){
             try {
                 ICacheSource<PK, K, V> cacheSource;
+                String cacheName = ClassInformation.get(aClass).getCacheClass().cacheName();
+                ICacheSourceInteract<PK> iCacheSourceInteract = cacheName2SourceInteracts.computeIfAbsent(cacheName, key -> new CacheInteraction(DataDaoManager.this, getLoginSharedLoad()));
                 if (cacheType.equals(CacheType.MongoDb)) {
-                    cacheSource = new CacheDirectMongoDBSource(aClass, primaryBuilder, secondaryBuilder);
+                    cacheSource = new CacheDirectMongoDBSource(aClass, primaryBuilder, secondaryBuilder, iCacheSourceInteract);
                 }
                 else {
                     throw new CacheException("unexpected cache type:%s", cacheType.name());
                 }
-                if (ClassDescription.get(aClass).getCacheClass().delayUpdate()){
+                if (ClassInformation.get(aClass).getCacheClass().delayUpdate()){
                     cacheSource = cacheSource.createDelayUpdateSource(executor);
                 }
-                cacheInteraction.addClass(aClass);
+                classesInformation.addClass(aClass);
                 return cacheSource;
             } catch (Throwable t) {
                 throw new CacheException("%s", t, aClass.getName());
             }
         }
     }
+
 }

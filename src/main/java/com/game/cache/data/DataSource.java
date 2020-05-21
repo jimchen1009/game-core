@@ -83,7 +83,7 @@ class DataSource<PK, K, V extends IData<K>> implements IDataSource<PK, K, V>{
         CacheCollection cacheCollection = cacheSource.getCollection(primaryKey);
         Collection<Map<String, Object>> cacheValuesList = cacheCollection.getCacheValuesList();
         List<V> valueList = convertAndMarkValueSource(cacheValuesList);
-        return new DataCollection<>(valueList, cacheCollection.getCacheInformation());
+        return new DataCollection<>(valueList, cacheCollection.getInformation());
     }
 
     @Override
@@ -109,7 +109,7 @@ class DataSource<PK, K, V extends IData<K>> implements IDataSource<PK, K, V>{
     }
 
     private V markValueSource(V dataValue){
-        Field field = converter.getClsDescription().getCacheSourceFiled();
+        Field field = converter.getInformation().getCacheSourceFiled();
         try {
             field.set(dataValue, true);
         }

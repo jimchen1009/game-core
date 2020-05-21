@@ -1,12 +1,12 @@
 package com.game.cache.source;
 
-import com.game.cache.mapper.ClassDescription;
+import com.game.cache.mapper.ClassInformation;
 
 import java.util.Map;
 
 public interface ICacheKeyValueBuilder<PK, K> {
 
-    ClassDescription getClsDescription();
+    ClassInformation getClassInformation();
 
     Map<String, Object> createPrimaryKeyValue(PK primaryKey);
 

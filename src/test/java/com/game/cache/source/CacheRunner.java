@@ -14,6 +14,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CacheRunner {
 
@@ -21,7 +22,7 @@ public class CacheRunner {
     public void item(){
         MongoDatabase database = MongoDbManager.get("cache").getDb("demo");
         MongoCollection<Document> collection = database.getCollection("material");
-        collection.drop();
+//        collection.drop();
         long userId = 1L;
 //        Document queryDocument = new Document("userId", new Document("$exists", false));
 //        Document document = new Document("$replace", new Document("item", Collections.emptyList()));
@@ -31,20 +32,25 @@ public class CacheRunner {
 
         IDataLoadPredicate<Long> loadPredicate = new IDataLoadPredicate<Long>() {
             @Override
-            public void onPredicateLoaded(Long primaryKey) {
+            public void onPredicateCacheLoaded(Long primaryKey) {
             }
 
             @Override
-            public boolean predicateFirstTime(Long primaryKey) {
-                return true;
+            public boolean predicateNoCache(Long primaryKey) {
+                return false;
             }
         };
 
+        AtomicBoolean atomicBoolean = new AtomicBoolean(false);
+        ICacheLoginPredicate<Long> loginPredicate = (primaryKey, cacheName) -> atomicBoolean.compareAndSet(false, true);
+
         IDataMapDao<Long, Long, UserItem> itemDao = DataDaoManager.getInstance()
                 .newDataMapDaoBuilder(UserItem.class, KeyValueHelper.LongBuilder, KeyValueHelper.LongBuilder)
+                .setCacheLoginPredicate(loginPredicate)
                 .setLoadPredicate(loadPredicate).buildCache();
         IDataMapDao<Long, Integer, UserCurrency> currencyDao = DataDaoManager.getInstance()
                 .newDataMapDaoBuilder(UserCurrency.class, KeyValueHelper.LongBuilder, KeyValueHelper.IntegerBuilder)
+                .setCacheLoginPredicate(loginPredicate)
                 .setLoadPredicate(loadPredicate).buildCache();
 
         itemDao.getAll(userId);

@@ -22,24 +22,24 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-public class ClassDescription {
+public class ClassInformation {
 
-    private static final Map<String, ClassDescription> name2Descriptions = new ConcurrentHashMap<>();
+    private static final Map<String, ClassInformation> name2Descriptions = new ConcurrentHashMap<>();
 
-    public static ClassDescription get(Class<?> aClass){
-        return name2Descriptions.computeIfAbsent(aClass.getName(), key-> new ClassDescription(aClass));
+    public static ClassInformation get(Class<?> aClass){
+        return name2Descriptions.computeIfAbsent(aClass.getName(), key-> new ClassInformation(aClass));
     }
 
     private final Class<?> aClass;
     private List<String> primaryKeys;
     private List<String> secondaryKeys;
     private List<String> primarySecondaryKeys;
-    private List<FieldDescription> descriptions;
-    private List<FieldDescription> keysDescriptions;
-    private List<FieldDescription> normalDescriptions;
+    private List<FieldInformation> descriptions;
+    private List<FieldInformation> keysDescriptions;
+    private List<FieldInformation> normalDescriptions;
     private final Field cacheSourceFiled;
 
-    private ClassDescription(Class<?> aClass) {
+    private ClassInformation(Class<?> aClass) {
         this.aClass = aClass;
         this.primaryKeys = new ArrayList<>();
         this.secondaryKeys = new ArrayList<>();
@@ -51,7 +51,7 @@ public class ClassDescription {
         this.searchAnnotationFieldsAndInit(aClass);
     }
 
-    public Class<?> describedClass() {
+    public Class<?> getAClass() {
         return aClass;
     }
 
@@ -67,20 +67,20 @@ public class ClassDescription {
         return primarySecondaryKeys;
     }
 
-    public List<FieldDescription> fieldDescriptions() {
+    public List<FieldInformation> fieldDescriptions() {
         return descriptions;
     }
 
-    public List<FieldDescription> getKeysDescriptions() {
+    public List<FieldInformation> getKeysDescriptions() {
         return keysDescriptions;
     }
 
-    public List<FieldDescription> getNormalDescriptions() {
+    public List<FieldInformation> getNormalDescriptions() {
         return normalDescriptions;
     }
 
-    public FieldDescription findOneDescription(Predicate<FieldDescription> predicate){
-        for (FieldDescription description : descriptions) {
+    public FieldInformation findOneDescription(Predicate<FieldInformation> predicate){
+        for (FieldInformation description : descriptions) {
             if (predicate.test(description)) {
                 return description;
             }
@@ -103,10 +103,10 @@ public class ClassDescription {
     private void searchAnnotationFieldsAndInit(Class<?> aClass){
         //字段处理~
         searchAnnotationFields(aClass, descriptions);
-        Map<String, FieldDescription> name2FieldMap = new HashMap<>();
-        Map<String, FieldDescription> annotationName2FieldMap = new HashMap<>();
+        Map<String, FieldInformation> name2FieldMap = new HashMap<>();
+        Map<String, FieldInformation> annotationName2FieldMap = new HashMap<>();
         Set<Integer> indexes = new HashSet<>();
-        for (FieldDescription description : descriptions) {
+        for (FieldInformation description : descriptions) {
             if (name2FieldMap.put(description.getName(), description) != null) {
                 throw new CacheException("multiple name:%s, class:%s", description.getName(), aClass.getName());
             }
@@ -141,7 +141,7 @@ public class ClassDescription {
         if (primaryAndSecondaryKeys.size() != this.primarySecondaryKeys.size()){
             throw new CacheException("primarySecondaryKeys:%s, class:%s", this.primarySecondaryKeys, aClass.getName());
         }
-        for (FieldDescription description : descriptions) {
+        for (FieldInformation description : descriptions) {
             if (primaryAndSecondaryKeys.contains(description.getAnnotationName())){
                 keysDescriptions.add(description);
             }
@@ -153,7 +153,7 @@ public class ClassDescription {
         this.normalDescriptions = sortUniqueIdAndUnmodifiableList(normalDescriptions);
     }
 
-    private List<String> getCacheIndexNames(CacheIndex cacheIndex, Predicate<IndexField> predicate, Map<String, FieldDescription> name2FieldMap){
+    private List<String> getCacheIndexNames(CacheIndex cacheIndex, Predicate<IndexField> predicate, Map<String, FieldInformation> name2FieldMap){
         List<String> indexKeyList = Arrays.stream(cacheIndex.fields())
                 .filter(predicate)
                 .map(IndexField::name)
@@ -162,12 +162,12 @@ public class ClassDescription {
         return Collections.unmodifiableList(indexKeyList);
     }
 
-    private List<FieldDescription> sortUniqueIdAndUnmodifiableList(List<FieldDescription> descriptions){
-        descriptions.sort(Comparator.comparing(FieldDescription::getIndex));
+    private List<FieldInformation> sortUniqueIdAndUnmodifiableList(List<FieldInformation> descriptions){
+        descriptions.sort(Comparator.comparing(FieldInformation::getIndex));
         return Collections.unmodifiableList(descriptions);
     }
 
-    private static void searchAnnotationFields(Class<?> aClass, List<FieldDescription> descriptions) {
+    private static void searchAnnotationFields(Class<?> aClass, List<FieldInformation> descriptions) {
         if (aClass == null || aClass == Object.class) {
             return;
         }
@@ -180,8 +180,8 @@ public class ClassDescription {
             String name = field.getName();
             field.setAccessible(true);
             String annotationName = StringUtil.isEmpty(cacheFiled.name()) ? name : cacheFiled.name();
-            FieldDescription description = new FieldDescription(cacheFiled.index(), field, annotationName);
-            descriptions.add(description);
+            FieldInformation information = new FieldInformation(cacheFiled.index(), field, annotationName);
+            descriptions.add(information);
         }
     }
 

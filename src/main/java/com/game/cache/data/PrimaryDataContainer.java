@@ -159,9 +159,9 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
         if (information != null) {
             return secondary2Values;
         }
-        if (loadPredicate.predicateFirstTime(primaryKey)){
+        if (loadPredicate.predicateNoCache(primaryKey)){
             information = new CacheInformation();
-            loadPredicate.onPredicateLoaded(primaryKey);
+            loadPredicate.onPredicateCacheLoaded(primaryKey);
         }
         else {
             DataCollection<K, V> collection = dataSource.getCollection(primaryKey);

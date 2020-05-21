@@ -10,7 +10,7 @@ public interface IClassConverter<K, V extends IData<K>> {
 
     Class<V> getConvertedClass();
 
-    ClassDescription getClsDescription();
+    ClassInformation getInformation();
 
     V convert2Value(Map<String, Object> cacheValue);
 

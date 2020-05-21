@@ -10,8 +10,8 @@ import java.util.Map;
 
 public abstract class CacheDirectUpdateSource<PK, K, V extends IData<K>> extends CacheSource<PK, K, V> {
 
-    public CacheDirectUpdateSource(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder) {
-        super(aClass, primaryBuilder, secondaryBuilder);
+    public CacheDirectUpdateSource(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder, ICacheSourceInteract<PK> sourceInteract) {
+        super(aClass, primaryBuilder, secondaryBuilder, sourceInteract);
     }
 
     @Override

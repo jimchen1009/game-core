@@ -7,6 +7,7 @@ import com.game.cache.mapper.annotation.CacheIndex;
 import com.game.cache.source.CacheCollection;
 import com.game.cache.source.CacheDirectUpdateSource;
 import com.game.cache.source.ICacheDelayUpdateSource;
+import com.game.cache.source.ICacheSourceInteract;
 import com.game.cache.source.KeyCacheValue;
 import com.game.cache.source.executor.ICacheExecutor;
 import com.mongodb.bulk.BulkWriteResult;
@@ -29,10 +30,10 @@ public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDi
     private static final Logger logger = LoggerFactory.getLogger(CacheDirectMongoDBSource.class);
 
 
-    public CacheDirectMongoDBSource(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder) {
-        super(aClass, primaryBuilder, secondaryBuilder);
+    public CacheDirectMongoDBSource(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder, ICacheSourceInteract<PK> sourceInteract) {
+        super(aClass, primaryBuilder, secondaryBuilder, sourceInteract);
         MongoCollection<Document> collection = getCollection();
-        CacheIndex cacheIndexes = getKeyValueBuilder().getClsDescription().getCacheIndexes();
+        CacheIndex cacheIndexes = getKeyValueBuilder().getClassInformation().getCacheIndexes();
         CacheMongoDBUtil.ensureIndexes(collection, getPrimarySharedId(), cacheIndexes);
     }
 
@@ -47,8 +48,8 @@ public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDi
     }
 
     @Override
-    protected CacheCollection getCollection0(Map<String, Object> key2Values) {
-        Collection<Map<String, Object>> mapCollection = getAll0(key2Values);
+    protected CacheCollection getCollection0(Map<String, Object> key2Values, List<Integer> primarySharedIds) {
+        Collection<Map<String, Object>> mapCollection = MongoDBQueryUtil.queryAll(getCollection(), primarySharedIds, key2Values);
         return new CacheCollection(mapCollection, new CacheInformation());
     }
 

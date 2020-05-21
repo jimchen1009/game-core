@@ -13,6 +13,10 @@ public class CacheInformation {
         this.name2Values = new EnumMap<>(InformationName.class);
     }
 
+    private CacheInformation(EnumMap<InformationName, Object> name2Values) {
+        this.name2Values = new EnumMap<>(name2Values);
+    }
+
     @SuppressWarnings("unchecked")
     public <T> T getValue(InformationName informationName){
         return (T)name2Values.get(informationName);
@@ -21,5 +25,9 @@ public class CacheInformation {
     @SuppressWarnings("unchecked")
     public <T> T getValue(InformationName informationName, T defaultValue){
         return (T)name2Values.getOrDefault(informationName, defaultValue);
+    }
+
+    public CacheInformation copy(){
+        return new CacheInformation(this.name2Values);
     }
 }

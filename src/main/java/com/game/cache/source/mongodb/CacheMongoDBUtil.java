@@ -25,12 +25,12 @@ public class CacheMongoDBUtil {
     public static final UpdateOptions UPDATE_OPTIONS = new UpdateOptions().upsert(true);
     public static final String DB_NAME = "demo";
 
-    public static void ensureIndexes(MongoCollection<Document> collection, int primaryKeyId, CacheIndex cacheIndex) {
+    public static void ensureIndexes(MongoCollection<Document> collection, int primarySharedId, CacheIndex cacheIndex) {
         createHashIndex(collection, cacheIndex);
-        createUniqueIndex(collection, primaryKeyId, cacheIndex);
+        createUniqueIndex(collection, primarySharedId, cacheIndex);
     }
 
-    private static void createUniqueIndex(MongoCollection<Document> collection, int primaryKeyId, CacheIndex cacheIndex){
+    private static void createUniqueIndex(MongoCollection<Document> collection, int primarySharedId, CacheIndex cacheIndex){
         Document primaryDocument = new Document();
         Document secondaryDocument = new Document();
         for (IndexField indexField : cacheIndex.fields()) {
@@ -48,7 +48,7 @@ public class CacheMongoDBUtil {
         }
         IndexOptions indexOptions = new IndexOptions().unique(cacheIndex.options().unique());
         Document appendDocument = new Document();
-        if (primaryKeyId > 0){
+        if (primarySharedId > 0){
             Document partialDocument = new Document();
             for (Map.Entry<String, Object> entry : secondaryDocument.entrySet()) {
                 partialDocument.append(entry.getKey(), new Document("$exists", true));
@@ -72,30 +72,37 @@ public class CacheMongoDBUtil {
         collection.createIndex(hashDocument, new IndexOptions());
     }
 
-    public static UpdateOneModel<Document> createUpdateOneModel(int primaryKeyId, Map<String, Object> keyValue, Map<String, Object> cache2Values) {
-        Document queryDocument = getQueryDocument(primaryKeyId, keyValue);
+    public static UpdateOneModel<Document> createUpdateOneModel(int primarySharedId, Map<String, Object> keyValue, Map<String, Object> cache2Values) {
+        Document queryDocument = getQueryDocument(primarySharedId, keyValue);
         Document document = toDocument(cache2Values);
         return new UpdateOneModel<>(queryDocument, document, UPDATE_OPTIONS);
     }
 
-    public static DeleteOneModel<Document> createDeleteOneModel(int primaryKeyId, Map<String, Object> keyValue) {
-        Document document = getQueryDocument(primaryKeyId, keyValue);
+    public static DeleteOneModel<Document> createDeleteOneModel(int primarySharedId, Map<String, Object> keyValue) {
+        Document document = getQueryDocument(primarySharedId, keyValue);
         return new DeleteOneModel<>(document);
     }
 
-    public static List<DeleteOneModel<Document>> createDeleteOneModelList(int primaryKeyId, List<Map<String, Object>> key2ValuesList) {
-        return key2ValuesList.stream().map(keyValue-> createDeleteOneModel(primaryKeyId, keyValue)).collect(Collectors.toList());
+    public static List<DeleteOneModel<Document>> createDeleteOneModelList(int primarySharedId, List<Map<String, Object>> key2ValuesList) {
+        return key2ValuesList.stream().map(keyValue-> createDeleteOneModel(primarySharedId, keyValue)).collect(Collectors.toList());
     }
 
-    public static Document getQueryDocument(int primaryKeyId, Map<String, Object> keyValue){
+    public static Document getQueryDocument(int primarySharedId, Map<String, Object> keyValue){
         Document document = new Document(keyValue);
-        addPrimaryKeyId(document, primaryKeyId);
+        if (primarySharedId > 0){
+            document.append(InformationName.CACHE_KEY.getKeyName(),primarySharedId);
+        }
         return document;
     }
 
-    private static Document addPrimaryKeyId(Document document, int primaryKeyId){
-        if (primaryKeyId > 0){
-            document.append(InformationName.CACHE_KEY.getKeyName(), primaryKeyId);
+    public static Document getQueryDocument(List<Integer> primarySharedIds, Map<String, Object> keyValue){
+        Document document = new Document(keyValue);
+        primarySharedIds = primarySharedIds.stream().filter( primarySharedId -> primarySharedId > 0).collect(Collectors.toList());
+        if (primarySharedIds.size() == 1){
+            document.append(InformationName.CACHE_KEY.getKeyName(), primarySharedIds.get(0));
+        }
+        else {
+            document.append(InformationName.CACHE_KEY.getKeyName(), new Document("$in", primarySharedIds));
         }
         return document;
     }

@@ -34,7 +34,7 @@ public class LockKey {
     }
 
     public LockKey createLockKey(String secondary){
-        return new LockKey(primary, secondary);
+        return new LockKey(primary, String.format("%s.%s", this.secondary, secondary));
     }
 
     public String toLockName(){

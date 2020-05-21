@@ -28,8 +28,17 @@ public class MongoDBQueryUtil {
         return collection.find(queryDocument).first();
     }
 
-    public static Collection<Map<String, Object>> queryAll(MongoCollection<Document> collection, int primaryKeyId, Map<String, Object> keyValue) {
-        Document queryDocument = CacheMongoDBUtil.getQueryDocument(primaryKeyId, keyValue);
+    public static Collection<Map<String, Object>> queryAll(MongoCollection<Document> collection, int primarySharedId, Map<String, Object> keyValue) {
+        Document queryDocument = CacheMongoDBUtil.getQueryDocument(primarySharedId, keyValue);
+        return queryAll(collection, queryDocument);
+    }
+
+    public static Collection<Map<String, Object>> queryAll(MongoCollection<Document> collection, List<Integer> primarySharedIds, Map<String, Object> keyValue) {
+        Document queryDocument = CacheMongoDBUtil.getQueryDocument(primarySharedIds, keyValue);
+        return queryAll(collection, queryDocument);
+    }
+
+    private static Collection<Map<String, Object>> queryAll(MongoCollection<Document> collection,  Document queryDocument) {
         FindIterable<Document> iterable = collection.find(queryDocument);
         List<Map<String, Object>> documentList = new ArrayList<>();
         for (Document document : iterable) {
