@@ -19,8 +19,8 @@ abstract class DataSourceDecorator<PK, K, V extends IData<K>> implements IDataSo
     }
 
     @Override
-    public LockKey getLockKey() {
-        return dataSource.getLockKey();
+    public LockKey getLockKey(PK primaryKey) {
+        return dataSource.getLockKey(primaryKey);
     }
 
     @Override

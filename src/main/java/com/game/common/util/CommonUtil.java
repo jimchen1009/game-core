@@ -17,6 +17,16 @@ public class CommonUtil {
         return  null;
     }
 
+    public static <T, V> V applyOneIf(Collection<T> collection, Function<T, V> function){
+        for (T data : collection) {
+            V apply = function.apply(data);
+            if (apply != null){
+                return apply;
+            }
+        }
+        return  null;
+    }
+
     public static <K,V,C extends Collection<V>> Map<K, C> groupByKey(Map<K, C> map, Collection<V> collection, Supplier<C> supplier, Function<V, K> function){
         for (V data : collection) {
             K key = function.apply(data);

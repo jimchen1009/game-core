@@ -27,7 +27,7 @@ public class CacheInteraction<PK> implements ICacheSourceInteract<PK> {
 
     @SuppressWarnings("unchecked")
     @Override
-    public void addCollections(PK primaryKey, String cacheName, Map<Integer, CacheCollection> collections) {
+    public void addCollections(PK primaryKey, String tableName, Map<Integer, CacheCollection> collections) {
         if (collections == null || collections.isEmpty()){
             return;
         }
@@ -35,7 +35,7 @@ public class CacheInteraction<PK> implements ICacheSourceInteract<PK> {
         ClassesInformation information = daoManager.getClassesInformation();
         List<Integer> primarySharedIds = new ArrayList<>(collections.keySet());
         for (Integer primarySharedId : primarySharedIds) {
-            Class<?> aClass = information.getClass(cacheName, primarySharedId);
+            Class<?> aClass = information.getClass(tableName, primarySharedId);
             IDataCacheMapDao cacheMapDao = daoManager.getDataCacheMapDao(aClass);
             if (cacheMapDao == null){
                 IDataCacheValueDao cacheValueDao = daoManager.getDataCacheValueDao(aClass);
@@ -50,7 +50,7 @@ public class CacheInteraction<PK> implements ICacheSourceInteract<PK> {
     }
 
     @Override
-    public CacheCollection removeCollection(PK primaryKey, String cacheName, int primarySharedId) {
+    public CacheCollection removeCollection(PK primaryKey, String tableName, int primarySharedId) {
         if (weakReference == null){
             return null;
         }
@@ -59,8 +59,8 @@ public class CacheInteraction<PK> implements ICacheSourceInteract<PK> {
     }
 
     @Override
-    public List<Integer> getPrimarySharedIds(String cacheName, int primarySharedId) {
+    public List<Integer> getPrimarySharedIds(String tableName, int primarySharedId) {
         ClassesInformation information = daoManager.getClassesInformation();
-        return information.getPrimarySharedIds(cacheName, primarySharedId);
+        return information.getPrimarySharedIds(tableName, primarySharedId);
     }
 }

@@ -48,6 +48,11 @@ public class Configs implements IConfig {
     }
 
     @Override
+    public boolean getBoolean(String path) {
+        return config.getBoolean(path);
+    }
+
+    @Override
     public List<IConfig> getConfigList(String path){
         List<? extends com.typesafe.config.Config> configList = config.getConfigList(path);
         return configList.stream().map(Configs::new).collect(Collectors.toList());

@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface IDataSource<PK, K, V extends IData<K>> {
 
-    LockKey getLockKey();
+    LockKey getLockKey(PK primaryKey);
 
     V get(PK primaryKey, K secondaryKey);
 

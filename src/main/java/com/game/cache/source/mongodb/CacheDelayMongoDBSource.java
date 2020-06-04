@@ -48,7 +48,7 @@ public class CacheDelayMongoDBSource<PK, K, V extends IData<K>> extends CacheDel
 
         Map<PK, List<KeyCacheValue<K>>> failureKeyCacheValuesMap = new HashMap<>();
 
-        int primarySharedId = mongoDBSource.getCacheClass().primarySharedId();
+        int primarySharedId = mongoDBSource.getClassConfig().primarySharedId;
         ICacheKeyValueBuilder<PK, K> keyValueBuilder = mongoDBSource.getKeyValueBuilder();
         int batchCount = Configs.getInstance().getInt("cache.flush.batchCount");
         for (Map.Entry<PK, Collection<KeyCacheValue<K>>> entry : keyCacheValuesMap.entrySet()) {

@@ -2,7 +2,6 @@ package com.game.cache.source;
 
 import com.game.cache.key.IKeyValueBuilder;
 import com.game.cache.mapper.ClassInformation;
-import com.game.common.arg.Args;
 
 import java.util.HashMap;
 import java.util.List;
@@ -41,6 +40,7 @@ public class CacheKeyValueBuilder<PK, K> implements ICacheKeyValueBuilder<PK, K>
         return keyValue;
     }
 
+    @Override
     public Map<String, Object> createPrimarySecondaryKeyValue(Map<String, Object> cacheValue){
         Map<String, Object> keyValue = new HashMap<>();
         for (String key : information.getPrimarySecondaryKeys()) {
@@ -59,10 +59,12 @@ public class CacheKeyValueBuilder<PK, K> implements ICacheKeyValueBuilder<PK, K>
         return secondaryBuilder.createKey(addObjectValue(information.getSecondaryKeys(), cacheValue));
     }
 
-    public Args.Two<PK, K> createPrimarySecondaryKey(Map<String, Object> cacheValue){
-        PK primaryKey = primaryBuilder.createKey(addObjectValue(information.getPrimaryKeys(), cacheValue));
-        K secondaryKey = secondaryBuilder.createKey(addObjectValue(information.getSecondaryKeys(), cacheValue));
-        return Args.create(primaryKey, secondaryKey);
+    public IKeyValueBuilder<PK> getPrimaryBuilder() {
+        return primaryBuilder;
+    }
+
+    public IKeyValueBuilder<K> getSecondaryBuilder() {
+        return secondaryBuilder;
     }
 
     private Object[] addObjectValue(List<String> keyNameList, Map<String, Object> cacheValue){

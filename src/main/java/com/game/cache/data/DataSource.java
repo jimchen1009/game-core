@@ -31,8 +31,8 @@ class DataSource<PK, K, V extends IData<K>> implements IDataSource<PK, K, V>{
     }
 
     @Override
-    public LockKey getLockKey() {
-        return cacheSource.getLockKey();
+    public LockKey getLockKey(PK primaryKey) {
+        return cacheSource.getLockKey(primaryKey);
     }
 
     @Override

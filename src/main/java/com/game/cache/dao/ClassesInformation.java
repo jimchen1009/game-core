@@ -2,7 +2,7 @@ package com.game.cache.dao;
 
 import com.game.cache.exception.CacheException;
 import com.game.cache.mapper.ClassInformation;
-import com.game.cache.mapper.annotation.CacheClass;
+import com.game.cache.mapper.ClassConfig;
 import com.game.cache.source.CacheCollection;
 
 import java.util.ArrayList;
@@ -32,32 +32,32 @@ public class ClassesInformation {
 
         Map<String, List<ClassInformation>> name2CacheClassList = new HashMap<>();
         for (ClassInformation description : classes.values()) {
-            CacheClass cacheClass = description.getCacheClass();
-            List<ClassInformation> cacheClassList = name2CacheClassList.computeIfAbsent(cacheClass.cacheName(), key -> new ArrayList<>());
+            ClassConfig classConfig = description.getClassConfig();
+            List<ClassInformation> cacheClassList = name2CacheClassList.computeIfAbsent(classConfig.tableName, key -> new ArrayList<>());
             cacheClassList.add(description);
         }
         for (Map.Entry<String, List<ClassInformation>> entry : name2CacheClassList.entrySet()) {
-            entry.getValue().sort(Comparator.comparingInt( description -> description.getCacheClass().primarySharedId()));
+            entry.getValue().sort(Comparator.comparingInt( description -> description.getClassConfig().primarySharedId));
         }
         onCheckCacheClasses(name2CacheClassList);
         this.name2CacheClasses = name2CacheClassList;
     }
 
-    public CacheClass getCacheClass(Class<?> aClass){
+    public ClassConfig getCacheClass(Class<?> aClass){
         ClassInformation information = classes.get(aClass);
-        return information == null ? null : information.getCacheClass();
+        return information == null ? null : information.getClassConfig();
     }
 
     public Class<?> getClass(String cacheName, int primarySharedId){
         Optional<ClassInformation> optional = name2CacheClasses.get(cacheName).stream()
-                .filter(description -> description.getCacheClass().primarySharedId() == primarySharedId)
+                .filter(description -> description.getClassConfig().primarySharedId == primarySharedId)
                 .findFirst();
         return optional.<Class<?>>map(ClassInformation::getAClass).orElse(null);
     }
 
     private void onCheckCacheClasses(Map<String, List<ClassInformation>> name2CacheClassList){
         for (Map.Entry<String, List<ClassInformation>> entry : name2CacheClassList.entrySet()) {
-            List<Integer> primarySharedIds = entry.getValue().stream().map(description -> description.getCacheClass().primarySharedId()).collect(Collectors.toList());
+            List<Integer> primarySharedIds = entry.getValue().stream().map(description -> description.getClassConfig().primarySharedId).collect(Collectors.toList());
             if (primarySharedIds.size() < 2){
                 continue;
             }
@@ -74,8 +74,8 @@ public class ClassesInformation {
 
     public List<Integer> getPrimarySharedIds(String cacheName, int primarySharedId) {
         List<Integer> primarySharedIds = name2CacheClasses.get(cacheName).stream()
-                .filter(description -> description.getCacheClass().loadOnShared())
-                .map(description -> description.getCacheClass().primarySharedId())
+                .filter(description -> description.getClassConfig().loadOnShared)
+                .map(description -> description.getClassConfig().primarySharedId)
                 .collect(Collectors.toList());
         if (!primarySharedIds.contains(primarySharedId)) {
             primarySharedIds.add(primarySharedId);

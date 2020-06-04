@@ -13,6 +13,8 @@ public interface IConfig {
 
     String getString(String path);
 
+    boolean getBoolean(String path);
+
     List<IConfig> getConfigList(String path);
 
     <T> List<T> getList(String path);

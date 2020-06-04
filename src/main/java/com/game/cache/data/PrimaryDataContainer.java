@@ -56,7 +56,7 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
 
     @Override
     public V replaceOne(V value) {
-        Args.Two<Boolean, V> resultValue = LockUtil.syncLock(dataSource.getLockKey(), "deleteOne", () -> {
+        Args.Two<Boolean, V> resultValue = LockUtil.syncLock(dataSource.getLockKey(primaryKey), "deleteOne", () -> {
             boolean success = dataSource.replaceOne(primaryKey, value);
             V oldValue = null;
             if (success){
@@ -75,7 +75,7 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
 
     @Override
     public void replaceBatch(Collection<V> values) {
-        Boolean isSuccess = LockUtil.syncLock(dataSource.getLockKey(), "deleteBatch", () -> {
+        Boolean isSuccess = LockUtil.syncLock(dataSource.getLockKey(primaryKey), "deleteBatch", () -> {
             boolean success = dataSource.replaceBatch(primaryKey, values);
             if (success){
                 ConcurrentHashMap<K, V> currentMap = currentMap();
@@ -95,7 +95,7 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
 
     @Override
     public V removeOne(K secondaryKey) {
-        Args.Two<Boolean, V> resultValue = LockUtil.syncLock(dataSource.getLockKey(), "deleteOne", () -> {
+        Args.Two<Boolean, V> resultValue = LockUtil.syncLock(dataSource.getLockKey(primaryKey), "deleteOne", () -> {
             boolean success = true;
             V oldValue = null;
             if (currentMap().containsKey(secondaryKey)) {
@@ -116,7 +116,7 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
 
     @Override
     public void removeBatch(Collection<K> secondaryKeys) {
-        Boolean isSuccess = LockUtil.syncLock(dataSource.getLockKey(), "deleteBatch", () -> {
+        Boolean isSuccess = LockUtil.syncLock(dataSource.getLockKey(primaryKey), "deleteBatch", () -> {
             boolean success = true;
             ConcurrentHashMap<K, V> currentMap = currentMap();
             List<K> removeSecondaryKeys = secondaryKeys.stream().filter(currentMap::containsKey).collect(Collectors.toList());
@@ -148,7 +148,7 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
     }
 
     private ConcurrentHashMap<K, V> lockCurrentMap(){
-        ConcurrentHashMap<K, V> currentMap = LockUtil.syncLock(dataSource.getLockKey(), "currentMap", this::currentMap);
+        ConcurrentHashMap<K, V> currentMap = LockUtil.syncLock(dataSource.getLockKey(primaryKey), "currentMap", this::currentMap);
         if (currentMap == null){
             throw new CacheException("primaryKey:%s load cache time out.", LogUtil.toJSONString(primaryKey));
         }

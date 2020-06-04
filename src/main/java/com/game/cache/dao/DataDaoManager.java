@@ -199,15 +199,15 @@ public class DataDaoManager {
         private ICacheSource<PK, K, V> createCacheSource(){
             try {
                 ICacheSource<PK, K, V> cacheSource;
-                String cacheName = ClassInformation.get(aClass).getCacheClass().cacheName();
-                ICacheSourceInteract<PK> iCacheSourceInteract = cacheName2SourceInteracts.computeIfAbsent(cacheName, key -> new CacheInteraction(DataDaoManager.this, getLoginSharedLoad()));
+                String tableName = ClassInformation.get(aClass).getClassConfig().tableName;
+                ICacheSourceInteract<PK> iCacheSourceInteract = cacheName2SourceInteracts.computeIfAbsent(tableName, key -> new CacheInteraction(DataDaoManager.this, getLoginSharedLoad()));
                 if (cacheType.equals(CacheType.MongoDb)) {
                     cacheSource = new CacheDirectMongoDBSource(aClass, primaryBuilder, secondaryBuilder, iCacheSourceInteract);
                 }
                 else {
                     throw new CacheException("unexpected cache type:%s", cacheType.name());
                 }
-                if (ClassInformation.get(aClass).getCacheClass().delayUpdate()){
+                if (ClassInformation.get(aClass).getClassConfig().delayUpdate){
                     cacheSource = cacheSource.createDelayUpdateSource(executor);
                 }
                 classesInformation.addClass(aClass);

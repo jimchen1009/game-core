@@ -34,17 +34,17 @@ public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDi
         super(aClass, primaryBuilder, secondaryBuilder, sourceInteract);
         MongoCollection<Document> collection = getCollection();
         CacheIndex cacheIndexes = getKeyValueBuilder().getClassInformation().getCacheIndexes();
-        CacheMongoDBUtil.ensureIndexes(collection, getPrimarySharedId(), cacheIndexes);
+        CacheMongoDBUtil.ensureIndexes(collection, getClassConfig().primarySharedId, cacheIndexes);
     }
 
     @Override
     protected Map<String, Object> get0(Map<String, Object> key2Values) {
-        return MongoDBQueryUtil.queryOne(getCollection(), getPrimarySharedId(), key2Values);
+        return MongoDBQueryUtil.queryOne(getCollection(), getClassConfig().primarySharedId,  key2Values);
     }
 
     @Override
     protected Collection<Map<String, Object>> getAll0(Map<String, Object> key2Values) {
-        return MongoDBQueryUtil.queryAll(getCollection(), getPrimarySharedId(), key2Values);
+        return MongoDBQueryUtil.queryAll(getCollection(), getClassConfig().primarySharedId,  key2Values);
     }
 
     @Override
@@ -55,7 +55,7 @@ public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDi
 
     @Override
     protected boolean replaceOne0(Map<String, Object> key2Values, KeyCacheValue<K> keyCacheValue) {
-        Document queryDocument = CacheMongoDBUtil.getQueryDocument(getPrimarySharedId(), key2Values);
+        Document queryDocument = CacheMongoDBUtil.getQueryDocument(getClassConfig().primarySharedId,  key2Values);
         Document document = CacheMongoDBUtil.toDocument(keyCacheValue.getCacheValue());
         MongoCollection<Document> collection = getCollection();
         UpdateResult updateOne = collection.updateOne(queryDocument, document, CacheMongoDBUtil.UPDATE_OPTIONS);
@@ -66,7 +66,7 @@ public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDi
     protected boolean replaceBatch0(Map<String, Object> key2Values, List<KeyCacheValue<K>> keyCacheValueList) {
         List<UpdateOneModel<Document>> updateOneModelList = keyCacheValueList.stream().map( keyCacheValue -> {
             Map<String, Object> keyValue = getKeyValueBuilder().createPrimarySecondaryKeyValue(keyCacheValue.getCacheValue());
-            return CacheMongoDBUtil.createUpdateOneModel(getPrimarySharedId(), keyValue, keyCacheValue.getCacheValue());
+            return CacheMongoDBUtil.createUpdateOneModel(getClassConfig().primarySharedId,  keyValue, keyCacheValue.getCacheValue());
         }).collect(Collectors.toList());
         MongoCollection<Document> collection = getCollection();
         BulkWriteResult writeResult = collection.bulkWrite(updateOneModelList);
@@ -75,7 +75,7 @@ public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDi
 
     @Override
     protected boolean deleteOne0(Map<String, Object> key2Values) {
-        Document queryDocument = CacheMongoDBUtil.getQueryDocument(getPrimarySharedId(), key2Values);
+        Document queryDocument = CacheMongoDBUtil.getQueryDocument(getClassConfig().primarySharedId,  key2Values);
         MongoCollection<Document> collection = getCollection();
         DeleteResult deleteOne = collection.deleteOne(queryDocument);
         return deleteOne.wasAcknowledged();
@@ -83,14 +83,14 @@ public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDi
 
     @Override
     protected boolean deleteBatch0(List<Map<String, Object>> key2ValuesList) {
-        List<DeleteOneModel<Document>> deleteOneModelList = CacheMongoDBUtil.createDeleteOneModelList(getPrimarySharedId(), key2ValuesList);
+        List<DeleteOneModel<Document>> deleteOneModelList = CacheMongoDBUtil.createDeleteOneModelList(getClassConfig().primarySharedId,  key2ValuesList);
         MongoCollection<Document> collection = getCollection();
         BulkWriteResult writeResult = collection.bulkWrite(deleteOneModelList);
         return writeResult.wasAcknowledged();
     }
 
     public MongoCollection<Document> getCollection(){
-        return MongoDBQueryUtil.getCollection(getCacheName());
+        return MongoDBQueryUtil.getCollection(getClassConfig().tableName);
     }
 
     @Override

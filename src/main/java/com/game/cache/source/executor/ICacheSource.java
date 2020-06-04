@@ -1,6 +1,6 @@
 package com.game.cache.source.executor;
 
-import com.game.cache.mapper.annotation.CacheClass;
+import com.game.cache.mapper.ClassConfig;
 import com.game.cache.source.CacheCollection;
 import com.game.cache.source.ICacheDelayUpdateSource;
 import com.game.cache.source.KeyCacheValue;
@@ -12,11 +12,13 @@ import java.util.Map;
 
 public interface ICacheSource<PK, K, V> {
 
-    LockKey getLockKey();
+    LockKey getLockKey(PK primaryKey);
+
+    LockKey getSharedLockKey(PK primaryKey);
 
     Class<V> getAClass();
 
-    CacheClass getCacheClass();
+    ClassConfig getClassConfig();
 
     Map<String, Object> get(PK primaryKey, K secondaryKey);
 

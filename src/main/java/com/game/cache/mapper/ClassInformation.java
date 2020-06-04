@@ -2,7 +2,6 @@ package com.game.cache.mapper;
 
 import com.game.cache.InformationName;
 import com.game.cache.exception.CacheException;
-import com.game.cache.mapper.annotation.CacheClass;
 import com.game.cache.mapper.annotation.CacheFiled;
 import com.game.cache.mapper.annotation.CacheIndex;
 import com.game.cache.mapper.annotation.IndexField;
@@ -31,6 +30,7 @@ public class ClassInformation {
     }
 
     private final Class<?> aClass;
+    private final ClassConfig classConfig;
     private List<String> primaryKeys;
     private List<String> secondaryKeys;
     private List<String> primarySecondaryKeys;
@@ -41,6 +41,7 @@ public class ClassInformation {
 
     private ClassInformation(Class<?> aClass) {
         this.aClass = aClass;
+        this.classConfig = ClassConfig.loadConfig(aClass);
         this.primaryKeys = new ArrayList<>();
         this.secondaryKeys = new ArrayList<>();
         this.primarySecondaryKeys = new ArrayList<>();
@@ -92,8 +93,8 @@ public class ClassInformation {
         return aClass.getAnnotation(CacheIndex.class);
     }
 
-    public CacheClass getCacheClass(){
-        return aClass.getAnnotation(CacheClass.class);
+    public ClassConfig getClassConfig(){
+        return classConfig;
     }
 
     public Field getCacheSourceFiled() {

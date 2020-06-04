@@ -2,7 +2,7 @@ package com.game.cache.source;
 
 import com.game.cache.data.IData;
 import com.game.cache.exception.CacheException;
-import com.game.cache.mapper.annotation.CacheClass;
+import com.game.cache.mapper.ClassConfig;
 import com.game.cache.source.executor.CacheCallable;
 import com.game.cache.source.executor.CacheRunnable;
 import com.game.cache.source.executor.ICacheExecutor;
@@ -51,8 +51,13 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
     }
 
     @Override
-    public LockKey getLockKey() {
-        return cacheSource.getLockKey();
+    public LockKey getLockKey(PK primaryKey) {
+        return cacheSource.getLockKey(primaryKey);
+    }
+
+    @Override
+    public LockKey getSharedLockKey(PK primaryKey) {
+        return getSharedLockKey(primaryKey);
     }
 
     @Override
@@ -61,8 +66,8 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
     }
 
     @Override
-    public CacheClass getCacheClass() {
-        return cacheSource.getCacheClass();
+    public ClassConfig getClassConfig() {
+        return cacheSource.getClassConfig();
     }
 
     @Override
@@ -129,8 +134,8 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
     public boolean executePrimaryCacheFlushSync(PK primaryKey) {
         CacheCallable<Boolean> callable = createPrimaryCacheFlushCallable(primaryKey, "executePrimaryCacheFlushSync", null);
         boolean isSuccess = false;
-        int flushTryCount = Configs.getInstance().getInt("cache.flushTryCount");
-        long flushTimeOut = Configs.getInstance().getDuration("cache.flushTimeOut", TimeUnit.MILLISECONDS);
+        int flushTryCount = Configs.getInstance().getInt("cache.flush.tryCount");
+        long flushTimeOut = Configs.getInstance().getDuration("cache.flush.timeOut", TimeUnit.MILLISECONDS);
         for (int count = 0; count < flushTryCount; count++) {
             try {
                 Future<Boolean> future = executor.submit(callable);
@@ -149,7 +154,7 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
 
     private CacheCallable<Boolean> createPrimaryCacheFlushCallable(PK primaryKey, String message,  Consumer<Boolean> consumer){
         CacheCallable<Boolean> callable = new CacheCallable<>(getScheduleName(), () -> {
-            Boolean isSuccess = LockUtil.syncLock(getLockKey(), message, () -> {
+            Boolean isSuccess = LockUtil.syncLock(getLockKey(primaryKey), message, () -> {
                 PrimaryCache<K> primaryCache = primaryCacheMap.remove(primaryKey);
                 if (primaryCache == null) {
                     return true;
@@ -163,7 +168,7 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
     }
 
     protected String getScheduleName() {
-        return cacheSource.getCacheName();
+        return cacheSource.getClassConfig().tableName;
     }
 
     @Override
@@ -202,20 +207,18 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
         if (removePrimaryKeyList.isEmpty()){
             return;
         }
-        LockUtil.syncLock(getLockKey(), "onSchedule", () -> {
-            for (PK pk : removePrimaryKeyList) {
-                PrimaryCache<K> primaryCache = primaryCacheMap.remove(pk);
-                if (primaryCache == null){
-                    continue;
-                }
-                Collection<KeyCacheValue<K>> keyCacheValues = primaryCache.getAll();
-                if (keyCacheValues.isEmpty()){
-                    continue;
-                }
-                keyCacheValuesMap.put(pk, keyCacheValues);
+        for (PK pk : removePrimaryKeyList) {
+            PrimaryCache<K> primaryCache = primaryCacheMap.remove(pk);
+            if (primaryCache == null){
+                continue;
             }
-            flushKeyCacheValuesInLock(keyCacheValuesMap);
-        });
+            Collection<KeyCacheValue<K>> keyCacheValues = primaryCache.getAll();
+            if (keyCacheValues.isEmpty()){
+                continue;
+            }
+            keyCacheValuesMap.put(pk, keyCacheValues);
+        }
+        flushKeyCacheValuesInLock(keyCacheValuesMap);
     }
 
     private Collection<Map<String, Object>> replaceAllCacheValues(PK primaryKey, Collection<Map<String, Object>> cacheValues){
