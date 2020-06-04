@@ -1,6 +1,7 @@
 package com.game.common.util;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -11,6 +12,17 @@ public class CommonUtil {
     public static <T> T findOneIf(Collection<T> collection, Predicate<T> predicate){
         for (T data : collection) {
             if (predicate.test(data)) {
+                return data;
+            }
+        }
+        return  null;
+    }
+
+    public static <T> T removeOneIf(List<T> dataList, Predicate<T> predicate){
+        for (int i = 0; i < dataList.size(); i++) {
+            T data = dataList.get(i);
+            if (predicate.test(data)) {
+                dataList.remove(i);
                 return data;
             }
         }

@@ -20,7 +20,10 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -38,35 +41,60 @@ public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDi
     }
 
     @Override
-    protected Map<String, Object> get0(Map<String, Object> key2Values) {
-        return MongoDBQueryUtil.queryOne(getCollection(), getClassConfig().primarySharedId,  key2Values);
+    protected Map<String, Object> get0(PK primaryKey, K secondaryKey) {
+        List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createAllKeyValue(primaryKey, secondaryKey);
+        return MongoDBQueryUtil.queryOne(getCollection(), getClassConfig().primarySharedId,  entryList);
     }
 
     @Override
-    protected Collection<Map<String, Object>> getAll0(Map<String, Object> key2Values) {
-        return MongoDBQueryUtil.queryAll(getCollection(), getClassConfig().primarySharedId,  key2Values);
+    protected Collection<Map<String, Object>> getAll0(PK primaryKey) {
+        List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createPrimaryKeyValue(primaryKey);
+        return MongoDBQueryUtil.queryAll(getCollection(), getClassConfig().primarySharedId,  entryList);
     }
 
     @Override
-    protected CacheCollection getCollection0(Map<String, Object> key2Values, List<Integer> primarySharedIds) {
-        Collection<Map<String, Object>> mapCollection = MongoDBQueryUtil.queryAll(getCollection(), primarySharedIds, key2Values);
-        return new CacheCollection(mapCollection, new CacheInformation());
+    protected CacheCollection getPrimaryCollection(PK primaryKey) {
+        int primarySharedId = getClassConfig().primarySharedId;
+        List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createPrimaryKeyValue(primaryKey);
+        Collection<Map<String, Object>> mapCollection = MongoDBQueryUtil.queryAll(getCollection(), primarySharedId, entryList);
+        return new CacheCollection(primarySharedId, mapCollection, new CacheInformation());
     }
 
     @Override
-    protected boolean replaceOne0(Map<String, Object> key2Values, KeyCacheValue<K> keyCacheValue) {
-        Document queryDocument = CacheMongoDBUtil.getQueryDocument(getClassConfig().primarySharedId,  key2Values);
-        Document document = CacheMongoDBUtil.toDocument(keyCacheValue.getCacheValue());
+    protected Map<Integer, CacheCollection> getSharedCollections(PK primaryKey, List<Integer> primarySharedIds) {
+        List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createPrimaryKeyValue(primaryKey);
+        Collection<Map<String, Object>> mapCollection = MongoDBQueryUtil.queryAll(getCollection(), primarySharedIds, entryList);
+        Map<Integer, List<Map<String, Object>>> primarySharedId2CacheValues = CacheCollection.groupPrimarySharedId(mapCollection);
+        Map<Integer, CacheCollection> mapCollectionMap = new HashMap<>(primarySharedId2CacheValues.size());
+        for (Integer primarySharedId : primarySharedIds) {
+            List<Map<String, Object>> cacheValueList = primarySharedId2CacheValues.get(primarySharedId);
+            if (cacheValueList == null){
+                cacheValueList = Collections.emptyList();
+            }
+            CacheCollection cacheCollection = new CacheCollection(primarySharedId, cacheValueList, new CacheInformation());
+            mapCollectionMap.put(primarySharedId, cacheCollection);
+        }
+        return mapCollectionMap;
+    }
+
+    @Override
+    protected boolean replaceOne0(PK primaryKey, KeyCacheValue<K> keyCacheValue) {
+        List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createAllKeyValue(keyCacheValue.getCacheValue());
+        Document queryDocument = CacheMongoDBUtil.getQueryDocument(getClassConfig().primarySharedId,  entryList);
+        Document document = CacheMongoDBUtil.toDocument(keyCacheValue.getCacheValue().entrySet());
         MongoCollection<Document> collection = getCollection();
         UpdateResult updateOne = collection.updateOne(queryDocument, document, CacheMongoDBUtil.UPDATE_OPTIONS);
         return updateOne.wasAcknowledged();
     }
 
     @Override
-    protected boolean replaceBatch0(Map<String, Object> key2Values, List<KeyCacheValue<K>> keyCacheValueList) {
+    protected boolean replaceBatch0(PK primaryKey, List<KeyCacheValue<K>> keyCacheValueList) {
+        List<Map.Entry<String, Object>> keyValue = getKeyValueBuilder().createPrimaryKeyValue(primaryKey);
+
         List<UpdateOneModel<Document>> updateOneModelList = keyCacheValueList.stream().map( keyCacheValue -> {
-            Map<String, Object> keyValue = getKeyValueBuilder().createPrimarySecondaryKeyValue(keyCacheValue.getCacheValue());
-            return CacheMongoDBUtil.createUpdateOneModel(getClassConfig().primarySharedId,  keyValue, keyCacheValue.getCacheValue());
+            List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createAllKeyValue(keyCacheValue.getCacheValue());
+            Map<String, Object> key2Values = entryList.stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+            return CacheMongoDBUtil.createUpdateOneModel(getClassConfig().primarySharedId,  keyValue, keyCacheValue.getCacheValue().entrySet());
         }).collect(Collectors.toList());
         MongoCollection<Document> collection = getCollection();
         BulkWriteResult writeResult = collection.bulkWrite(updateOneModelList);
@@ -74,15 +102,21 @@ public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDi
     }
 
     @Override
-    protected boolean deleteOne0(Map<String, Object> key2Values) {
-        Document queryDocument = CacheMongoDBUtil.getQueryDocument(getClassConfig().primarySharedId,  key2Values);
+    protected boolean deleteOne0(PK primaryKey, K secondaryKey) {
+        List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createAllKeyValue(primaryKey, secondaryKey);
+        Document queryDocument = CacheMongoDBUtil.getQueryDocument(getClassConfig().primarySharedId,  entryList);
         MongoCollection<Document> collection = getCollection();
         DeleteResult deleteOne = collection.deleteOne(queryDocument);
         return deleteOne.wasAcknowledged();
     }
 
     @Override
-    protected boolean deleteBatch0(List<Map<String, Object>> key2ValuesList) {
+    protected boolean deleteBatch0(PK primaryKey, Collection<K> secondaryKeys) {
+        List<List<Map.Entry<String, Object>>> key2ValuesList = new ArrayList<>();
+        for (K secondaryKey : secondaryKeys) {
+            List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createAllKeyValue(primaryKey, secondaryKey);
+            key2ValuesList.add(entryList);
+        }
         List<DeleteOneModel<Document>> deleteOneModelList = CacheMongoDBUtil.createDeleteOneModelList(getClassConfig().primarySharedId,  key2ValuesList);
         MongoCollection<Document> collection = getCollection();
         BulkWriteResult writeResult = collection.bulkWrite(deleteOneModelList);

@@ -21,8 +21,8 @@ public class CacheInteraction<PK> implements ICacheSourceInteract<PK> {
     }
 
     @Override
-    public boolean loginSharedLoad(PK primaryKey, String cacheName) {
-        return loginSharedLoad.loginSharedLoad(primaryKey, cacheName);
+    public boolean loginSharedLoadTable(PK primaryKey, String tableName) {
+        return loginSharedLoad.loginSharedLoadTable(primaryKey, tableName);
     }
 
     @SuppressWarnings("unchecked")

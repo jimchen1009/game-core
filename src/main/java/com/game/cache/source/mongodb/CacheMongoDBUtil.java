@@ -11,6 +11,7 @@ import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.UpdateOptions;
 import org.bson.Document;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -72,48 +73,50 @@ public class CacheMongoDBUtil {
         collection.createIndex(hashDocument, new IndexOptions());
     }
 
-    public static UpdateOneModel<Document> createUpdateOneModel(int primarySharedId, Map<String, Object> keyValue, Map<String, Object> cache2Values) {
+    public static UpdateOneModel<Document> createUpdateOneModel(int primarySharedId, Collection<Map.Entry<String, Object>> keyValue, Collection<Map.Entry<String, Object>> cache2Values) {
         Document queryDocument = getQueryDocument(primarySharedId, keyValue);
         Document document = toDocument(cache2Values);
         return new UpdateOneModel<>(queryDocument, document, UPDATE_OPTIONS);
     }
 
-    public static DeleteOneModel<Document> createDeleteOneModel(int primarySharedId, Map<String, Object> keyValue) {
+    public static DeleteOneModel<Document> createDeleteOneModel(int primarySharedId, List<Map.Entry<String, Object>> keyValue) {
         Document document = getQueryDocument(primarySharedId, keyValue);
         return new DeleteOneModel<>(document);
     }
 
-    public static List<DeleteOneModel<Document>> createDeleteOneModelList(int primarySharedId, List<Map<String, Object>> key2ValuesList) {
+    public static List<DeleteOneModel<Document>> createDeleteOneModelList(int primarySharedId, Collection<List<Map.Entry<String, Object>>> key2ValuesList) {
         return key2ValuesList.stream().map(keyValue-> createDeleteOneModel(primarySharedId, keyValue)).collect(Collectors.toList());
     }
 
-    public static Document getQueryDocument(int primarySharedId, Map<String, Object> keyValue){
-        Document document = new Document(keyValue);
+    public static Document getQueryDocument(int primarySharedId, Collection<Map.Entry<String, Object>>  keyValue){
+        Document document = new Document();
+        for (Map.Entry<String, Object> entry : keyValue) {
+            document.append(entry.getKey(), entry.getValue());
+        }
         if (primarySharedId > 0){
             document.append(InformationName.CACHE_KEY.getKeyName(),primarySharedId);
         }
         return document;
     }
 
-    public static Document getQueryDocument(List<Integer> primarySharedIds, Map<String, Object> keyValue){
-        Document document = new Document(keyValue);
+    public static Document getQueryDocument(Collection<Integer> primarySharedIds, Collection<Map.Entry<String, Object>> keyValue){
+        Document document = new Document();
+        for (Map.Entry<String, Object> entry : keyValue) {
+            document.append(entry.getKey(), entry.getValue());
+        }
         primarySharedIds = primarySharedIds.stream().filter( primarySharedId -> primarySharedId > 0).collect(Collectors.toList());
-        if (primarySharedIds.size() == 1){
-            document.append(InformationName.CACHE_KEY.getKeyName(), primarySharedIds.get(0));
-        }
-        else {
-            document.append(InformationName.CACHE_KEY.getKeyName(), new Document("$in", primarySharedIds));
-        }
+        document.append(InformationName.CACHE_KEY.getKeyName(), new Document("$in", primarySharedIds));
         return document;
     }
 
-    public static Document toDocument(Map<String, Object> cacheValue){
+    public static Document toDocument(Collection<Map.Entry<String, Object>> cacheValue){
         Document document = new Document();
-        for (Map.Entry<String, Object> entry : cacheValue.entrySet()) {
+        for (Map.Entry<String, Object> entry : cacheValue) {
             if (InformationName.Names.contains(entry.getKey())) {
                 continue;
             }
             document.put(entry.getKey(), entry.getValue());
+
         }
         return new Document("$set", document);
     }

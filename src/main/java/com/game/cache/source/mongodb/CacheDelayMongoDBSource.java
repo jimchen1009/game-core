@@ -55,8 +55,8 @@ public class CacheDelayMongoDBSource<PK, K, V extends IData<K>> extends CacheDel
             for (KeyCacheValue<K> keyCacheValue : entry.getValue()) {
                 if (keyCacheValue.isDeleted()) {
                     if (deleteOneModelList.size() < batchCount){
-                        Map<String, Object> keyValue = keyValueBuilder.createPrimarySecondaryKeyValue(entry.getKey(), keyCacheValue.getKey());
-                        deleteOneModelList.add(CacheMongoDBUtil.createDeleteOneModel(primarySharedId, keyValue));
+                        List<Map.Entry<String, Object>> entryList = keyValueBuilder.createAllKeyValue(entry.getKey(), keyCacheValue.getKey());
+                        deleteOneModelList.add(CacheMongoDBUtil.createDeleteOneModel(primarySharedId, entryList));
                         deleteKeyCacheValueList.add(Args.create(entry.getKey(), keyCacheValue));
                     }
                     else {
@@ -65,8 +65,8 @@ public class CacheDelayMongoDBSource<PK, K, V extends IData<K>> extends CacheDel
                 }
                 else {
                     if (updateOneModelList.size() < batchCount){
-                        Map<String, Object> keyValue = keyValueBuilder.createPrimarySecondaryKeyValue(keyCacheValue.getCacheValue());
-                        updateOneModelList.add(CacheMongoDBUtil.createUpdateOneModel(primarySharedId, keyValue, keyCacheValue.getCacheValue()));
+                        List<Map.Entry<String, Object>> entryList = keyValueBuilder.createAllKeyValue(keyCacheValue.getCacheValue());
+                        updateOneModelList.add(CacheMongoDBUtil.createUpdateOneModel(primarySharedId, entryList, keyCacheValue.getCacheValue().entrySet()));
                         updateKeyCacheValueList.add(Args.create(entry.getKey(), keyCacheValue));
                     }
                     else {

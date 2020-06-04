@@ -2,17 +2,18 @@ package com.game.cache.source;
 
 import com.game.cache.mapper.ClassInformation;
 
+import java.util.List;
 import java.util.Map;
 
 public interface ICacheKeyValueBuilder<PK, K> {
 
     ClassInformation getClassInformation();
 
-    Map<String, Object> createPrimaryKeyValue(PK primaryKey);
+    List<Map.Entry<String, Object>> createPrimaryKeyValue(PK primaryKey);
 
-    Map<String, Object> createPrimarySecondaryKeyValue(PK primaryKey, K secondaryKey);
+    List<Map.Entry<String, Object>> createAllKeyValue(PK primaryKey, K secondaryKey);
 
-    Map<String, Object> createPrimarySecondaryKeyValue(Map<String, Object> cacheValue);
+    List<Map.Entry<String, Object>> createAllKeyValue(Map<String, Object> cacheValue);
 
     PK createPrimaryKey(Map<String, Object> cacheValue);
 

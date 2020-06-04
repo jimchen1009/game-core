@@ -48,8 +48,8 @@ public class ClassesInformation {
         return information == null ? null : information.getClassConfig();
     }
 
-    public Class<?> getClass(String cacheName, int primarySharedId){
-        Optional<ClassInformation> optional = name2CacheClasses.get(cacheName).stream()
+    public Class<?> getClass(String tableName, int primarySharedId){
+        Optional<ClassInformation> optional = name2CacheClasses.get(tableName).stream()
                 .filter(description -> description.getClassConfig().primarySharedId == primarySharedId)
                 .findFirst();
         return optional.<Class<?>>map(ClassInformation::getAClass).orElse(null);
@@ -62,18 +62,18 @@ public class ClassesInformation {
                 continue;
             }
             if (primarySharedIds.contains(0)) {
-                throw new CacheException("cacheName: %s, primarySharedId list contains 0.", entry.getKey());
+                throw new CacheException("tableName: %s, primarySharedId list contains 0.", entry.getKey());
             }
             for (int i = 1; i < primarySharedIds.size(); i++) {
                 if (primarySharedIds.get(i).equals(primarySharedIds.get(i - 1))){
-                    throw new CacheException("cacheName: %s, the same primarySharedId: %s.", entry.getKey(), primarySharedIds);
+                    throw new CacheException("tableName: %s, the same primarySharedId: %s.", entry.getKey(), primarySharedIds);
                 }
             }
         }
     }
 
-    public List<Integer> getPrimarySharedIds(String cacheName, int primarySharedId) {
-        List<Integer> primarySharedIds = name2CacheClasses.get(cacheName).stream()
+    public List<Integer> getPrimarySharedIds(String tableName, int primarySharedId) {
+        List<Integer> primarySharedIds = name2CacheClasses.get(tableName).stream()
                 .filter(description -> description.getClassConfig().loadOnShared)
                 .map(description -> description.getClassConfig().primarySharedId)
                 .collect(Collectors.toList());

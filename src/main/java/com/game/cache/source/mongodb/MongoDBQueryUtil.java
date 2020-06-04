@@ -23,17 +23,17 @@ public class MongoDBQueryUtil {
 
     public static final UpdateOptions UPDATE_OPTIONS = new UpdateOptions().upsert(true);
 
-    public static Map<String, Object> queryOne(MongoCollection<Document> collection, int primaryKeyId, Map<String, Object> keyValue) {
+    public static Map<String, Object> queryOne(MongoCollection<Document> collection, int primaryKeyId, List<Map.Entry<String, Object>> keyValue) {
         Document queryDocument = CacheMongoDBUtil.getQueryDocument(primaryKeyId, keyValue);
         return collection.find(queryDocument).first();
     }
 
-    public static Collection<Map<String, Object>> queryAll(MongoCollection<Document> collection, int primarySharedId, Map<String, Object> keyValue) {
+    public static Collection<Map<String, Object>> queryAll(MongoCollection<Document> collection, int primarySharedId, List<Map.Entry<String, Object>> keyValue) {
         Document queryDocument = CacheMongoDBUtil.getQueryDocument(primarySharedId, keyValue);
         return queryAll(collection, queryDocument);
     }
 
-    public static Collection<Map<String, Object>> queryAll(MongoCollection<Document> collection, List<Integer> primarySharedIds, Map<String, Object> keyValue) {
+    public static Collection<Map<String, Object>> queryAll(MongoCollection<Document> collection, List<Integer> primarySharedIds, List<Map.Entry<String, Object>> keyValue) {
         Document queryDocument = CacheMongoDBUtil.getQueryDocument(primarySharedIds, keyValue);
         return queryAll(collection, queryDocument);
     }

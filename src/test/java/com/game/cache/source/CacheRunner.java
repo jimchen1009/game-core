@@ -42,7 +42,7 @@ public class CacheRunner {
         };
 
         AtomicBoolean atomicBoolean = new AtomicBoolean(false);
-        ICacheLoginPredicate<Long> loginPredicate = (primaryKey, cacheName) -> atomicBoolean.compareAndSet(false, true);
+        ICacheLoginPredicate<Long> loginPredicate = (primaryKey, tableName) -> atomicBoolean.compareAndSet(false, true);
 
         IDataMapDao<Long, Long, UserItem> itemDao = DataDaoManager.getInstance()
                 .newDataMapDaoBuilder(UserItem.class, KeyValueHelper.LongBuilder, KeyValueHelper.LongBuilder)

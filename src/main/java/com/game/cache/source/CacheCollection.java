@@ -12,12 +12,18 @@ import java.util.Map;
 
 public class CacheCollection {
 
+    private final int primarySharedId;
     private Collection<Map<String, Object>> cacheValueList;
     private final CacheInformation information;
 
-    public CacheCollection(Collection<Map<String, Object>> cacheValueList, CacheInformation information) {
+    public CacheCollection(int primarySharedId, Collection<Map<String, Object>> cacheValueList, CacheInformation information) {
+        this.primarySharedId = primarySharedId;
         this.cacheValueList = cacheValueList;
         this.information = information;
+    }
+
+    public int getPrimarySharedId() {
+        return primarySharedId;
     }
 
     public Collection<Map<String, Object>> getCacheValuesList() {
@@ -33,17 +39,8 @@ public class CacheCollection {
     }
 
 
-    public Map<Integer, CacheCollection> groupBySharedId(int primarySharedId){
-        Map<Integer, List<Map<String, Object>>> key2CacheValues = CommonUtil.groupByKey(new HashMap<>(), cacheValueList,
+    public static Map<Integer, List<Map<String, Object>>> groupPrimarySharedId(Collection<Map<String, Object>> cacheValueList){
+        return CommonUtil.groupByKey(new HashMap<>(), cacheValueList,
                 ArrayList::new, cacheValue -> (Integer) cacheValue.get(InformationName.CACHE_KEY.getKeyName()));
-        Map<Integer, CacheCollection> primarySharedId2Collections = new HashMap<>();
-        for (Map.Entry<Integer, List<Map<String, Object>>> entry : key2CacheValues.entrySet()) {
-            CacheCollection cacheCollection = new CacheCollection(entry.getValue(), information.copy());
-            primarySharedId2Collections.put(entry.getKey(), cacheCollection);
-        }
-        if (!primarySharedId2Collections.containsKey(primarySharedId)){
-            primarySharedId2Collections.put(primarySharedId, new CacheCollection(new ArrayList<>(), information));
-        }
-        return primarySharedId2Collections;
     }
 }
