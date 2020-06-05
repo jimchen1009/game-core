@@ -7,8 +7,8 @@ import java.util.stream.Collectors;
 
 public enum InformationName {
     CACHE_KEY("k1", Integer.class),
-    EXPIRED("K10", Boolean.class),
-    DELETE("k11", Boolean.class),
+    DELETE("k2", Boolean.class),
+    EXPIRED("r1", Boolean.class),
     ;
 
     private final String keyName;

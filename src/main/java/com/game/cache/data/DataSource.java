@@ -4,8 +4,6 @@ import com.game.cache.exception.CacheException;
 import com.game.cache.mapper.ClassConverter;
 import com.game.cache.mapper.IClassConverter;
 import com.game.cache.mapper.ValueConvertMapper;
-import com.game.cache.source.CacheCollection;
-import com.game.cache.source.KeyCacheValue;
 import com.game.cache.source.executor.ICacheSource;
 import com.game.common.lock.LockKey;
 import com.game.common.log.LogUtil;
@@ -15,8 +13,6 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 class DataSource<PK, K, V extends IData<K>> implements IDataSource<PK, K, V>{
 
@@ -37,20 +33,22 @@ class DataSource<PK, K, V extends IData<K>> implements IDataSource<PK, K, V>{
 
     @Override
     public V get(PK primaryKey, K secondaryKey) {
-        Map<String, Object> cacheValue = cacheSource.get(primaryKey, secondaryKey);
-        return cacheValue == null ? null : markValueSource(converter.convert2Value(cacheValue));
+        V data = cacheSource.get(primaryKey, secondaryKey);
+        return data == null ? null : markValueSource(data);
     }
 
     @Override
     public List<V> getAll(PK primaryKey) {
-        Collection<Map<String, Object>> cacheValuesList = cacheSource.getAll(primaryKey);
-        return convertAndMarkValueSource(cacheValuesList);
+        List<V> dataList = cacheSource.getAll(primaryKey);
+        for (V data : dataList) {
+            markValueSource(data);
+        }
+        return dataList;
     }
 
     @Override
     public boolean replaceOne(PK primaryKey, V value) {
-        KeyCacheValue<K> keyCacheValue = KeyCacheValue.create(value.secondaryKey(), value.isCacheResource(), converter.convert2Cache(value));
-        boolean isSuccess = cacheSource.replaceOne(primaryKey, keyCacheValue);
+        boolean isSuccess = cacheSource.replaceOne(primaryKey, value);
         if (isSuccess){
         }
         return isSuccess;
@@ -58,11 +56,7 @@ class DataSource<PK, K, V extends IData<K>> implements IDataSource<PK, K, V>{
 
     @Override
     public boolean replaceBatch(PK primaryKey, Collection<V> values) {
-        List<KeyCacheValue<K>> cacheValueList = values.stream().map(value -> {
-            Map<String, Object> cacheValue = converter.convert2Cache(value);
-            return KeyCacheValue.create(value.secondaryKey(), value.isCacheResource(), cacheValue);
-        }).collect(Collectors.toList());
-        boolean isSuccess = cacheSource.replaceBatch(primaryKey, cacheValueList);
+        boolean isSuccess = cacheSource.replaceBatch(primaryKey, values);
         if (isSuccess){
         }
         return isSuccess;
@@ -80,32 +74,22 @@ class DataSource<PK, K, V extends IData<K>> implements IDataSource<PK, K, V>{
 
     @Override
     public DataCollection<K, V> getCollection(PK primaryKey) {
-        CacheCollection cacheCollection = cacheSource.getCollection(primaryKey);
-        Collection<Map<String, Object>> cacheValuesList = cacheCollection.getCacheValuesList();
-        List<V> valueList = convertAndMarkValueSource(cacheValuesList);
-        return new DataCollection<>(valueList, cacheCollection.getInformation());
+        DataCollection<K, V> collection = cacheSource.getCollection(primaryKey);
+        for (V data : collection.getDataList()) {
+            markValueSource(data);
+        }
+        return collection;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public V cloneValue(V value) {
-        return (V)value.clone(()-> convertClone(value));
+        return cacheSource.cloneValue(value);
     }
 
     @Override
     public IClassConverter<K, V> getConverter() {
         return converter;
-    }
-
-    private V convertClone(V value){
-        Map<String, Object> cacheValue = converter.convert2Cache(value);
-        return converter.convert2Value(cacheValue);
-    }
-
-    private List<V> convertAndMarkValueSource(Collection<Map<String, Object>> cacheValuesList){
-        List<V> dataList = converter.convert2ValueList(cacheValuesList);
-        dataList.forEach(this::markValueSource);
-        return dataList;
     }
 
     private V markValueSource(V dataValue){

@@ -1,5 +1,6 @@
 package com.game.cache.source.mongodb;
 
+import com.game.cache.CacheType;
 import com.game.cache.data.IData;
 import com.game.cache.source.CacheDelaySource;
 import com.game.cache.source.ICacheKeyValueBuilder;
@@ -122,5 +123,10 @@ public class CacheDelayMongoDBSource<PK, K, V extends IData<K>> extends CacheDel
 
     private CacheMongoDBSource<PK, K, V> getMongoDBSource() {
         return (CacheMongoDBSource<PK, K, V>)super.getCacheSource();
+    }
+
+    @Override
+    public CacheType getCacheType() {
+        return getMongoDBSource().getCacheType();
     }
 }

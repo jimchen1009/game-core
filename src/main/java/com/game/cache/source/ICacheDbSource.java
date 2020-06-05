@@ -10,6 +10,5 @@ public interface ICacheDbSource<PK, K, V extends IData<K>> extends ICacheSource<
 
     CacheCollection getPrimaryCollection(PK primaryKey);
 
-
     Map<Integer, CacheCollection> getSharedCollections(PK primaryKey, List<Integer> primarySharedIds);
 }

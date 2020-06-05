@@ -25,7 +25,7 @@ public class ConcurrentWeakReferenceMap<K, V> {
         /**
          * reference:
          * null，说明key已经被清理了
-         * reference.get()为null，是因为清理的时候还有引用，清理完没引用了，所以get出来的值是null
+         * reference.getCache()为null，是因为清理的时候还有引用，清理完没引用了，所以get出来的值是null
          */
         return reference == null ? null : reference.get();
     }

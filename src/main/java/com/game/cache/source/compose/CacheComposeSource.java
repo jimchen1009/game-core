@@ -1,11 +1,12 @@
 package com.game.cache.source.compose;
 
+import com.game.cache.CacheType;
+import com.game.cache.data.DataCollection;
 import com.game.cache.data.IData;
 import com.game.cache.mapper.ClassConfig;
-import com.game.cache.source.CacheCollection;
+import com.game.cache.mapper.IClassConverter;
 import com.game.cache.source.ICacheDelaySource;
 import com.game.cache.source.ICacheKeyValueBuilder;
-import com.game.cache.source.KeyCacheValue;
 import com.game.cache.source.executor.ICacheExecutor;
 import com.game.cache.source.executor.ICacheSource;
 import com.game.cache.source.redis.ICacheRedisSource;
@@ -13,7 +14,6 @@ import com.game.common.lock.LockKey;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 
 public class CacheComposeSource<PK, K, V extends IData<K>> implements ICacheSource<PK, K, V> {
 
@@ -31,6 +31,51 @@ public class CacheComposeSource<PK, K, V extends IData<K>> implements ICacheSour
     }
 
     @Override
+    public V get(PK primaryKey, K secondaryKey) {
+        V data = redisSource.get(primaryKey, secondaryKey);
+        if (data == null){
+            data = dbSource.get(primaryKey, secondaryKey);
+        }
+        return data;
+    }
+
+    @Override
+    public List<V> getAll(PK primaryKey) {
+        List<V> dataList = redisSource.getAll(primaryKey);
+        if (dataList == null){
+            dataList = dbSource.getAll(primaryKey);
+        }
+        return dataList;
+    }
+
+    @Override
+    public DataCollection<K, V> getCollection(PK primaryKey) {
+        DataCollection<K, V> collection = redisSource.getCollection(primaryKey);
+        if (collection == null || collection.isEmpty()){
+            collection = dbSource.getCollection(primaryKey);
+        }
+        return collection;
+    }
+
+    @Override
+    public boolean replaceOne(PK primaryKey, V value) {
+        boolean isSuccess = redisSource.replaceOne(primaryKey, value);
+        if (isSuccess){
+            isSuccess = dbSource.replaceOne(primaryKey, value);
+        }
+        return isSuccess;
+    }
+
+    @Override
+    public boolean replaceBatch(PK primaryKey, Collection<V> values) {
+        boolean isSuccess = redisSource.replaceBatch(primaryKey, values);
+        if (isSuccess){
+            isSuccess = dbSource.replaceBatch(primaryKey, values);
+        }
+        return isSuccess;
+    }
+
+    @Override
     public Class<V> getAClass() {
         return redisSource.getAClass();
     }
@@ -41,48 +86,8 @@ public class CacheComposeSource<PK, K, V extends IData<K>> implements ICacheSour
     }
 
     @Override
-    public Map<String, Object> get(PK primaryKey, K secondaryKey) {
-        Map<String, Object> cacheValue = redisSource.get(primaryKey, secondaryKey);
-        if (cacheValue == null){
-            cacheValue = dbSource.get(primaryKey, secondaryKey);
-        }
-        return cacheValue;
-    }
-
-    @Override
-    public Collection<Map<String, Object>> getAll(PK primaryKey) {
-        Collection<Map<String, Object>> cacheValues = redisSource.getAll(primaryKey);
-        if (cacheValues == null){
-            cacheValues = dbSource.getAll(primaryKey);
-        }
-        return cacheValues;
-    }
-
-    @Override
-    public CacheCollection getCollection(PK primaryKey) {
-        CacheCollection collection = redisSource.getCollection(primaryKey);
-        if (collection == null || collection.isEmpty()){
-            collection = dbSource.getCollection(primaryKey);
-        }
-        return collection;
-    }
-
-    @Override
-    public boolean replaceOne(PK primaryKey, KeyCacheValue<K> keyCacheValue) {
-        boolean isSuccess = redisSource.replaceOne(primaryKey, keyCacheValue);
-        if (isSuccess){
-            isSuccess = dbSource.replaceOne(primaryKey, keyCacheValue);
-        }
-        return isSuccess;
-    }
-
-    @Override
-    public boolean replaceBatch(PK primaryKey, List<KeyCacheValue<K>> keyCacheValues) {
-        boolean isSuccess = redisSource.replaceBatch(primaryKey, keyCacheValues);
-        if (isSuccess){
-            isSuccess = dbSource.replaceBatch(primaryKey, keyCacheValues);
-        }
-        return isSuccess;
+    public CacheType getCacheType() {
+       throw new UnsupportedOperationException();
     }
 
     @Override
@@ -101,6 +106,16 @@ public class CacheComposeSource<PK, K, V extends IData<K>> implements ICacheSour
             isSuccess = dbSource.deleteBatch(primaryKey, secondaryKeys);
         }
         return isSuccess;
+    }
+
+    @Override
+    public V cloneValue(V value) {
+        return dbSource.cloneValue(value);
+    }
+
+    @Override
+    public IClassConverter<K, V> getConverter() {
+        return dbSource.getConverter();
     }
 
     @Override

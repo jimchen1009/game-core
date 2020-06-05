@@ -19,14 +19,14 @@ class DataSourceLogger<PK, K, V extends IData<K>> extends DataSourceDecorator<PK
     @Override
     protected void onGet(PK primaryKey, K secondaryKey, V value) {
         Map<String, Object> convert2Cache = getConverter().convert2Cache(value);
-        logger.trace("primaryKey:{} getAll:{}", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(convert2Cache));
+        logger.trace("primaryKey:{} getCacheAll:{}", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(convert2Cache));
     }
 
 
     @Override
     protected void onGetAll(PK primaryKey, List<V> values) {
         List<Map<String, Object>> convert2CacheList = getConverter().convert2CacheList(values);
-        logger.trace("primaryKey:{} getAll:{}", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(convert2CacheList));
+        logger.trace("primaryKey:{} getCacheAll:{}", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(convert2CacheList));
     }
 
     @Override
@@ -54,7 +54,7 @@ class DataSourceLogger<PK, K, V extends IData<K>> extends DataSourceDecorator<PK
 
     @Override
     protected void onGetCollection(PK primaryKey, DataCollection<K, V> collection) {
-        logger.trace("primaryKey:{} getCollection:{}", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(collection));
+        logger.trace("primaryKey:{} getCacheCollection:{}", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(collection));
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.game.cache.source;
 
+import com.alibaba.fastjson.annotation.JSONField;
 import com.game.cache.data.Data;
 import com.game.cache.mapper.annotation.CacheFiled;
 import com.game.cache.mapper.annotation.CacheIndex;
@@ -10,15 +11,19 @@ import com.game.cache.mapper.annotation.IndexType;
 @CacheIndex(fields = {@IndexField(name = "userId", type = IndexType.ASC, isPrimary = true), @IndexField(name = "currencyId", type = IndexType.ASC, isPrimary = false)}, options = @IndexOptions(unique = true))
 public class UserCurrency extends Data<Integer> {
 
+    @JSONField(jsonDirect = true)
     @CacheFiled(index = 0)
     private long userId;
 
+    @JSONField(jsonDirect = true)
     @CacheFiled(index = 1)
     private int currencyId;
 
+    @JSONField(jsonDirect = true)
     @CacheFiled(index = 2)
     private long count;
 
+    @JSONField(jsonDirect = true)
     @CacheFiled(index = 3)
     private long gainedCount;
 
@@ -56,6 +61,9 @@ public class UserCurrency extends Data<Integer> {
         return userId;
     }
 
+    public int getCurrencyId() {
+        return currencyId;
+    }
 
     @Override
     public String toString() {

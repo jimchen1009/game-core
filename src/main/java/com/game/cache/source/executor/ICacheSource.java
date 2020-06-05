@@ -1,17 +1,16 @@
 package com.game.cache.source.executor;
 
+import com.game.cache.CacheType;
+import com.game.cache.data.IData;
+import com.game.cache.data.IDataSource;
 import com.game.cache.mapper.ClassConfig;
-import com.game.cache.source.CacheCollection;
 import com.game.cache.source.ICacheDelaySource;
 import com.game.cache.source.ICacheKeyValueBuilder;
-import com.game.cache.source.KeyCacheValue;
 import com.game.common.lock.LockKey;
 
 import java.util.Collection;
-import java.util.List;
-import java.util.Map;
 
-public interface ICacheSource<PK, K, V> {
+public interface ICacheSource<PK, K, V extends IData<K>> extends IDataSource<PK, K, V> {
 
     LockKey getLockKey(PK primaryKey);
 
@@ -19,15 +18,8 @@ public interface ICacheSource<PK, K, V> {
 
     ClassConfig getClassConfig();
 
-    Map<String, Object> get(PK primaryKey, K secondaryKey);
+    CacheType getCacheType();
 
-    Collection<Map<String, Object>> getAll(PK primaryKey);
-
-    CacheCollection getCollection(PK primaryKey);
-
-    boolean replaceOne(PK primaryKey, KeyCacheValue<K> keyCacheValue);
-
-    boolean replaceBatch(PK primaryKey, List<KeyCacheValue<K>> keyCacheValueList);
 
     boolean deleteOne(PK primaryKey, K secondaryKey);
 

@@ -80,8 +80,8 @@ public class CacheKeyValueBuilder<PK, K> implements ICacheKeyValueBuilder<PK, K>
     }
 
     @Override
-    public String toSecondaryKeyString(K primaryKey) {
-        return secondaryBuilder.toKeyString(primaryKey);
+    public String toSecondaryKeyString(K secondaryKey) {
+        return secondaryBuilder.toKeyString(secondaryKey);
     }
 
     @Override

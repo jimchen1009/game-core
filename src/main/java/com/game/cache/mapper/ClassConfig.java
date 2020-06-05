@@ -34,7 +34,7 @@ public class ClassConfig {
         this.delayUpdate = delayUpdate;
         this.loadOnShared = loadOnShared;
         this.versionId = versionId;
-        this.redisKeyString = "%s_" + String.format("%s%s.%s", tableName ,primarySharedId, versionId);
+        this.redisKeyString = "%s_" + String.format("%s%s.v%s", tableName ,primarySharedId, versionId);
     }
 
     public int getPrimarySharedId() {

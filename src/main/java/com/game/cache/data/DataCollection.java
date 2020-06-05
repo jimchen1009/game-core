@@ -6,19 +6,23 @@ import java.util.List;
 
 public class DataCollection<K, V extends IData<K>> {
 
-    private final List<V> valueList;
+    private final List<V> dataList;
     private final CacheInformation information;
 
-    public DataCollection(List<V> valueList, CacheInformation information) {
-        this.valueList = valueList;
+    public DataCollection(List<V> dataList, CacheInformation information) {
+        this.dataList = dataList;
         this.information = information;
     }
 
-    public List<V> getValueList() {
-        return valueList;
+    public List<V> getDataList() {
+        return dataList;
     }
 
     public CacheInformation getInformation() {
         return information;
+    }
+
+    public boolean isEmpty(){
+        return information.isEmpty() && dataList.isEmpty();
     }
 }

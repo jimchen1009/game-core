@@ -25,7 +25,7 @@ public interface ICacheKeyValueBuilder<PK, K> {
 
     String toPrimaryKeyString(PK primaryKey);
 
-    String toSecondaryKeyString(K primaryKey);
+    String toSecondaryKeyString(K secondaryKey);
 
     K createSecondaryKey(String string);
 }

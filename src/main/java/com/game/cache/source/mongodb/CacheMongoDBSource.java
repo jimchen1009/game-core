@@ -1,6 +1,7 @@
 package com.game.cache.source.mongodb;
 
 import com.game.cache.CacheInformation;
+import com.game.cache.CacheType;
 import com.game.cache.data.IData;
 import com.game.cache.key.IKeyValueBuilder;
 import com.game.cache.mapper.annotation.CacheIndex;
@@ -41,13 +42,18 @@ public class CacheMongoDBSource<PK, K, V extends IData<K>> extends CacheDbSource
     }
 
     @Override
-    public Map<String, Object> get(PK primaryKey, K secondaryKey) {
+    public CacheType getCacheType() {
+        return CacheType.MongoDb;
+    }
+
+    @Override
+    public Map<String, Object> getCache(PK primaryKey, K secondaryKey) {
         List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createAllKeyValue(primaryKey, secondaryKey);
         return MongoDBQueryUtil.queryOne(getCollection(), getClassConfig().primarySharedId,  entryList);
     }
 
     @Override
-    public Collection<Map<String, Object>> getAll(PK primaryKey) {
+    public Collection<Map<String, Object>> getCacheAll(PK primaryKey) {
         List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createPrimaryKeyValue(primaryKey);
         return MongoDBQueryUtil.queryAll(getCollection(), getClassConfig().primarySharedId,  entryList);
     }

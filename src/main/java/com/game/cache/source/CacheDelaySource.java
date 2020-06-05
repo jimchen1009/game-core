@@ -1,8 +1,10 @@
 package com.game.cache.source;
 
+import com.game.cache.data.DataCollection;
 import com.game.cache.data.IData;
 import com.game.cache.exception.CacheException;
 import com.game.cache.mapper.ClassConfig;
+import com.game.cache.mapper.IClassConverter;
 import com.game.cache.source.executor.CacheCallable;
 import com.game.cache.source.executor.CacheRunnable;
 import com.game.cache.source.executor.ICacheExecutor;
@@ -34,11 +36,11 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
 
     public static final Map<String, Object> EMPTY = Collections.emptyMap();
 
-    private final CacheSource<PK, K, V> cacheSource;
+    private final CacheDbSource<PK, K, V> cacheSource;
     private final Map<PK, PrimaryCache<K>> primaryCacheMap;
     private final ICacheExecutor executor;
 
-    public CacheDelaySource(CacheSource<PK, K, V> cacheSource, ICacheExecutor executor) {
+    public CacheDelaySource(CacheDbSource<PK, K, V> cacheSource, ICacheExecutor executor) {
         this.cacheSource = cacheSource;
         this.primaryCacheMap = new ConcurrentHashMap<>();
         this.executor = executor;
@@ -55,6 +57,53 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
     }
 
     @Override
+    public V get(PK primaryKey, K secondaryKey) {
+        PrimaryCache<K> primaryCache = primaryCacheMap.get(primaryKey);
+        if (primaryCache == null){
+            return cacheSource.get(primaryKey, secondaryKey);
+        }
+        else {
+            Map<String, Object> sourceCache = cacheSource.getCache(primaryKey, secondaryKey);
+            Map<String, Object> cacheValue = primaryCache.getCacheValue(secondaryKey);
+            return cacheValue == null ? null : getConverter().convert2Value(cacheValue);
+        }
+    }
+
+    @Override
+    public List<V> getAll(PK primaryKey) {
+        Collection<Map<String, Object>> cacheAll = cacheSource.getCacheAll(primaryKey);
+        Collection<Map<String, Object>> cacheValues = replaceAllCacheValues(primaryKey, cacheAll);
+        return getConverter().convert2ValueList(cacheValues);
+    }
+
+    @Override
+    public DataCollection<K, V> getCollection(PK primaryKey) {
+        CacheCollection cacheCollection = cacheSource.getCacheCollection(primaryKey);
+        Collection<Map<String, Object>> allCacheValues = replaceAllCacheValues(primaryKey, cacheCollection.getCacheValuesList());
+        return new DataCollection<>(getConverter().convert2ValueList(allCacheValues), cacheCollection.getInformation());
+    }
+
+    @Override
+    public boolean replaceOne(PK primaryKey, V value) {
+        PrimaryCache<K> kPrimaryCache = primaryCacheMap.computeIfAbsent(primaryKey, key -> new PrimaryCache<>());
+        Map<String, Object> cacheValue = getConverter().convert2Cache(value);
+        KeyCacheValue<K> keyCacheValue = KeyCacheValue.create(value.secondaryKey(), value.isCacheResource(), cacheValue);
+        kPrimaryCache.add(keyCacheValue);
+        return true;
+    }
+
+    @Override
+    public boolean replaceBatch(PK primaryKey, Collection<V> values) {
+        PrimaryCache<K> kPrimaryCache = primaryCacheMap.computeIfAbsent(primaryKey, key -> new PrimaryCache<>());
+        List<KeyCacheValue<K>> cacheValueList = values.stream().map(value -> {
+            Map<String, Object> cacheValue = getConverter().convert2Cache(value);
+            return KeyCacheValue.create(value.secondaryKey(), value.isCacheResource(), cacheValue);
+        }).collect(Collectors.toList());
+        kPrimaryCache.addAll(cacheValueList);
+        return true;
+    }
+
+    @Override
     public Class<V> getAClass() {
         return cacheSource.getAClass();
     }
@@ -62,40 +111,6 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
     @Override
     public ClassConfig getClassConfig() {
         return cacheSource.getClassConfig();
-    }
-
-    @Override
-    public Map<String, Object> get(PK primaryKey, K secondaryKey) {
-        PrimaryCache<K> primaryCache = primaryCacheMap.get(primaryKey);
-        return primaryCache == null ? cacheSource.get(primaryKey, secondaryKey) : primaryCache.getCacheValue(secondaryKey);
-    }
-
-    @Override
-    public Collection<Map<String, Object>> getAll(PK primaryKey) {
-        Collection<Map<String, Object>> cacheValues = cacheSource.getAll(primaryKey);
-        return replaceAllCacheValues(primaryKey, cacheValues);
-    }
-
-    @Override
-    public CacheCollection getCollection(PK primaryKey) {
-        CacheCollection cacheCollection = cacheSource.getCollection(primaryKey);
-        Collection<Map<String, Object>> allCacheValues = replaceAllCacheValues(primaryKey, cacheCollection.getCacheValuesList());
-        cacheCollection.setCacheValueList(allCacheValues);
-        return cacheCollection;
-    }
-
-    @Override
-    public boolean replaceOne(PK primaryKey, KeyCacheValue<K> keyCacheValue) {
-        PrimaryCache<K> kPrimaryCache = primaryCacheMap.computeIfAbsent(primaryKey, key -> new PrimaryCache<>());
-        kPrimaryCache.add(keyCacheValue);
-        return true;
-    }
-
-    @Override
-    public boolean replaceBatch(PK primaryKey, List<KeyCacheValue<K>> keyCacheValues) {
-        PrimaryCache<K> kPrimaryCache = primaryCacheMap.computeIfAbsent(primaryKey, key -> new PrimaryCache<>());
-        kPrimaryCache.addAll(keyCacheValues);
-        return true;
     }
 
     @Override
@@ -114,8 +129,18 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
     }
 
     @Override
+    public V cloneValue(V value) {
+        return cacheSource.cloneValue(value);
+    }
+
+    @Override
+    public IClassConverter<K, V> getConverter() {
+        return cacheSource.getConverter();
+    }
+
+    @Override
     public ICacheKeyValueBuilder<PK, K> getKeyValueBuilder() {
-        return null;
+        return cacheSource.getKeyValueBuilder();
     }
 
     @Override

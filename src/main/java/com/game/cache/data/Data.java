@@ -13,7 +13,7 @@ public abstract class Data<K> implements IData<K> {
     private transient long indexChangedBits = 0L;        //目前只支持64个字段的类~
 
     @ResourceField
-    private boolean isCacheResource = false;             //数据是否从缓存加载的~
+    private transient boolean isCacheResource = false;             //数据是否从缓存加载的~
 
     public final boolean isCacheResource() {
         return isCacheResource;

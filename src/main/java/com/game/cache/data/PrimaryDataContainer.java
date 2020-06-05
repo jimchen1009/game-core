@@ -166,7 +166,7 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
         else {
             DataCollection<K, V> collection = dataSource.getCollection(primaryKey);
             information = collection.getInformation();
-            List<V> valueList = collection.getValueList();
+            List<V> valueList = collection.getDataList();
             for (V value : valueList) {
                 secondary2Values.put(value.secondaryKey(), value);
             }
