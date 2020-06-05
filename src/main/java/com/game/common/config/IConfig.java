@@ -5,6 +5,9 @@ import java.util.concurrent.TimeUnit;
 
 public interface IConfig {
 
+
+    boolean hasPath(String path);
+
     IConfig getConfig(String path);
 
     int getInt(String path);

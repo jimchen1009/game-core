@@ -28,13 +28,13 @@ public class CacheKeyValueBuilder<PK, K> implements ICacheKeyValueBuilder<PK, K>
 
     @Override
     public List<Map.Entry<String, Object>> createPrimaryKeyValue(PK primaryKey) {
-        return addKeyValue(new ArrayList<>(), information.getPrimaryKeys(), primaryBuilder.createValue(primaryKey));
+        return addKeyValue(new ArrayList<>(), information.getPrimaryKeys(), primaryBuilder.toKeyValue(primaryKey));
     }
 
     @Override
     public List<Map.Entry<String, Object>> createAllKeyValue(PK primaryKey, K secondaryKey) {
-        List<Map.Entry<String, Object>> entryList = addKeyValue(new ArrayList<>(), information.getPrimaryKeys(), primaryBuilder.createValue(primaryKey));
-        return addKeyValue(entryList, information.getSecondaryKeys(), secondaryBuilder.createValue(secondaryKey));
+        List<Map.Entry<String, Object>> entryList = addKeyValue(new ArrayList<>(), information.getPrimaryKeys(), primaryBuilder.toKeyValue(primaryKey));
+        return addKeyValue(entryList, information.getSecondaryKeys(), secondaryBuilder.toKeyValue(secondaryKey));
     }
 
     private List<Map.Entry<String, Object>> addKeyValue(List<Map.Entry<String, Object>> keyValue, List<String> keyNames, Object[] objectValues){
@@ -63,12 +63,30 @@ public class CacheKeyValueBuilder<PK, K> implements ICacheKeyValueBuilder<PK, K>
         return secondaryBuilder.createKey(addObjectValue(information.getSecondaryKeys(), cacheValue));
     }
 
-    public IKeyValueBuilder<PK> getPrimaryBuilder() {
-        return primaryBuilder;
+    @Override
+    public String toSecondaryKeyString(Map<String, Object> cacheValue) {
+        Object[] objectValue = addObjectValue(information.getSecondaryKeys(), cacheValue);
+        return secondaryBuilder.toKeyString(objectValue);
     }
 
-    public IKeyValueBuilder<K> getSecondaryBuilder() {
-        return secondaryBuilder;
+    @Override
+    public Object[] toPrimaryKeyValue(PK primaryKey) {
+        return primaryBuilder.toKeyValue(primaryKey);
+    }
+
+    @Override
+    public String toPrimaryKeyString(PK primaryKey) {
+        return primaryBuilder.toKeyString(primaryKey);
+    }
+
+    @Override
+    public String toSecondaryKeyString(K primaryKey) {
+        return secondaryBuilder.toKeyString(primaryKey);
+    }
+
+    @Override
+    public K createSecondaryKey(String string) {
+        return secondaryBuilder.createKey(string);
     }
 
     private Object[] addObjectValue(List<String> keyNameList, Map<String, Object> cacheValue){

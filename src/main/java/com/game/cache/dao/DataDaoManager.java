@@ -9,18 +9,21 @@ import com.game.cache.data.map.DataMapContainer;
 import com.game.cache.data.value.DataValueContainer;
 import com.game.cache.exception.CacheException;
 import com.game.cache.key.IKeyValueBuilder;
-import com.game.cache.mapper.ClassInformation;
+import com.game.cache.mapper.ClassConfig;
 import com.game.cache.mapper.ValueConverter;
 import com.game.cache.source.ICacheLoginPredicate;
 import com.game.cache.source.ICacheSourceInteract;
+import com.game.cache.source.compose.CacheComposeSource;
 import com.game.cache.source.executor.CacheExecutor;
 import com.game.cache.source.executor.ICacheExecutor;
 import com.game.cache.source.executor.ICacheSource;
-import com.game.cache.source.mongodb.CacheDirectMongoDBSource;
+import com.game.cache.source.mongodb.CacheMongoDBSource;
+import com.game.cache.source.redis.CacheRedisSource;
 import com.game.common.config.Configs;
 import com.game.common.config.IConfig;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DataDaoManager {
@@ -33,7 +36,6 @@ public class DataDaoManager {
 
     private final CacheType cacheType;
     private final ICacheExecutor executor;
-    private final ClassesInformation classesInformation;
     private final Map<String, IDataMapDao> mapDaoMap;
     private final Map<String, IDataCacheMapDao> cacheMapDaoMap;
     private final Map<String, IDataValueDao> valueDaoMap;
@@ -46,7 +48,6 @@ public class DataDaoManager {
         this.cacheType = CacheType.valueOf(Configs.getInstance().getString("cache.type"));
         IConfig executorConfig = Configs.getInstance().getConfig("cache.executor");
         this.executor = new CacheExecutor(executorConfig.getInt("threadCount"));
-        this.classesInformation = new ClassesInformation();
         this.mapDaoMap = new ConcurrentHashMap<>();
         this.cacheMapDaoMap = new ConcurrentHashMap<>();
         this.valueDaoMap = new ConcurrentHashMap<>();
@@ -54,16 +55,12 @@ public class DataDaoManager {
         this.cacheName2SourceInteracts = new ConcurrentHashMap<>();
     }
 
-    public ClassesInformation getClassesInformation() {
-        return classesInformation;
-    }
-
     public void addValueConverter(ValueConverter<?> convert){
         cacheType.getValueConvertMapper().add(convert);
     }
 
     public void initClass(Class<?> aClass){
-        classesInformation.addClass(aClass);
+        Objects.requireNonNull(ClassConfig.getConfig(aClass), aClass.getName());
     }
 
     public <PK, K, V extends IData<K>> DataMapDaoBuilder<PK, K, V> newDataMapDaoBuilder(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder){
@@ -75,11 +72,18 @@ public class DataDaoManager {
     }
 
     public IDataCacheMapDao getDataCacheMapDao(Class<?> aClass){
-        return cacheMapDaoMap.get(aClass.getName());
+        return getDataCacheMapDao(aClass.getName());
+    }
+
+    public IDataCacheMapDao getDataCacheMapDao(String className){
+        return cacheMapDaoMap.get(className);
     }
 
     public IDataCacheValueDao getDataCacheValueDao(Class<?> aClass){
-        return cacheValueDaoMap.get(aClass.getName());
+        return getDataCacheValueDao(aClass.getName());
+    }
+    public IDataCacheValueDao getDataCacheValueDao(String className){
+        return cacheValueDaoMap.get(className);
     }
 
     public class DataMapDaoBuilder<PK, K, V extends IData<K>>  extends DataDaoBuilder{
@@ -185,7 +189,17 @@ public class DataDaoManager {
         }
 
         public ICacheLoginPredicate<PK> getLoginSharedLoad() {
-            return loginSharedLoad == null ? (key, name) -> false : loginSharedLoad;
+            return loginSharedLoad == null ? new ICacheLoginPredicate<PK>() {
+                @Override
+                public boolean loginSharedLoadTable(PK primaryKey, String tableName) {
+                    return false;
+                }
+
+                @Override
+                public boolean loginSharedLoadRedis(PK primaryKey, int redisSharedId) {
+                    return false;
+                }
+            }: loginSharedLoad;
         }
 
         protected DataSourceBuilder<PK, K, V> newDataSourceBuilder(){
@@ -199,18 +213,26 @@ public class DataDaoManager {
         private ICacheSource<PK, K, V> createCacheSource(){
             try {
                 ICacheSource<PK, K, V> cacheSource;
-                String tableName = ClassInformation.get(aClass).getClassConfig().tableName;
-                ICacheSourceInteract<PK> iCacheSourceInteract = cacheName2SourceInteracts.computeIfAbsent(tableName, key -> new CacheInteraction(DataDaoManager.this, getLoginSharedLoad()));
-                if (cacheType.equals(CacheType.MongoDb)) {
-                    cacheSource = new CacheDirectMongoDBSource(aClass, primaryBuilder, secondaryBuilder, iCacheSourceInteract);
+                ClassConfig classConfig = ClassConfig.getConfig(aClass);
+                if (classConfig.isNoDbCache()){
+                    cacheSource = new CacheRedisSource<>(aClass, primaryBuilder, secondaryBuilder);
                 }
                 else {
-                    throw new CacheException("unexpected cache type:%s", cacheType.name());
+                    ICacheSourceInteract<PK> iCacheSourceInteract = cacheName2SourceInteracts.computeIfAbsent(classConfig.tableName, key -> new CacheInteraction(DataDaoManager.this, getLoginSharedLoad()));
+                    if (cacheType.equals(CacheType.MongoDb)) {
+                        cacheSource = new CacheMongoDBSource(aClass, primaryBuilder, secondaryBuilder, iCacheSourceInteract);
+                    }
+                    else {
+                        throw new CacheException("unexpected cache type:%s", cacheType.name());
+                    }
+                    if (classConfig.delayUpdate){
+                        cacheSource = cacheSource.createDelayUpdateSource(executor);
+                    }
+                    if (classConfig.enableRedis){
+                        CacheRedisSource<PK, K, V> redisSource = new CacheRedisSource<>(aClass, primaryBuilder, secondaryBuilder);
+                        cacheSource = new CacheComposeSource<>(redisSource, cacheSource);
+                    }
                 }
-                if (ClassInformation.get(aClass).getClassConfig().delayUpdate){
-                    cacheSource = cacheSource.createDelayUpdateSource(executor);
-                }
-                classesInformation.addClass(aClass);
                 return cacheSource;
             } catch (Throwable t) {
                 throw new CacheException("%s", t, aClass.getName());

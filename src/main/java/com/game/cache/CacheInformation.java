@@ -30,4 +30,8 @@ public class CacheInformation {
     public CacheInformation copy(){
         return new CacheInformation(this.name2Values);
     }
+
+    public boolean isEmpty(){
+        return name2Values.isEmpty();
+    }
 }

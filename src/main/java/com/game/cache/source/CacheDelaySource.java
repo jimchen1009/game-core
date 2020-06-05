@@ -9,7 +9,6 @@ import com.game.cache.source.executor.ICacheExecutor;
 import com.game.cache.source.executor.ICacheSource;
 import com.game.common.config.Configs;
 import com.game.common.lock.LockKey;
-import com.game.common.lock.LockUtil;
 import com.game.common.log.LogUtil;
 import org.apache.commons.lang3.RandomUtils;
 import org.slf4j.Logger;
@@ -29,9 +28,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implements ICacheDelayUpdateSource<PK, K, V> {
+public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICacheDelaySource<PK, K, V> {
 
-    private static final Logger logger = LoggerFactory.getLogger(CacheDelayUpdateSource.class);
+    private static final Logger logger = LoggerFactory.getLogger(CacheDelaySource.class);
 
     public static final Map<String, Object> EMPTY = Collections.emptyMap();
 
@@ -39,7 +38,7 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
     private final Map<PK, PrimaryCache<K>> primaryCacheMap;
     private final ICacheExecutor executor;
 
-    public CacheDelayUpdateSource(CacheSource<PK, K, V> cacheSource, ICacheExecutor executor) {
+    public CacheDelaySource(CacheSource<PK, K, V> cacheSource, ICacheExecutor executor) {
         this.cacheSource = cacheSource;
         this.primaryCacheMap = new ConcurrentHashMap<>();
         this.executor = executor;
@@ -53,11 +52,6 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
     @Override
     public LockKey getLockKey(PK primaryKey) {
         return cacheSource.getLockKey(primaryKey);
-    }
-
-    @Override
-    public LockKey getSharedLockKey(PK primaryKey) {
-        return getSharedLockKey(primaryKey);
     }
 
     @Override
@@ -120,7 +114,12 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
     }
 
     @Override
-    public ICacheDelayUpdateSource<PK, K, V> createDelayUpdateSource(ICacheExecutor executor) {
+    public ICacheKeyValueBuilder<PK, K> getKeyValueBuilder() {
+        return null;
+    }
+
+    @Override
+    public ICacheDelaySource<PK, K, V> createDelayUpdateSource(ICacheExecutor executor) {
         return this;
     }
 
@@ -153,18 +152,24 @@ public abstract class CacheDelayUpdateSource<PK, K, V extends IData<K>> implemen
     }
 
     private CacheCallable<Boolean> createPrimaryCacheFlushCallable(PK primaryKey, String message,  Consumer<Boolean> consumer){
-        CacheCallable<Boolean> callable = new CacheCallable<>(getScheduleName(), () -> {
-            Boolean isSuccess = LockUtil.syncLock(getLockKey(primaryKey), message, () -> {
-                PrimaryCache<K> primaryCache = primaryCacheMap.remove(primaryKey);
-                if (primaryCache == null) {
-                    return true;
-                }
+        return new CacheCallable<>(getScheduleName(), () -> {
+            PrimaryCache<K> primaryCache = primaryCacheMap.remove(primaryKey);
+            if (primaryCache == null) {
+                return true;
+            }
+            boolean isSuccess = false;
+            int tryCount = Configs.getInstance().getInt("cache.flush.tryCount");
+            long timeOut = Configs.getInstance().getDuration("cache.flush.timeOut", TimeUnit.MILLISECONDS);
+            for (int count = 0; count < tryCount; count++) {
                 Collection<KeyCacheValue<K>> keyCacheValues = primaryCache.getAll();
-                return flushKeyCacheValuesInLock(Collections.singletonMap(primaryKey, keyCacheValues));
-            });
+                isSuccess = flushKeyCacheValuesInLock(Collections.singletonMap(primaryKey, keyCacheValues));
+                if (isSuccess){
+                    break;
+                }
+                logger.error("primaryKey:{}.{} count:{} flush failure.", LogUtil.toJSONString(primaryKey), getAClass().getName(), count);
+            }
             return isSuccess;
         }, consumer);
-        return callable;
     }
 
     protected String getScheduleName() {

@@ -28,6 +28,11 @@ public class Configs implements IConfig {
     }
 
     @Override
+    public boolean hasPath(String path) {
+        return config.hasPath(path);
+    }
+
+    @Override
     public IConfig getConfig(String path){
         return new Configs(Objects.requireNonNull(config.getConfig(path)));
     }

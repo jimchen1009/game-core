@@ -5,8 +5,8 @@ import com.game.cache.data.IData;
 import com.game.cache.key.IKeyValueBuilder;
 import com.game.cache.mapper.annotation.CacheIndex;
 import com.game.cache.source.CacheCollection;
-import com.game.cache.source.CacheDirectUpdateSource;
-import com.game.cache.source.ICacheDelayUpdateSource;
+import com.game.cache.source.CacheDbSource;
+import com.game.cache.source.ICacheDelaySource;
 import com.game.cache.source.ICacheSourceInteract;
 import com.game.cache.source.KeyCacheValue;
 import com.game.cache.source.executor.ICacheExecutor;
@@ -28,12 +28,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDirectUpdateSource<PK, K, V> {
+public class CacheMongoDBSource<PK, K, V extends IData<K>> extends CacheDbSource<PK, K, V> {
 
-    private static final Logger logger = LoggerFactory.getLogger(CacheDirectMongoDBSource.class);
+    private static final Logger logger = LoggerFactory.getLogger(CacheMongoDBSource.class);
 
 
-    public CacheDirectMongoDBSource(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder, ICacheSourceInteract<PK> sourceInteract) {
+    public CacheMongoDBSource(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder, ICacheSourceInteract<PK> sourceInteract) {
         super(aClass, primaryBuilder, secondaryBuilder, sourceInteract);
         MongoCollection<Document> collection = getCollection();
         CacheIndex cacheIndexes = getKeyValueBuilder().getClassInformation().getCacheIndexes();
@@ -41,19 +41,19 @@ public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDi
     }
 
     @Override
-    protected Map<String, Object> get0(PK primaryKey, K secondaryKey) {
+    public Map<String, Object> get(PK primaryKey, K secondaryKey) {
         List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createAllKeyValue(primaryKey, secondaryKey);
         return MongoDBQueryUtil.queryOne(getCollection(), getClassConfig().primarySharedId,  entryList);
     }
 
     @Override
-    protected Collection<Map<String, Object>> getAll0(PK primaryKey) {
+    public Collection<Map<String, Object>> getAll(PK primaryKey) {
         List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createPrimaryKeyValue(primaryKey);
         return MongoDBQueryUtil.queryAll(getCollection(), getClassConfig().primarySharedId,  entryList);
     }
 
     @Override
-    protected CacheCollection getPrimaryCollection(PK primaryKey) {
+    public CacheCollection getPrimaryCollection(PK primaryKey) {
         int primarySharedId = getClassConfig().primarySharedId;
         List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createPrimaryKeyValue(primaryKey);
         Collection<Map<String, Object>> mapCollection = MongoDBQueryUtil.queryAll(getCollection(), primarySharedId, entryList);
@@ -61,7 +61,7 @@ public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDi
     }
 
     @Override
-    protected Map<Integer, CacheCollection> getSharedCollections(PK primaryKey, List<Integer> primarySharedIds) {
+    public Map<Integer, CacheCollection> getSharedCollections(PK primaryKey, List<Integer> primarySharedIds) {
         List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createPrimaryKeyValue(primaryKey);
         Collection<Map<String, Object>> mapCollection = MongoDBQueryUtil.queryAll(getCollection(), primarySharedIds, entryList);
         Map<Integer, List<Map<String, Object>>> primarySharedId2CacheValues = CacheCollection.groupPrimarySharedId(mapCollection);
@@ -78,7 +78,7 @@ public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDi
     }
 
     @Override
-    protected boolean replaceOne0(PK primaryKey, KeyCacheValue<K> keyCacheValue) {
+    public boolean replaceOne(PK primaryKey, KeyCacheValue<K> keyCacheValue) {
         List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createAllKeyValue(keyCacheValue.getCacheValue());
         Document queryDocument = CacheMongoDBUtil.getQueryDocument(getClassConfig().primarySharedId,  entryList);
         Document document = CacheMongoDBUtil.toDocument(keyCacheValue.getCacheValue().entrySet());
@@ -88,7 +88,7 @@ public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDi
     }
 
     @Override
-    protected boolean replaceBatch0(PK primaryKey, List<KeyCacheValue<K>> keyCacheValueList) {
+    public boolean replaceBatch(PK primaryKey, List<KeyCacheValue<K>> keyCacheValueList) {
         List<Map.Entry<String, Object>> keyValue = getKeyValueBuilder().createPrimaryKeyValue(primaryKey);
 
         List<UpdateOneModel<Document>> updateOneModelList = keyCacheValueList.stream().map( keyCacheValue -> {
@@ -102,7 +102,7 @@ public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDi
     }
 
     @Override
-    protected boolean deleteOne0(PK primaryKey, K secondaryKey) {
+    public boolean deleteOne(PK primaryKey, K secondaryKey) {
         List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createAllKeyValue(primaryKey, secondaryKey);
         Document queryDocument = CacheMongoDBUtil.getQueryDocument(getClassConfig().primarySharedId,  entryList);
         MongoCollection<Document> collection = getCollection();
@@ -111,7 +111,7 @@ public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDi
     }
 
     @Override
-    protected boolean deleteBatch0(PK primaryKey, Collection<K> secondaryKeys) {
+    public boolean deleteBatch(PK primaryKey, Collection<K> secondaryKeys) {
         List<List<Map.Entry<String, Object>>> key2ValuesList = new ArrayList<>();
         for (K secondaryKey : secondaryKeys) {
             List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createAllKeyValue(primaryKey, secondaryKey);
@@ -128,7 +128,7 @@ public class CacheDirectMongoDBSource<PK, K, V extends IData<K>> extends CacheDi
     }
 
     @Override
-    public ICacheDelayUpdateSource<PK, K, V> createDelayUpdateSource(ICacheExecutor executor) {
+    public ICacheDelaySource<PK, K, V> createDelayUpdateSource(ICacheExecutor executor) {
         return new CacheDelayMongoDBSource<>(this, executor);
     }
 }

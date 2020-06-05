@@ -41,7 +41,7 @@ public class ClassInformation {
 
     private ClassInformation(Class<?> aClass) {
         this.aClass = aClass;
-        this.classConfig = ClassConfig.loadConfig(aClass);
+        this.classConfig = ClassConfig.getConfig(aClass);
         this.primaryKeys = new ArrayList<>();
         this.secondaryKeys = new ArrayList<>();
         this.primarySecondaryKeys = new ArrayList<>();
@@ -56,6 +56,10 @@ public class ClassInformation {
         return aClass;
     }
 
+    public String getCacheName() {
+        return aClass.getSimpleName().toLowerCase();
+    }
+
     public List<String> getPrimaryKeys() {
         return primaryKeys;
     }
@@ -68,7 +72,7 @@ public class ClassInformation {
         return primarySecondaryKeys;
     }
 
-    public List<FieldInformation> fieldDescriptions() {
+    public List<FieldInformation> fieldDescriptionList() {
         return descriptions;
     }
 

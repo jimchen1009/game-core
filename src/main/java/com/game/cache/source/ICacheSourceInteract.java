@@ -27,5 +27,5 @@ public interface ICacheSourceInteract<PK> extends ICacheLoginPredicate<PK>{
      * @param primarySharedId
      * @return
      */
-    List<Integer> getPrimarySharedIds(String tableName, int primarySharedId);
+    List<Integer> getPrimarySharedIds(PK primaryKey, String tableName, int primarySharedId);
 }

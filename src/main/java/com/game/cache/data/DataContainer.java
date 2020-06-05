@@ -26,6 +26,11 @@ public class DataContainer<PK, K, V extends IData<K>> implements IDataContainer<
     }
 
     @Override
+    public boolean existCache(PK primaryKey) {
+        return primaryDataMap.containsKey(primaryKey);
+    }
+
+    @Override
     public int count(PK primaryKey) {
         return primaryDataContainer(primaryKey).count();
     }

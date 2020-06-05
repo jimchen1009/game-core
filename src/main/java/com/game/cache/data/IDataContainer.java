@@ -6,6 +6,8 @@ import java.util.Collection;
 
 public interface IDataContainer<PK, K, V extends IData<K>> {
 
+    boolean existCache(PK primaryKey);
+
     int count(PK primaryKey);
 
     V get(PK primaryKey, K secondaryKey);

@@ -2,7 +2,6 @@ package com.game.db.mongodb;
 
 import com.game.common.config.Configs;
 import com.game.common.config.IConfig;
-import com.game.common.util.CommonUtil;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
@@ -41,48 +40,61 @@ public class MongoDbManager {
 
     private static final Map<String, MongoDbManager> managers = new HashMap<>();
 
-    public static MongoDbManager get(String name){
-        MongoDbManager manager = managers.get(name);
-        if (manager == null){
-            synchronized (managers){
-                manager = managers.get(name);
-                if (manager == null){
-                    List<IConfig> configList = Configs.getInstance().getConfigList("db.mongodb");
-                    IConfig mongodbConfig = CommonUtil.findOneIf(configList, config -> {
-                        List<String> names = config.getList("names");
-                        return names.contains(name);
-                    });
-                    manager = new MongoDbManager(Objects.requireNonNull(mongodbConfig));
-                    for (String s : manager.names) {
-                        managers.put(s, manager);
-                    }
-                }
+
+    public static void init(){
+        List<IConfig> configList = Configs.getInstance().getConfigList("db.mongodb");
+        for (IConfig iConfig : configList) {
+            MongoDbManager manager = new MongoDbManager(Objects.requireNonNull(iConfig));
+            for (String s : manager.names) {
+                managers.put(s, manager);
             }
         }
-        return manager;
     }
 
-    private final MongoClient client;
+    public static void destroy(){
+        for (MongoDbManager manager : managers.values()) {
+            manager.close();
+        }
+    }
+
+    public static MongoDbManager get(String name){
+        return managers.get(name);
+    }
+
+    private  MongoClient client;
     private final List<String> names;
 
     private MongoDbManager(IConfig mongodbConfig) {
         this.names = Collections.unmodifiableList(mongodbConfig.getList("names"));
+        reload(mongodbConfig);
+    }
+
+    private synchronized void reload(IConfig mongodbConfig){
         List<IConfig> addressConfigList = mongodbConfig.getConfigList("sharding");
         List<ServerAddress> addressList = addressConfigList.stream().map(configs -> new ServerAddress(configs.getString("host"), configs.getInt("port"))).collect(Collectors.toList());
         String application = mongodbConfig.getString("application");
         int connectTimeout = (int)mongodbConfig.getDuration("connectTimeout", TimeUnit.MILLISECONDS);
         int readTimeout = (int)mongodbConfig.getDuration("readTimeout", TimeUnit.MILLISECONDS);
-        int connectionMaxSize = mongodbConfig.getInt("connectionMaxSize");
+        int maxConnection = mongodbConfig.getInt("maxConnection");
         MongoClientSettings settings = MongoClientSettings.builder()
                 .readPreference(ReadPreference.secondary())
                 .addCommandListener(new MyCommandListener())
                 .applicationName(application)
                 .applyToSslSettings( builder -> builder.enabled(false))
                 .applyToSocketSettings(builder -> builder.connectTimeout(connectTimeout, TimeUnit.MILLISECONDS).readTimeout(readTimeout, TimeUnit.MILLISECONDS))
-                .applyToConnectionPoolSettings(builder -> builder.addConnectionPoolListener(new MyConnectionPoolListener()).maxSize(connectionMaxSize))
+                .applyToConnectionPoolSettings(builder -> builder.addConnectionPoolListener(new MyConnectionPoolListener()).maxSize(maxConnection))
                 .applyToClusterSettings(builder -> builder.hosts(addressList).build())
                 .build();
+        this.close();
         this.client = MongoClients.create(settings);
+    }
+
+    public synchronized void close(){
+        if (client == null){
+            return;
+        }
+        client.close();
+        client = null;
     }
 
     public MongoDatabase getDb(String name){

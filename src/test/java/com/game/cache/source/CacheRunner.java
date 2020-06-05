@@ -4,7 +4,10 @@ import com.game.cache.dao.DataDaoManager;
 import com.game.cache.dao.IDataMapDao;
 import com.game.cache.data.IDataLoadPredicate;
 import com.game.cache.key.KeyValueHelper;
+import com.game.cache.source.redis.RedisClientUtil;
 import com.game.db.mongodb.MongoDbManager;
+import com.game.db.redis.IRedisClient;
+import com.game.db.redis.RedisClientManager;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import jodd.util.ThreadUtil;
@@ -13,6 +16,7 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -20,6 +24,9 @@ public class CacheRunner {
 
     @Test
     public void item(){
+        MongoDbManager.init();
+        RedisClientManager.init();
+        IRedisClient redisClient = RedisClientUtil.getRedisClient();
         MongoDatabase database = MongoDbManager.get("cache").getDb("demo");
         MongoCollection<Document> collection = database.getCollection("material");
 //        collection.drop();
@@ -42,7 +49,21 @@ public class CacheRunner {
         };
 
         AtomicBoolean atomicBoolean = new AtomicBoolean(false);
-        ICacheLoginPredicate<Long> loginPredicate = (primaryKey, tableName) -> atomicBoolean.compareAndSet(false, true);
+        ICacheLoginPredicate<Long> loginPredicate = new ICacheLoginPredicate<Long>() {
+
+            private final AtomicBoolean atomicBoolean0 = new AtomicBoolean(false);
+            private final AtomicBoolean atomicBoolean1 = new AtomicBoolean(false);
+
+            @Override
+            public boolean loginSharedLoadTable(Long primaryKey, String tableName) {
+                return atomicBoolean0.compareAndSet(false, true);
+            }
+
+            @Override
+            public boolean loginSharedLoadRedis(Long primaryKey, int redisSharedId) {
+                return atomicBoolean1.compareAndSet(false, true);
+            }
+        };
 
         IDataMapDao<Long, Long, UserItem> itemDao = DataDaoManager.getInstance()
                 .newDataMapDaoBuilder(UserItem.class, KeyValueHelper.LongBuilder, KeyValueHelper.LongBuilder)

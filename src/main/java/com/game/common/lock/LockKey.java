@@ -34,7 +34,12 @@ public class LockKey {
     }
 
     public LockKey createLockKey(String secondary){
-        return new LockKey(primary, String.format("%s.%s", this.secondary, secondary));
+        if (this.secondary == null){
+            return new LockKey(primary, secondary);
+        }
+        else {
+            return new LockKey(primary, String.format("%s.%s", this.secondary, secondary));
+        }
     }
 
     public String toLockName(){
@@ -64,13 +69,13 @@ public class LockKey {
     }
 
     public static LockKey systemLockKey(String name){
-        return new LockKey("@" + name);
+        return new LockKey(SYSTEM_PREFIX + name);
     }
 
     public static LockKey extLockKey(String name){
         if (name.indexOf(SYSTEM_PREFIX) == 0){
             throw new CacheException("don't support name:%s", name);
         }
-        return new LockKey("@" + name);
+        return new LockKey( name);
     }
 }

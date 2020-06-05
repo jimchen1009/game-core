@@ -38,6 +38,9 @@ public class CacheCollection {
         return information;
     }
 
+    public boolean isEmpty(){
+        return information.isEmpty() && cacheValueList.isEmpty();
+    }
 
     public static Map<Integer, List<Map<String, Object>>> groupPrimarySharedId(Collection<Map<String, Object>> cacheValueList){
         return CommonUtil.groupByKey(new HashMap<>(), cacheValueList,

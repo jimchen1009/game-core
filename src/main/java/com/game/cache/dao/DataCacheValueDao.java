@@ -21,6 +21,11 @@ class DataCacheValueDao<PK, V extends IData<PK>> implements IDataCacheValueDao<P
     }
 
     @Override
+    public boolean existCache(PK primaryKey) {
+        return valueContainer.existCache(primaryKey);
+    }
+
+    @Override
     public V getNotCache(PK primaryKey) {
         Holder<V> holder = valueContainer.getNoCache(primaryKey);
         if (holder != null){

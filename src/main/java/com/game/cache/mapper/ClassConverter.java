@@ -34,7 +34,7 @@ public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, 
         Class<V> convertedClass = getConvertedClass();
         try {
             V newInstance = convertedClass.newInstance();
-            for (FieldInformation description : information.fieldDescriptions()) {
+            for (FieldInformation description : information.fieldDescriptionList()) {
                 Field field = description.getField();
                 ValueConverter<?> converter = mapper.getOrDefault(description.getType());
                 Object object = converter.decode(cacheValue.get(description.getAnnotationName()));
@@ -43,7 +43,7 @@ public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, 
             return newInstance;
         }
         catch (Throwable e) {
-            throw new CacheException("cls:%s cacheValue:%s", convertedClass.getName(), LogUtil.toJSONString(cacheValue), e);
+            throw new CacheException("cls:%s cacheValue:%s", e, convertedClass.getName(), LogUtil.toJSONString(cacheValue));
         }
     }
 
@@ -58,8 +58,9 @@ public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, 
             for (FieldInformation description : information.getKeysDescriptions()) {
                 encodeValue(dataValue, cacheValue, description, true);
             }
+            ClassConfig classConfig = information.getClassConfig();
             for (FieldInformation description : information.getNormalDescriptions()) {
-                if (dataValue.getIndexChangedBits() == 0L || dataValue.isIndexChanged(description.getIndex())){
+                if (classConfig.isNoDbCache() || classConfig.enableRedis || dataValue.getIndexChangedBits() == 0L || dataValue.isIndexChanged(description.getIndex())){
                     encodeValue(dataValue, cacheValue, description, false);
                 }
             }

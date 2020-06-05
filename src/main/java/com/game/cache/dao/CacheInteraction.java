@@ -1,5 +1,6 @@
 package com.game.cache.dao;
 
+import com.game.cache.mapper.ClassConfig;
 import com.game.cache.source.CacheCollection;
 import com.game.cache.source.ICacheLoginPredicate;
 import com.game.cache.source.ICacheSourceInteract;
@@ -25,6 +26,11 @@ public class CacheInteraction<PK> implements ICacheSourceInteract<PK> {
         return loginSharedLoad.loginSharedLoadTable(primaryKey, tableName);
     }
 
+    @Override
+    public boolean loginSharedLoadRedis(PK primaryKey, int redisSharedId) {
+        return loginSharedLoad.loginSharedLoadRedis(primaryKey, redisSharedId);
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public void addCollections(PK primaryKey, String tableName, Map<Integer, CacheCollection> collections) {
@@ -32,13 +38,12 @@ public class CacheInteraction<PK> implements ICacheSourceInteract<PK> {
             return;
         }
         this.weakReference = new WeakReference<>(collections);
-        ClassesInformation information = daoManager.getClassesInformation();
         List<Integer> primarySharedIds = new ArrayList<>(collections.keySet());
         for (Integer primarySharedId : primarySharedIds) {
-            Class<?> aClass = information.getClass(tableName, primarySharedId);
-            IDataCacheMapDao cacheMapDao = daoManager.getDataCacheMapDao(aClass);
+            ClassConfig classConfig = ClassConfig.getConfig(tableName, primarySharedId);
+            IDataCacheMapDao cacheMapDao = daoManager.getDataCacheMapDao(classConfig.className);
             if (cacheMapDao == null){
-                IDataCacheValueDao cacheValueDao = daoManager.getDataCacheValueDao(aClass);
+                IDataCacheValueDao cacheValueDao = daoManager.getDataCacheValueDao(classConfig.className);
                 if (cacheValueDao != null){
                     cacheValueDao.get(primaryKey);
                 }
@@ -58,9 +63,27 @@ public class CacheInteraction<PK> implements ICacheSourceInteract<PK> {
         return collections == null ? null : collections.remove(primarySharedId);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public List<Integer> getPrimarySharedIds(String tableName, int primarySharedId) {
-        ClassesInformation information = daoManager.getClassesInformation();
-        return information.getPrimarySharedIds(tableName, primarySharedId);
+    public List<Integer> getPrimarySharedIds(PK primaryKey, String tableName, int primarySharedId) {
+        List<ClassConfig> sharedConfigList = ClassConfig.getPrimarySharedConfigList(tableName);
+        List<Integer> primarySharedIds = new ArrayList<>();
+        for (ClassConfig classConfig : sharedConfigList) {
+            if (classConfig.primarySharedId == primarySharedId){
+                primarySharedIds.add(primarySharedId);
+                continue;
+            }
+            IDataCacheMapDao cacheMapDao = daoManager.getDataCacheMapDao(classConfig.className);
+            if (cacheMapDao == null){
+                IDataCacheValueDao cacheValueDao = daoManager.getDataCacheValueDao(classConfig.className);
+                if (cacheValueDao != null && !cacheValueDao.existCache(primaryKey)){
+                    primarySharedIds.add(classConfig.primarySharedId);
+                }
+            }
+            else if (!cacheMapDao.existCache(primaryKey)){
+                primarySharedIds.add(classConfig.primarySharedId);
+            }
+        }
+        return primarySharedIds;
     }
 }

@@ -18,4 +18,14 @@ public interface ICacheKeyValueBuilder<PK, K> {
     PK createPrimaryKey(Map<String, Object> cacheValue);
 
     K createSecondaryKey(Map<String, Object> cacheValue);
+
+    String toSecondaryKeyString(Map<String, Object> cacheValue);
+
+    Object[] toPrimaryKeyValue(PK primaryKey);
+
+    String toPrimaryKeyString(PK primaryKey);
+
+    String toSecondaryKeyString(K primaryKey);
+
+    K createSecondaryKey(String string);
 }

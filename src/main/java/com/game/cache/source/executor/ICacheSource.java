@@ -2,7 +2,8 @@ package com.game.cache.source.executor;
 
 import com.game.cache.mapper.ClassConfig;
 import com.game.cache.source.CacheCollection;
-import com.game.cache.source.ICacheDelayUpdateSource;
+import com.game.cache.source.ICacheDelaySource;
+import com.game.cache.source.ICacheKeyValueBuilder;
 import com.game.cache.source.KeyCacheValue;
 import com.game.common.lock.LockKey;
 
@@ -13,8 +14,6 @@ import java.util.Map;
 public interface ICacheSource<PK, K, V> {
 
     LockKey getLockKey(PK primaryKey);
-
-    LockKey getSharedLockKey(PK primaryKey);
 
     Class<V> getAClass();
 
@@ -34,5 +33,7 @@ public interface ICacheSource<PK, K, V> {
 
     boolean deleteBatch(PK primaryKey, Collection<K> secondaryKeys);
 
-    ICacheDelayUpdateSource<PK, K, V> createDelayUpdateSource(ICacheExecutor executor);
+    ICacheKeyValueBuilder<PK, K> getKeyValueBuilder();
+
+    ICacheDelaySource<PK, K, V> createDelayUpdateSource(ICacheExecutor executor);
 }

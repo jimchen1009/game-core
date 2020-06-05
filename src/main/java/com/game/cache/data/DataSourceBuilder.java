@@ -1,7 +1,7 @@
 package com.game.cache.data;
 
 import com.game.cache.mapper.ValueConvertMapper;
-import com.game.cache.source.ICacheDelayUpdateSource;
+import com.game.cache.source.ICacheDelaySource;
 import com.game.cache.source.executor.ICacheSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,8 +47,8 @@ public class DataSourceBuilder<PK, K, V extends IData<K>> {
 
     public IDataSource<PK, K, V> buildDirect(){
         ICacheSource<PK, K, V> cacheSource = this.cacheSource;
-        if (cacheSource instanceof ICacheDelayUpdateSource){
-            cacheSource = ((ICacheDelayUpdateSource<PK, K, V>) cacheSource).getCacheSource();
+        if (cacheSource instanceof ICacheDelaySource){
+            cacheSource = ((ICacheDelaySource<PK, K, V>) cacheSource).getCacheSource();
         }
         return createDataSource(cacheSource);
     }

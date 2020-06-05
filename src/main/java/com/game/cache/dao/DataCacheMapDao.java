@@ -18,6 +18,11 @@ class DataCacheMapDao<PK, K, V extends IData<K>> implements IDataCacheMapDao<PK,
     }
 
     @Override
+    public boolean existCache(PK primaryKey) {
+        return mapContainer.existCache(primaryKey);
+    }
+
+    @Override
     public int count(PK primaryKey) {
         return mapContainer.count(primaryKey);
     }

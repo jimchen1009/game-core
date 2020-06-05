@@ -1,7 +1,7 @@
 package com.game.cache.source.mongodb;
 
 import com.game.cache.data.IData;
-import com.game.cache.source.CacheDelayUpdateSource;
+import com.game.cache.source.CacheDelaySource;
 import com.game.cache.source.ICacheKeyValueBuilder;
 import com.game.cache.source.KeyCacheValue;
 import com.game.cache.source.executor.ICacheExecutor;
@@ -27,18 +27,18 @@ import java.util.Map;
  * @param <K>
  * @param <V>
  */
-public class CacheDelayMongoDBSource<PK, K, V extends IData<K>> extends CacheDelayUpdateSource<PK, K, V> {
+public class CacheDelayMongoDBSource<PK, K, V extends IData<K>> extends CacheDelaySource<PK, K, V> {
 
     private static final Logger logger = LoggerFactory.getLogger(CacheDelayMongoDBSource.class);
 
 
-    public CacheDelayMongoDBSource(CacheDirectMongoDBSource<PK, K, V> dbSource, ICacheExecutor executor) {
+    public CacheDelayMongoDBSource(CacheMongoDBSource<PK, K, V> dbSource, ICacheExecutor executor) {
         super(dbSource, executor);
     }
 
     @Override
     protected Map<PK, List<KeyCacheValue<K>>> executeWriteBackKeyCacheValues(Map<PK, Collection<KeyCacheValue<K>>> keyCacheValuesMap) {
-        CacheDirectMongoDBSource<PK, K, V> mongoDBSource = getMongoDBSource();
+        CacheMongoDBSource<PK, K, V> mongoDBSource = getMongoDBSource();
 
         List<DeleteOneModel<Document>> deleteOneModelList = new ArrayList<>();
         List<UpdateOneModel<Document>> updateOneModelList =  new ArrayList<>();
@@ -120,8 +120,7 @@ public class CacheDelayMongoDBSource<PK, K, V extends IData<K>> extends CacheDel
         keyCacheValues.add(keyCacheValue);
     }
 
-    private CacheDirectMongoDBSource<PK, K, V> getMongoDBSource() {
-        return (CacheDirectMongoDBSource<PK, K, V>)super.getCacheSource();
+    private CacheMongoDBSource<PK, K, V> getMongoDBSource() {
+        return (CacheMongoDBSource<PK, K, V>)super.getCacheSource();
     }
-
 }

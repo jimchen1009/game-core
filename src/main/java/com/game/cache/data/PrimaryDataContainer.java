@@ -150,7 +150,7 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
     private ConcurrentHashMap<K, V> lockCurrentMap(){
         ConcurrentHashMap<K, V> currentMap = LockUtil.syncLock(dataSource.getLockKey(primaryKey), "currentMap", this::currentMap);
         if (currentMap == null){
-            throw new CacheException("primaryKey:%s load cache time out.", LogUtil.toJSONString(primaryKey));
+            throw new CacheException("primaryKey:%s load cache exception.", LogUtil.toJSONString(primaryKey));
         }
         return currentMap;
     }

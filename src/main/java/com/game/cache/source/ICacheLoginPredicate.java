@@ -8,4 +8,5 @@ public interface ICacheLoginPredicate<PK>  {
     boolean loginSharedLoadTable(PK primaryKey, String tableName);
 
 
+    boolean loginSharedLoadRedis(PK primaryKey, int redisSharedId);
 }

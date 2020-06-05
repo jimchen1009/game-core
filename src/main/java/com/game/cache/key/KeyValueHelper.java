@@ -15,18 +15,28 @@ public class KeyValueHelper {
         public Long createKey0(Object[] objects) {
             return (Long) objects[0];
         }
+
+        @Override
+        protected Long createKey0(String[] strings) {
+            return Long.parseLong(strings[0]);
+        }
     };
 
     public static final IKeyValueBuilder<Integer> IntegerBuilder = new KeyValueBuilder<Integer>() {
 
         @Override
         public Object[] createValue0(Integer valueKey) {
-            return new Object[]{valueKey.intValue()};
+            return new Object[]{valueKey};
         }
 
         @Override
         public Integer createKey0(Object[] objects) {
             return (Integer) objects[0];
+        }
+
+        @Override
+        protected Integer createKey0(String[] strings) {
+            return Integer.parseInt(strings[0]);
         }
     };
 }
