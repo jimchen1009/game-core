@@ -1,6 +1,6 @@
 package com.game.cache.source.mongodb;
 
-import com.game.cache.InformationName;
+import com.game.cache.CacheName;
 import com.game.cache.mapper.annotation.CacheIndex;
 import com.game.cache.mapper.annotation.IndexField;
 import com.game.cache.mapper.annotation.IndexType;
@@ -39,7 +39,7 @@ public class CacheMongoDBUtil {
                 /**
                  * 设置成哈希索引会报错~
                  * primaryDocument.append(indexField.name(), IndexType.HASHED.toIndexValue());
-                 * The full response is {"raw": {"rs3/127.0.0.1:27029,127.0.0.1:27030,127.0.0.1:27031": {"ok": 0.0, "errmsg": "Caught exception during index builder initialization demo.material (fc2bfbd7-bc57-45cb-a1dd-dad9e51b1746): 1 provided. First index spec: { v: 2, key: { userId: \"hashed\", k1: 1, itemUniqueId: 1 }, name: \"userId_hashed_k1_1_itemUniqueId_1\", ns: \"demo.material\", unique: true, partialFilterExpression: { itemUniqueId: { $exists: true } } }", "code": 16763, "codeName": "Location16763"}}, "code": 16763, "codeName": "Location16763", "ok": 0.0, "errmsg": "Caught exception during index builder initialization demo.material (fc2bfbd7-bc57-45cb-a1dd-dad9e51b1746): 1 provided. First index spec: { v: 2, key: { userId: \"hashed\", k1: 1, itemUniqueId: 1 }, name: \"userId_hashed_k1_1_itemUniqueId_1\", ns: \"demo.material\", unique: true, partialFilterExpression: { itemUniqueId: { $exists: true } } }", "operationTime": {"$timestamp": {"t": 1589426882, "i": 1}}, "$clusterTime": {"clusterTime": {"$timestamp": {"t": 1589426883, "i": 3}}, "signature": {"hash": {"$binary": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=", "$type": "00"}, "keyId": {"$numberLong": "0"}}}}
+                 * The full response is {"raw": {"rs3/127.0.0.1:27029,127.0.0.1:27030,127.0.0.1:27031": {"ok": 0.0, "errmsg": "Caught exception during uniqueId builder initialization demo.material (fc2bfbd7-bc57-45cb-a1dd-dad9e51b1746): 1 provided. First uniqueId spec: { v: 2, key: { userId: \"hashed\", k1: 1, itemUniqueId: 1 }, name: \"userId_hashed_k1_1_itemUniqueId_1\", ns: \"demo.material\", unique: true, partialFilterExpression: { itemUniqueId: { $exists: true } } }", "code": 16763, "codeName": "Location16763"}}, "code": 16763, "codeName": "Location16763", "ok": 0.0, "errmsg": "Caught exception during uniqueId builder initialization demo.material (fc2bfbd7-bc57-45cb-a1dd-dad9e51b1746): 1 provided. First uniqueId spec: { v: 2, key: { userId: \"hashed\", k1: 1, itemUniqueId: 1 }, name: \"userId_hashed_k1_1_itemUniqueId_1\", ns: \"demo.material\", unique: true, partialFilterExpression: { itemUniqueId: { $exists: true } } }", "operationTime": {"$timestamp": {"t": 1589426882, "i": 1}}, "$clusterTime": {"clusterTime": {"$timestamp": {"t": 1589426883, "i": 3}}, "signature": {"hash": {"$binary": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=", "$type": "00"}, "keyId": {"$numberLong": "0"}}}}
                  */
                 primaryDocument.append(indexField.name(), indexField.type().toIndexValue());
             }
@@ -55,7 +55,7 @@ public class CacheMongoDBUtil {
                 partialDocument.append(entry.getKey(), new Document("$exists", true));
             }
             indexOptions.partialFilterExpression(partialDocument);
-            appendDocument.append(InformationName.CACHE_KEY.getKeyName(), IndexType.ASC.toIndexValue());
+            appendDocument.append(CacheName.CACHE_KEY.getKeyName(), IndexType.ASC.toIndexValue());
         }
         Document document = new Document(primaryDocument);
         document.putAll(appendDocument);
@@ -94,7 +94,7 @@ public class CacheMongoDBUtil {
             document.append(entry.getKey(), entry.getValue());
         }
         if (primarySharedId > 0){
-            document.append(InformationName.CACHE_KEY.getKeyName(),primarySharedId);
+            document.append(CacheName.CACHE_KEY.getKeyName(),primarySharedId);
         }
         return document;
     }
@@ -105,14 +105,14 @@ public class CacheMongoDBUtil {
             document.append(entry.getKey(), entry.getValue());
         }
         primarySharedIds = primarySharedIds.stream().filter( primarySharedId -> primarySharedId > 0).collect(Collectors.toList());
-        document.append(InformationName.CACHE_KEY.getKeyName(), new Document("$in", primarySharedIds));
+        document.append(CacheName.CACHE_KEY.getKeyName(), new Document("$in", primarySharedIds));
         return document;
     }
 
     public static Document toDocument(Collection<Map.Entry<String, Object>> cacheValue){
         Document document = new Document();
         for (Map.Entry<String, Object> entry : cacheValue) {
-            if (InformationName.Names.contains(entry.getKey())) {
+            if (CacheName.Names.contains(entry.getKey())) {
                 continue;
             }
             document.put(entry.getKey(), entry.getValue());

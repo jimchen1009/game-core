@@ -1,13 +1,19 @@
 package com.game.cache.mapper;
 
-import com.game.cache.InformationName;
+import com.game.cache.CacheName;
+import com.game.cache.CacheUniqueId;
+import com.game.cache.data.Data;
+import com.game.cache.data.DataBitIndex;
+import com.game.cache.data.IData;
 import com.game.cache.exception.CacheException;
 import com.game.cache.mapper.annotation.CacheFiled;
 import com.game.cache.mapper.annotation.CacheIndex;
 import com.game.cache.mapper.annotation.IndexField;
+import com.game.common.log.LogUtil;
 import jodd.util.StringUtil;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,7 +43,8 @@ public class ClassInformation {
     private List<FieldInformation> descriptions;
     private List<FieldInformation> keysDescriptions;
     private List<FieldInformation> normalDescriptions;
-    private final Field cacheSourceFiled;
+    private final Method bitIndexSetter;
+    private final Method bitIndexCleaner;
 
     private ClassInformation(Class<?> aClass) {
         this.aClass = aClass;
@@ -48,7 +55,8 @@ public class ClassInformation {
         this.descriptions = new ArrayList<>();
         this.keysDescriptions = new ArrayList<>();
         this.normalDescriptions = new ArrayList<>();
-        this.cacheSourceFiled = searchClassField(aClass, "isCacheResource");
+        this.bitIndexSetter = searchDataClassMethod(aClass, "setBitIndex");
+        this.bitIndexCleaner = searchDataClassMethod(aClass, "clearBitIndex");
         this.searchAnnotationFieldsAndInit(aClass);
     }
 
@@ -101,8 +109,22 @@ public class ClassInformation {
         return classConfig;
     }
 
-    public Field getCacheSourceFiled() {
-        return cacheSourceFiled;
+    public void invokeSetBitIndex(IData dataValue, DataBitIndex bitIndex) {
+        try {
+            bitIndexSetter.invoke(dataValue, bitIndex);
+        }
+        catch (Throwable e) {
+            throw new CacheException("bitIndex:%s, %s", e, bitIndex.getUniqueId(), LogUtil.toJSONString(dataValue));
+        }
+    }
+
+    public void invokeClearBitIndex(IData dataValue, DataBitIndex bitIndex) {
+        try {
+            bitIndexCleaner.invoke(dataValue, bitIndex);
+        }
+        catch (Throwable e) {
+            throw new CacheException("bitIndex:%s, %s", e, bitIndex.getUniqueId(), LogUtil.toJSONString(dataValue));
+        }
     }
 
     private void searchAnnotationFieldsAndInit(Class<?> aClass){
@@ -118,13 +140,13 @@ public class ClassInformation {
             if (annotationName2FieldMap.put(description.getAnnotationName(), description) != null) {
                 throw new CacheException("multiple annotation name:%s, class:%s", description.getAnnotationName(),aClass.getName());
             }
-            if (!indexes.add(description.getIndex())){
-                throw new CacheException("multiple index:%s, class:%s", description.getIndex(), aClass.getName());
+            if (!indexes.add(description.getUniqueId())){
+                throw new CacheException("multiple uniqueId:%s, class:%s", description.getUniqueId(), aClass.getName());
             }
-            if (InformationName.Names.contains(description.getAnnotationName())){
+            if (!description.isInternal() && CacheName.Names.contains(description.getAnnotationName())){
                 throw new CacheException("annotation annotation name can't be %s, class:%s", description.getAnnotationName(), aClass.getName());
             }
-            if (description.getIndex() > 63){
+            if (description.getUniqueId() > CacheUniqueId.MAX_ID && !description.isInternal()){
                 throw new CacheException("field count is exceeds the maximum of 64, class:%s", aClass.getName());
             }
             if (primarySecondaryKeys.contains(description.getAnnotationName())){
@@ -162,13 +184,13 @@ public class ClassInformation {
         List<String> indexKeyList = Arrays.stream(cacheIndex.fields())
                 .filter(predicate)
                 .map(IndexField::name)
-                .sorted(Comparator.comparingInt( name -> name2FieldMap.get(name).getIndex()))
+                .sorted(Comparator.comparingInt( name -> name2FieldMap.get(name).getUniqueId()))
                 .collect(Collectors.toList());
         return Collections.unmodifiableList(indexKeyList);
     }
 
     private List<FieldInformation> sortUniqueIdAndUnmodifiableList(List<FieldInformation> descriptions){
-        descriptions.sort(Comparator.comparing(FieldInformation::getIndex));
+        descriptions.sort(Comparator.comparing(FieldInformation::getUniqueId));
         return Collections.unmodifiableList(descriptions);
     }
 
@@ -185,21 +207,24 @@ public class ClassInformation {
             String name = field.getName();
             field.setAccessible(true);
             String annotationName = StringUtil.isEmpty(cacheFiled.name()) ? name : cacheFiled.name();
-            FieldInformation information = new FieldInformation(cacheFiled.index(), field, annotationName);
+            boolean internal = cacheFiled.isInternal();
+            FieldInformation information = new FieldInformation(cacheFiled.index(), field, annotationName, internal);
             descriptions.add(information);
         }
     }
 
-    private static Field searchClassField(Class<?> aClass, String name) {
+    private static Method searchDataClassMethod(Class<?> aClass, String name) {
         while (!aClass.equals(Object.class)){
-            for (Field field : aClass.getDeclaredFields()) {
-                if (field.getName().equals(name)) {
-                    field.setAccessible(true);
-                    return field;
+            if (aClass.equals(Data.class)){
+                for (Method method : aClass.getDeclaredMethods()) {
+                    if (method.getName().equals(name)){
+                        method.setAccessible(true);
+                        return method;
+                    }
                 }
             }
             aClass = aClass.getSuperclass();
         }
-        throw new CacheException("no filed name:%s class:%s", name, aClass.getName());
+        throw new CacheException("no method name:%s class:%s", name, aClass.getName());
     }
 }

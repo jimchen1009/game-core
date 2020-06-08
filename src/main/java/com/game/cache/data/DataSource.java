@@ -1,16 +1,12 @@
 package com.game.cache.data;
 
-import com.game.cache.exception.CacheException;
-import com.game.cache.mapper.ClassConverter;
+import com.game.cache.mapper.ClassInformation;
 import com.game.cache.mapper.IClassConverter;
-import com.game.cache.mapper.ValueConvertMapper;
 import com.game.cache.source.executor.ICacheSource;
 import com.game.common.lock.LockKey;
-import com.game.common.log.LogUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.List;
 
@@ -18,11 +14,9 @@ class DataSource<PK, K, V extends IData<K>> implements IDataSource<PK, K, V>{
 
     private static final Logger logger = LoggerFactory.getLogger(DataSource.class);
 
-    private final IClassConverter<K, V> converter;
     private final ICacheSource<PK, K, V> cacheSource;
 
-    DataSource(Class<V> aClass, ValueConvertMapper convertMapper, ICacheSource<PK, K, V> cacheSource) {
-        this.converter = new ClassConverter<>(aClass, convertMapper);
+    DataSource(ICacheSource<PK, K, V> cacheSource) {
         this.cacheSource = cacheSource;
     }
 
@@ -89,17 +83,12 @@ class DataSource<PK, K, V extends IData<K>> implements IDataSource<PK, K, V>{
 
     @Override
     public IClassConverter<K, V> getConverter() {
-        return converter;
+        return cacheSource.getConverter();
     }
 
     private V markValueSource(V dataValue){
-        Field field = converter.getInformation().getCacheSourceFiled();
-        try {
-            field.set(dataValue, true);
-        }
-        catch (Throwable e) {
-            throw new CacheException("%s", e, LogUtil.toJSONString(dataValue));
-        }
+        ClassInformation information = getConverter().getInformation();
+        information.invokeSetBitIndex(dataValue, DataBitIndex.CacheCreated);
         return dataValue;
     }
 }

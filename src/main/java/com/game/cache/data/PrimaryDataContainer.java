@@ -61,7 +61,6 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
             V oldValue = null;
             if (success){
                 oldValue = currentMap().put(value.secondaryKey(), value);
-                value.clearIndexChangedBits();
             }
             return Args.create(success, oldValue);
         });
@@ -80,7 +79,6 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
             if (success){
                 ConcurrentHashMap<K, V> currentMap = currentMap();
                 for (V value : values) {
-                    value.clearIndexChangedBits();
                     currentMap.put(value.secondaryKey(), value);
                 }
             }

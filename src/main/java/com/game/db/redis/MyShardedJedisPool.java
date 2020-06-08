@@ -1,6 +1,7 @@
 package com.game.db.redis;
 
 import com.game.cache.exception.CacheException;
+import com.game.cache.mapper.ClassConfig;
 import com.game.common.config.IConfig;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPoolConfig;
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class MyShardedJedisPool extends MyJedisClientPool<ShardedJedis> {
@@ -40,6 +42,7 @@ public class MyShardedJedisPool extends MyJedisClientPool<ShardedJedis> {
         }).collect(Collectors.toList());
         JedisPoolConfig poolConfig = getPoolConfig(redisConfig);
         this.destroy();
+//        this.pool = new ShardedJedisPool(poolConfig, shardInfoList, Pattern.compile(ClassConfig.getRedisPatternString()));
         this.pool = new ShardedJedisPool(poolConfig, shardInfoList);
     }
 

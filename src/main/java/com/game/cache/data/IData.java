@@ -6,13 +6,11 @@ public interface IData<K> extends Cloneable {
 
     K secondaryKey();
 
-    boolean isCacheResource();
+    boolean hasBitIndex(DataBitIndex bitIndex);
 
-    boolean isIndexChanged(int uniqueId);
+    long getBitIndexBits();
 
-    long getIndexChangedBits();
-
-    void clearIndexChangedBits();
+    void clearCacheBitIndex();
 
     Object clone(Supplier<Object> supplier);
 }

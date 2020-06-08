@@ -7,24 +7,24 @@ import java.util.EnumMap;
  */
 public class CacheInformation {
 
-    private final EnumMap<InformationName, Object> name2Values;
+    private final EnumMap<CacheName, Object> name2Values;
 
     public CacheInformation() {
-        this.name2Values = new EnumMap<>(InformationName.class);
+        this.name2Values = new EnumMap<>(CacheName.class);
     }
 
-    private CacheInformation(EnumMap<InformationName, Object> name2Values) {
+    private CacheInformation(EnumMap<CacheName, Object> name2Values) {
         this.name2Values = new EnumMap<>(name2Values);
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T getValue(InformationName informationName){
-        return (T)name2Values.get(informationName);
+    public <T> T getValue(CacheName cacheName){
+        return (T)name2Values.get(cacheName);
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T getValue(InformationName informationName, T defaultValue){
-        return (T)name2Values.getOrDefault(informationName, defaultValue);
+    public <T> T getValue(CacheName cacheName, T defaultValue){
+        return (T)name2Values.getOrDefault(cacheName, defaultValue);
     }
 
     public CacheInformation copy(){

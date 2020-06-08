@@ -56,7 +56,7 @@ public class DataDaoManager {
     }
 
     public void addValueConverter(ValueConverter<?> convert){
-        cacheType.getValueConvertMapper().add(convert);
+        cacheType.getConvertMapper().add(convert);
     }
 
     public void initClass(Class<?> aClass){
@@ -206,7 +206,7 @@ public class DataDaoManager {
             DataSourceBuilder<PK, K, V> dataSourceBuilder = new DataSourceBuilder<>(aClass, createCacheSource());
             IConfig dataConfig = Configs.getInstance().getConfig("cache.data");
             return dataSourceBuilder.setDecorators(dataConfig.getList("decorators"))
-                    .setConvertMapper(cacheType.getValueConvertMapper());
+                    .setConvertMapper(cacheType.getConvertMapper());
         }
 
         @SuppressWarnings("unchecked")

@@ -14,7 +14,7 @@ public enum IndexType {
     }
 
     /**
-     * Returns the value as needed by the index definition document
+     * Returns the value as needed by the uniqueId definition document
      *
      * @return the value
      */

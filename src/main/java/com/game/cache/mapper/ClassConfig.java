@@ -63,6 +63,7 @@ public class ClassConfig {
     }
 
     private static final Map<String, List<ClassConfig>> name2ConfigList = new HashMap<>();
+
     private static final Map<String, ClassConfig> class2Configs = new HashMap<>();
     private static final Map<String, List<Integer>> class2SharedIdList = new HashMap<>();
     static {
@@ -99,6 +100,10 @@ public class ClassConfig {
             sharedIdList = sharedIdList.stream().filter(sharedId -> sharedId > 0).collect(Collectors.toList());
             class2SharedIdList.put(entry.getKey(), sharedIdList);
         }
+    }
+
+    public static String getRedisPatternString(){
+        return "";
     }
 
     public static ClassConfig getConfig(Class<?> aClass){

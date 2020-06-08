@@ -20,4 +20,10 @@ public @interface CacheFiled {
      * @return
      */
     String name() default "";
+
+    /**
+     * 是否系統使用的
+     * @return
+     */
+    boolean isInternal() default false;
 }

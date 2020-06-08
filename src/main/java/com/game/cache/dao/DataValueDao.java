@@ -27,7 +27,7 @@ class DataValueDao<PK, V extends IData<PK>> implements IDataValueDao<PK, V> {
     public V replace(V value) {
         boolean isSuccess = dataSource.replaceOne(value.secondaryKey(), value);
         if (isSuccess){
-            value.clearIndexChangedBits();
+            value.clearCacheBitIndex();
             return null;
         }
         else {

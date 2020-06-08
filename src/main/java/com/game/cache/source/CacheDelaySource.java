@@ -1,5 +1,6 @@
 package com.game.cache.source;
 
+import com.game.cache.data.DataBitIndex;
 import com.game.cache.data.DataCollection;
 import com.game.cache.data.IData;
 import com.game.cache.exception.CacheException;
@@ -87,7 +88,7 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
     public boolean replaceOne(PK primaryKey, V value) {
         PrimaryCache<K> kPrimaryCache = primaryCacheMap.computeIfAbsent(primaryKey, key -> new PrimaryCache<>());
         Map<String, Object> cacheValue = getConverter().convert2Cache(value);
-        KeyCacheValue<K> keyCacheValue = KeyCacheValue.create(value.secondaryKey(), value.isCacheResource(), cacheValue);
+        KeyCacheValue<K> keyCacheValue = KeyCacheValue.create(value.secondaryKey(), value.hasBitIndex(DataBitIndex.CacheCreated), cacheValue);
         kPrimaryCache.add(keyCacheValue);
         return true;
     }
@@ -97,7 +98,7 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
         PrimaryCache<K> kPrimaryCache = primaryCacheMap.computeIfAbsent(primaryKey, key -> new PrimaryCache<>());
         List<KeyCacheValue<K>> cacheValueList = values.stream().map(value -> {
             Map<String, Object> cacheValue = getConverter().convert2Cache(value);
-            return KeyCacheValue.create(value.secondaryKey(), value.isCacheResource(), cacheValue);
+            return KeyCacheValue.create(value.secondaryKey(), value.hasBitIndex(DataBitIndex.CacheCreated), cacheValue);
         }).collect(Collectors.toList());
         kPrimaryCache.addAll(cacheValueList);
         return true;

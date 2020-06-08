@@ -1,7 +1,7 @@
 package com.game.cache.source;
 
 import com.game.cache.CacheInformation;
-import com.game.cache.InformationName;
+import com.game.cache.CacheName;
 import com.game.common.util.CommonUtil;
 
 import java.util.ArrayList;
@@ -44,6 +44,6 @@ public class CacheCollection {
 
     public static Map<Integer, List<Map<String, Object>>> groupPrimarySharedId(Collection<Map<String, Object>> cacheValueList){
         return CommonUtil.groupByKey(new HashMap<>(), cacheValueList,
-                ArrayList::new, cacheValue -> (Integer) cacheValue.get(InformationName.CACHE_KEY.getKeyName()));
+                ArrayList::new, cacheValue -> (Integer) cacheValue.get(CacheName.CACHE_KEY.getKeyName()));
     }
 }

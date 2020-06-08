@@ -1,5 +1,6 @@
 package com.game.cache.source;
 
+import com.game.cache.data.DataBitIndex;
 import com.game.cache.data.DataCollection;
 import com.game.cache.data.IData;
 import com.game.cache.exception.CacheException;
@@ -42,7 +43,7 @@ public abstract class CacheDbSource<PK, K, V extends IData<K>> extends CacheSour
 
     @Override
     public boolean replaceOne(PK primaryKey, V value) {
-        KeyCacheValue<K> keyCacheValue = KeyCacheValue.create(value.secondaryKey(), value.isCacheResource(), converter.convert2Cache(value));
+        KeyCacheValue<K> keyCacheValue = KeyCacheValue.create(value.secondaryKey(), value.hasBitIndex(DataBitIndex.CacheCreated), converter.convert2Cache(value));
         boolean isSuccess = replaceOne(primaryKey, keyCacheValue);
         if (isSuccess){
         }
@@ -53,7 +54,7 @@ public abstract class CacheDbSource<PK, K, V extends IData<K>> extends CacheSour
     public boolean replaceBatch(PK primaryKey, Collection<V> values) {
         List<KeyCacheValue<K>> cacheValueList = values.stream().map(value -> {
             Map<String, Object> cacheValue = converter.convert2Cache(value);
-            return KeyCacheValue.create(value.secondaryKey(), value.isCacheResource(), cacheValue);
+            return KeyCacheValue.create(value.secondaryKey(), value.hasBitIndex(DataBitIndex.CacheCreated), cacheValue);
         }).collect(Collectors.toList());
         boolean isSuccess = replaceBatch(primaryKey, cacheValueList);
         if (isSuccess){

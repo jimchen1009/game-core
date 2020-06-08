@@ -1,5 +1,7 @@
 package com.game.cache.mapper;
 
+import com.game.cache.CacheName;
+import com.game.cache.CacheType;
 import com.game.cache.data.IData;
 import com.game.cache.exception.CacheException;
 import com.game.common.log.LogUtil;
@@ -14,11 +16,11 @@ import java.util.stream.Collectors;
 public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, V> {
 
     private final ClassInformation information;
-    private final ValueConvertMapper mapper;
+    private final CacheType cacheType;
 
-    public ClassConverter(Class<V> aClass, ValueConvertMapper convertMapper) {
+    public ClassConverter(Class<V> aClass, CacheType cacheType) {
         this.information = ClassInformation.get(aClass);
-        this.mapper = convertMapper;
+        this.cacheType = cacheType;
     }
 
     public ClassInformation getInformation() {
@@ -36,7 +38,7 @@ public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, 
             V newInstance = convertedClass.newInstance();
             for (FieldInformation description : information.fieldDescriptionList()) {
                 Field field = description.getField();
-                ValueConverter<?> converter = mapper.getOrDefault(description.getType());
+                ValueConverter<?> converter = cacheType.getConvertMapper().getOrDefault(description.getType());
                 Object object = converter.decode(cacheValue.get(description.getAnnotationName()));
                 field.set(newInstance, object);
             }
@@ -58,11 +60,20 @@ public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, 
             for (FieldInformation description : information.getKeysDescriptions()) {
                 encodeValue(dataValue, cacheValue, description, true);
             }
-            ClassConfig classConfig = information.getClassConfig();
             for (FieldInformation description : information.getNormalDescriptions()) {
-                if (classConfig.isNoDbCache() || classConfig.enableRedis || dataValue.getIndexChangedBits() == 0L || dataValue.isIndexChanged(description.getIndex())){
+                if (description.isInternal()){
+                    if (cacheType.isCacheInternal()){
+                        encodeValue(dataValue, cacheValue, description, true);
+                    }
+                }
+                if (cacheType.isFullCache() || dataValue.hasBitIndex(description.getBitIndex())){
                     encodeValue(dataValue, cacheValue, description, false);
                 }
+            }
+            if (cacheType.isFullCache()){
+                ValueConverter<?> converter = cacheType.getConvertMapper().get(int.class);
+                Object encode = converter.encode(dataValue.getBitIndexBits());
+                cacheValue.put(CacheName.DATA_BITS.getKeyName(), encode);
             }
             return cacheValue;
         }
@@ -78,7 +89,7 @@ public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, 
 
     private void encodeValue(V dataValue, Map<String, Object> cacheValue, FieldInformation description, boolean checkNullObject) throws IllegalAccessException {
         Field field = description.getField();
-        ValueConverter<?> converter = mapper.getOrDefault(description.getType());
+        ValueConverter<?> converter = cacheType.getConvertMapper().getOrDefault(description.getType());
         Object encode = converter.encode(field.get(dataValue));
         if (encode != null){
             cacheValue.put(description.getAnnotationName(), encode);

@@ -25,7 +25,7 @@ public abstract class CacheSource<PK, K, V extends IData<K>> implements ICacheSo
         this.aClass = aClass;
         this.lockKey = LockKey.systemLockKey("cache").createLockKey(aClass.getSimpleName());
         this.keyValueBuilder = new CacheKeyValueBuilder<>(ClassInformation.get(aClass), primaryBuilder, secondaryBuilder);
-        this.converter = new ClassConverter<>(aClass, getCacheType().getValueConvertMapper());
+        this.converter = new ClassConverter<>(aClass, getCacheType());
     }
 
     @Override

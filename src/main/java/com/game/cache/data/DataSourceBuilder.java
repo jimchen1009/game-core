@@ -54,7 +54,7 @@ public class DataSourceBuilder<PK, K, V extends IData<K>> {
     }
 
     private  IDataSource<PK, K, V> createDataSource(ICacheSource<PK, K, V> cacheSource){
-        IDataSource<PK, K, V> dataSource = new DataSource<>(aClass, convertMapper, cacheSource);
+        IDataSource<PK, K, V> dataSource = new DataSource<>(cacheSource);
         for (String decorator : decorators) {
             String className = DataSource.class.getName() + decorator.toUpperCase().charAt(0) + decorator.toLowerCase().substring(1);
             try {

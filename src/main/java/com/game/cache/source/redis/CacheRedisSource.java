@@ -1,6 +1,7 @@
 package com.game.cache.source.redis;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.game.cache.CacheInformation;
 import com.game.cache.CacheType;
@@ -42,7 +43,6 @@ public class CacheRedisSource<PK, K, V extends IData<K>> extends CacheSource<PK,
             SerializerFeature.IgnoreNonFieldGetter,
             SerializerFeature.IgnoreNonFieldGetter
     };
-
 
     public CacheRedisSource(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder) {
         super(aClass, primaryBuilder, secondaryBuilder);
@@ -130,14 +130,16 @@ public class CacheRedisSource<PK, K, V extends IData<K>> extends CacheSource<PK,
     }
 
     private String toJSONString(V data){
-        return JSON.toJSONString(data, mySerializerFeatures);
+        Map<String, Object> cacheValue = getConverter().convert2Cache(data);
+        return JSON.toJSONString(cacheValue, mySerializerFeatures);
     }
 
     private V parseDataValue(String string){
         if (StringUtil.isEmpty(string)){
             return null;
         }
-        return JSON.parseObject(string, getAClass());
+        JSONObject cacheValue = JSON.parseObject(string);
+        return getConverter().convert2Value(cacheValue);
     }
 
     private List<V> parseDataValue(Collection<String> strings){
