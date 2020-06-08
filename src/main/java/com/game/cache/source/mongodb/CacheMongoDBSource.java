@@ -9,7 +9,6 @@ import com.game.cache.source.CacheCollection;
 import com.game.cache.source.CacheDbSource;
 import com.game.cache.source.ICacheDelaySource;
 import com.game.cache.source.ICacheSourceInteract;
-import com.game.cache.source.KeyCacheValue;
 import com.game.cache.source.executor.ICacheExecutor;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
@@ -46,16 +45,19 @@ public class CacheMongoDBSource<PK, K, V extends IData<K>> extends CacheDbSource
         return CacheType.MongoDb;
     }
 
+
     @Override
-    public Map<String, Object> getCache(PK primaryKey, K secondaryKey) {
+    public V get(PK primaryKey, K secondaryKey) {
         List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createAllKeyValue(primaryKey, secondaryKey);
-        return MongoDBQueryUtil.queryOne(getCollection(), getClassConfig().primarySharedId,  entryList);
+        Map<String, Object> cacheValue = MongoDBQueryUtil.queryOne(getCollection(), getClassConfig().primarySharedId, entryList);
+        return cacheValue == null ? null : converter.convert2Value(cacheValue);
     }
 
     @Override
-    public Collection<Map<String, Object>> getCacheAll(PK primaryKey) {
+    public List<V> getAll(PK primaryKey) {
         List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createPrimaryKeyValue(primaryKey);
-        return MongoDBQueryUtil.queryAll(getCollection(), getClassConfig().primarySharedId,  entryList);
+        Collection<Map<String, Object>> cacheValuesList = MongoDBQueryUtil.queryAll(getCollection(), getClassConfig().primarySharedId, entryList);
+        return converter.convert2ValueList(cacheValuesList);
     }
 
     @Override
@@ -84,23 +86,23 @@ public class CacheMongoDBSource<PK, K, V extends IData<K>> extends CacheDbSource
     }
 
     @Override
-    public boolean replaceOne(PK primaryKey, KeyCacheValue<K> keyCacheValue) {
-        List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createAllKeyValue(keyCacheValue.getCacheValue());
+    public boolean replaceOne(PK primaryKey, V value) {
+        Map<String, Object> cacheValue = getConverter().convert2Cache(value);
+        List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createAllKeyValue(primaryKey, value.secondaryKey());
         Document queryDocument = CacheMongoDBUtil.getQueryDocument(getClassConfig().primarySharedId,  entryList);
-        Document document = CacheMongoDBUtil.toDocument(keyCacheValue.getCacheValue().entrySet());
+        Document document = CacheMongoDBUtil.toDocument(cacheValue.entrySet());
         MongoCollection<Document> collection = getCollection();
         UpdateResult updateOne = collection.updateOne(queryDocument, document, CacheMongoDBUtil.UPDATE_OPTIONS);
         return updateOne.wasAcknowledged();
     }
 
     @Override
-    public boolean replaceBatch(PK primaryKey, List<KeyCacheValue<K>> keyCacheValueList) {
-        List<Map.Entry<String, Object>> keyValue = getKeyValueBuilder().createPrimaryKeyValue(primaryKey);
-
-        List<UpdateOneModel<Document>> updateOneModelList = keyCacheValueList.stream().map( keyCacheValue -> {
-            List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createAllKeyValue(keyCacheValue.getCacheValue());
-            Map<String, Object> key2Values = entryList.stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-            return CacheMongoDBUtil.createUpdateOneModel(getClassConfig().primarySharedId,  keyValue, keyCacheValue.getCacheValue().entrySet());
+    public boolean replaceBatch(PK primaryKey, Collection<V> values) {
+        List<UpdateOneModel<Document>> updateOneModelList = values.stream().map(value -> {
+            Map<String, Object> cacheValue = getConverter().convert2Cache(value);
+            List<Map.Entry<String, Object>> primaryKeyValue = getKeyValueBuilder().createPrimaryKeyValue(primaryKey);
+            List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createAllKeyValue(primaryKey, value.secondaryKey());
+            return CacheMongoDBUtil.createUpdateOneModel(getClassConfig().primarySharedId, primaryKeyValue, cacheValue.entrySet());
         }).collect(Collectors.toList());
         MongoCollection<Document> collection = getCollection();
         BulkWriteResult writeResult = collection.bulkWrite(updateOneModelList);

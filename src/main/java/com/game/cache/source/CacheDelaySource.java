@@ -1,6 +1,5 @@
 package com.game.cache.source;
 
-import com.game.cache.data.DataBitIndex;
 import com.game.cache.data.DataCollection;
 import com.game.cache.data.IData;
 import com.game.cache.exception.CacheException;
@@ -38,7 +37,7 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
     public static final Map<String, Object> EMPTY = Collections.emptyMap();
 
     private final CacheDbSource<PK, K, V> cacheSource;
-    private final Map<PK, PrimaryCache<K>> primaryCacheMap;
+    private final Map<PK, PrimaryDelayCache<PK, K, V>> primaryCacheMap;
     private final ICacheExecutor executor;
 
     public CacheDelaySource(CacheDbSource<PK, K, V> cacheSource, ICacheExecutor executor) {
@@ -59,48 +58,42 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
 
     @Override
     public V get(PK primaryKey, K secondaryKey) {
-        PrimaryCache<K> primaryCache = primaryCacheMap.get(primaryKey);
-        if (primaryCache == null){
+        PrimaryDelayCache<PK, K, V> primaryCache = primaryCacheMap.get(primaryKey);
+        if (primaryCache == null) {
             return cacheSource.get(primaryKey, secondaryKey);
-        }
-        else {
-            Map<String, Object> sourceCache = cacheSource.getCache(primaryKey, secondaryKey);
-            Map<String, Object> cacheValue = primaryCache.getCacheValue(secondaryKey);
-            return cacheValue == null ? null : getConverter().convert2Value(cacheValue);
+        } else {
+            return cacheSource.get(primaryKey, secondaryKey);
         }
     }
 
     @Override
     public List<V> getAll(PK primaryKey) {
-        Collection<Map<String, Object>> cacheAll = cacheSource.getCacheAll(primaryKey);
-        Collection<Map<String, Object>> cacheValues = replaceAllCacheValues(primaryKey, cacheAll);
-        return getConverter().convert2ValueList(cacheValues);
+        List<V> dataValueList = cacheSource.getAll(primaryKey);
+        return replaceAllDataValueList(primaryKey, dataValueList);
     }
 
     @Override
     public DataCollection<K, V> getCollection(PK primaryKey) {
-        CacheCollection cacheCollection = cacheSource.getCacheCollection(primaryKey);
-        Collection<Map<String, Object>> allCacheValues = replaceAllCacheValues(primaryKey, cacheCollection.getCacheValuesList());
-        return new DataCollection<>(getConverter().convert2ValueList(allCacheValues), cacheCollection.getInformation());
+        DataCollection<K, V> collection = cacheSource.getCollection(primaryKey);
+        List<V> valueList = replaceAllDataValueList(primaryKey, collection.getDataList());
+        return new DataCollection<>(valueList, collection.getInformation());
     }
 
     @Override
     public boolean replaceOne(PK primaryKey, V value) {
-        PrimaryCache<K> kPrimaryCache = primaryCacheMap.computeIfAbsent(primaryKey, key -> new PrimaryCache<>());
-        Map<String, Object> cacheValue = getConverter().convert2Cache(value);
-        KeyCacheValue<K> keyCacheValue = KeyCacheValue.create(value.secondaryKey(), value.hasBitIndex(DataBitIndex.CacheCreated), cacheValue);
-        kPrimaryCache.add(keyCacheValue);
+        V cloneValue = cloneValue(value);
+        PrimaryDelayCache<PK, K, V> primaryCache = primaryCacheMap.computeIfAbsent(primaryKey, PrimaryDelayCache::new);
+        KeyDataValue<K, V> keyDataValue = KeyDataValue.createCache(cloneValue.secondaryKey(), cloneValue);
+        primaryCache.add(keyDataValue);
         return true;
     }
 
     @Override
     public boolean replaceBatch(PK primaryKey, Collection<V> values) {
-        PrimaryCache<K> kPrimaryCache = primaryCacheMap.computeIfAbsent(primaryKey, key -> new PrimaryCache<>());
-        List<KeyCacheValue<K>> cacheValueList = values.stream().map(value -> {
-            Map<String, Object> cacheValue = getConverter().convert2Cache(value);
-            return KeyCacheValue.create(value.secondaryKey(), value.hasBitIndex(DataBitIndex.CacheCreated), cacheValue);
-        }).collect(Collectors.toList());
-        kPrimaryCache.addAll(cacheValueList);
+        PrimaryDelayCache<PK, K, V> primaryCache = primaryCacheMap.computeIfAbsent(primaryKey, PrimaryDelayCache::new);
+        for (V value : values) {
+            primaryCache.add(KeyDataValue.createCache(value.secondaryKey(), cloneValue(value)));
+        }
         return true;
     }
 
@@ -116,16 +109,17 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
 
     @Override
     public boolean deleteOne(PK primaryKey, K secondaryKey) {
-        PrimaryCache<K> kPrimaryCache = primaryCacheMap.computeIfAbsent(primaryKey, key -> new PrimaryCache<>());
-        kPrimaryCache.add(new KeyCacheValue<>(secondaryKey, CacheCommand.DELETE, EMPTY));
+        PrimaryDelayCache<PK, K, V> primaryCache = primaryCacheMap.computeIfAbsent(primaryKey, PrimaryDelayCache::new);
+        primaryCache.deleteCacheValue(secondaryKey);
         return true;
     }
 
     @Override
     public boolean deleteBatch(PK primaryKey, Collection<K> secondaryKeys) {
-        PrimaryCache<K> kPrimaryCache = primaryCacheMap.computeIfAbsent(primaryKey, key -> new PrimaryCache<>());
-        List<KeyCacheValue<K>> keyCacheValueList = secondaryKeys.stream().map(secondaryKey -> new KeyCacheValue<>(secondaryKey, CacheCommand.DELETE, EMPTY)).collect(Collectors.toList());
-        kPrimaryCache.addAll(keyCacheValueList);
+        PrimaryDelayCache<PK, K, V> primaryCache = primaryCacheMap.computeIfAbsent(primaryKey, PrimaryDelayCache::new);
+        for (K secondaryKey : secondaryKeys) {
+            primaryCache.deleteCacheValue(secondaryKey);
+        }
         return true;
     }
 
@@ -150,14 +144,14 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
     }
 
     @Override
-    public void executePrimaryCacheFlushAsync(PK primaryKey, Consumer<Boolean> consumer){
-        CacheCallable<Boolean> callable = createPrimaryCacheFlushCallable(primaryKey, "executePrimaryCacheFlushAsync", consumer);
+    public void executePrimaryCacheFlushAsync(PK primaryKey, Consumer<Boolean> consumer) {
+        CacheCallable<Boolean> callable = flushPrimaryCacheCallable(primaryKey, "executePrimaryCacheFlushAsync", consumer);
         executor.submit(callable);
     }
 
     @Override
     public boolean executePrimaryCacheFlushSync(PK primaryKey) {
-        CacheCallable<Boolean> callable = createPrimaryCacheFlushCallable(primaryKey, "executePrimaryCacheFlushSync", null);
+        CacheCallable<Boolean> callable = flushPrimaryCacheCallable(primaryKey, "executePrimaryCacheFlushSync", null);
         boolean isSuccess = false;
         int flushTryCount = Configs.getInstance().getInt("cache.flush.tryCount");
         long flushTimeOut = Configs.getInstance().getDuration("cache.flush.timeOut", TimeUnit.MILLISECONDS);
@@ -165,21 +159,20 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
             try {
                 Future<Boolean> future = executor.submit(callable);
                 isSuccess = future.get(flushTimeOut, TimeUnit.MILLISECONDS);
-                if (isSuccess){
+                if (isSuccess) {
                     break;
                 }
                 logger.error("primaryKey:{}.{} count:{} flush failure.", LogUtil.toJSONString(primaryKey), getAClass().getName(), count);
-            }
-            catch (Throwable t) {
+            } catch (Throwable t) {
                 throw new CacheException(LogUtil.toJSONString(primaryKey), t);
             }
         }
         return isSuccess;
     }
 
-    private CacheCallable<Boolean> createPrimaryCacheFlushCallable(PK primaryKey, String message,  Consumer<Boolean> consumer){
+    private CacheCallable<Boolean> flushPrimaryCacheCallable(PK primaryKey, String message, Consumer<Boolean> consumer) {
         return new CacheCallable<>(getScheduleName(), () -> {
-            PrimaryCache<K> primaryCache = primaryCacheMap.remove(primaryKey);
+            PrimaryDelayCache<PK, K, V> primaryCache = primaryCacheMap.remove(primaryKey);
             if (primaryCache == null) {
                 return true;
             }
@@ -187,9 +180,8 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
             int tryCount = Configs.getInstance().getInt("cache.flush.tryCount");
             long timeOut = Configs.getInstance().getDuration("cache.flush.timeOut", TimeUnit.MILLISECONDS);
             for (int count = 0; count < tryCount; count++) {
-                Collection<KeyCacheValue<K>> keyCacheValues = primaryCache.getAll();
-                isSuccess = flushKeyCacheValuesInLock(Collections.singletonMap(primaryKey, keyCacheValues));
-                if (isSuccess){
+                isSuccess = flushPrimaryCacheInLock(Collections.singletonMap(primaryKey, primaryCache));
+                if (isSuccess) {
                     break;
                 }
                 logger.error("primaryKey:{}.{} count:{} flush failure.", LogUtil.toJSONString(primaryKey), getAClass().getName(), count);
@@ -207,225 +199,78 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
         return cacheSource;
     }
 
-    protected abstract Map<PK, List<KeyCacheValue<K>>> executeWriteBackKeyCacheValues(Map<PK, Collection<KeyCacheValue<K>>> keyCacheValuesMap);
+    protected abstract Map<PK, PrimaryDelayCache<PK, K, V>> executeWritePrimaryCache(Map<PK, PrimaryDelayCache<PK, K, V>> primaryCacheMap);
 
     private void onSchedule() {
-        if (primaryCacheMap.isEmpty()){
+        if (primaryCacheMap.isEmpty()) {
             return;
         }
         long currentTime = System.currentTimeMillis();
-        Map<PK, Collection<KeyCacheValue<K>>> keyCacheValuesMap = new HashMap<>();
         List<PK> removePrimaryKeyList = new ArrayList<>();
         List<Map.Entry<PK, Long>> expiredPrimaryKey = new ArrayList<>();
-        for (Map.Entry<PK, PrimaryCache<K>> entry : primaryCacheMap.entrySet()) {
-            if (entry.getValue().isEmpty()){
+        for (Map.Entry<PK, PrimaryDelayCache<PK, K, V>> entry : primaryCacheMap.entrySet()) {
+            if (entry.getValue().isEmpty()) {
                 continue;
             }
             if (currentTime < entry.getValue().getExpiredTime()) {
                 expiredPrimaryKey.add(new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue().getExpiredTime()));
-            }
-            else {
+            } else {
                 removePrimaryKeyList.add(entry.getKey());
             }
         }
         int maximumCount = Configs.getInstance().getInt("cache.maximumCount");
-        if (expiredPrimaryKey.size() > maximumCount){
+        if (expiredPrimaryKey.size() > maximumCount) {
             expiredPrimaryKey.sort(Comparator.comparingLong(Map.Entry::getValue));
             for (int i = maximumCount; i < expiredPrimaryKey.size(); i++) {
                 removePrimaryKeyList.add(expiredPrimaryKey.get(i).getKey());
             }
         }
-        if (removePrimaryKeyList.isEmpty()){
+        if (removePrimaryKeyList.isEmpty()) {
             return;
         }
+        Map<PK, PrimaryDelayCache<PK, K, V>> primaryCacheMap0 = new HashMap<>();
         for (PK pk : removePrimaryKeyList) {
-            PrimaryCache<K> primaryCache = primaryCacheMap.remove(pk);
-            if (primaryCache == null){
+            PrimaryDelayCache<PK, K, V> primaryCache = primaryCacheMap.remove(pk);
+            if (primaryCache == null) {
                 continue;
             }
-            Collection<KeyCacheValue<K>> keyCacheValues = primaryCache.getAll();
-            if (keyCacheValues.isEmpty()){
+            if (primaryCache.isEmpty()) {
                 continue;
             }
-            keyCacheValuesMap.put(pk, keyCacheValues);
+            primaryCacheMap0.put(pk, primaryCache);
         }
-        flushKeyCacheValuesInLock(keyCacheValuesMap);
+        flushPrimaryCacheInLock(primaryCacheMap0);
     }
 
-    private Collection<Map<String, Object>> replaceAllCacheValues(PK primaryKey, Collection<Map<String, Object>> cacheValues){
-        PrimaryCache<K> primaryCache = primaryCacheMap.get(primaryKey);
-        if (primaryCache  == null){
-            return cacheValues;
+    private List<V> replaceAllDataValueList(PK primaryKey, List<V> dateValueList) {
+        PrimaryDelayCache<PK, K, V> primaryCache = primaryCacheMap.get(primaryKey);
+        if (primaryCache == null) {
+            return dateValueList;
         }
-        ICacheKeyValueBuilder<PK, K> keyValueBuilder = cacheSource.getKeyValueBuilder();
-        List<Map<String, Object>> replaceCacheValues = new ArrayList<>(cacheValues.size());
-        for (Map<String, Object> cacheValue : cacheValues) {
-            K secondaryKey = keyValueBuilder.createSecondaryKey(cacheValue);
-            KeyCacheValue<K> keyCacheValue = primaryCache.get(secondaryKey);
-            if (keyCacheValue == null){
-                replaceCacheValues.add(cacheValue);
-            }
-            else if (keyCacheValue.isDeleted()){
-                //被删掉了~
-            }
-            else {
-                HashMap<String, Object> createCacheValue = new HashMap<>(cacheValue);
-                createCacheValue.putAll(keyCacheValue.getCacheValue());
-                replaceCacheValues.add(createCacheValue);
+        Collection<KeyDataValue<K, V>> dataValues = primaryCache.getAll();
+        if (dataValues.isEmpty()) {
+            return dateValueList;
+        }
+        Map<K, V> key2DataValueMap = dateValueList.stream().collect(Collectors.toMap(V::secondaryKey, dataValue -> dataValue));
+        for (KeyDataValue<K, V> dataValue : dataValues) {
+            if (dataValue.isDeleted()) {
+                key2DataValueMap.remove(dataValue.getKey());
+            } else {
+                key2DataValueMap.put(dataValue.getKey(), dataValue.getDataValue());
             }
         }
-        return replaceCacheValues;
+        return new ArrayList<>(key2DataValueMap.values());
     }
 
 
-    private boolean flushKeyCacheValuesInLock(Map<PK, Collection<KeyCacheValue<K>>> keyCacheValuesMap){
-        if (keyCacheValuesMap.isEmpty()) {
-            return true;
+    private boolean flushPrimaryCacheInLock(Map<PK, PrimaryDelayCache<PK, K, V>> primaryCacheMap) {
+        Map<PK, PrimaryDelayCache<PK, K, V>> pkPrimaryCacheMap = executeWritePrimaryCache(primaryCacheMap);
+        int duration = RandomUtils.nextInt(0, 5);
+        for (Map.Entry<PK, PrimaryDelayCache<PK, K, V>> entry : pkPrimaryCacheMap.entrySet()) {
+            PK primaryKey = entry.getValue().getPrimaryKey();
+            PrimaryDelayCache<PK, K, V> newPrimaryCache = primaryCacheMap.computeIfAbsent(primaryKey, key -> new PrimaryDelayCache<>(key, duration));
+            newPrimaryCache.rollbackAll(entry.getValue().getAll());
         }
-        Map<PK, List<KeyCacheValue<K>>> failureKeyCacheValuesMap = executeWriteBackKeyCacheValues(keyCacheValuesMap);
-        for (Map.Entry<PK, List<KeyCacheValue<K>>> entry : failureKeyCacheValuesMap.entrySet()) {
-            int duration = RandomUtils.nextInt(0, 5);
-            PrimaryCache<K> kPrimaryCache = primaryCacheMap.computeIfAbsent(entry.getKey(), key -> new PrimaryCache<>(duration));
-            kPrimaryCache.rollbackAll(entry.getValue());
-        }
-        return failureKeyCacheValuesMap.isEmpty();
-    }
-
-    private static final class PrimaryCache<K>{
-
-        public static final Map<String, Object> EMPTY = new HashMap<>(0);
-
-        private volatile long expiredTime;
-        private final Map<K, KeyCacheValue<K>> keyCacheValuesMap;
-
-        public PrimaryCache(int duration) {
-            if (duration == 0){
-                duration = Configs.getInstance().getInt("cache.flush.expiredDuration");
-            }
-            this.expiredTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(duration);
-            this.keyCacheValuesMap = new ConcurrentHashMap<>();
-        }
-
-        public PrimaryCache() {
-            this(0);
-        }
-
-        public long getExpiredTime() {
-            return expiredTime;
-        }
-
-        public void setExpiredTime(long expiredTime) {
-            this.expiredTime = expiredTime;
-        }
-
-        public boolean isEmpty(){
-            return keyCacheValuesMap.isEmpty();
-        }
-
-        /**
-         * @param secondaryKey
-         * @return
-         */
-        public Map<String, Object> getCacheValue(K secondaryKey){
-            KeyCacheValue<K> keyCacheValue = keyCacheValuesMap.get(secondaryKey);
-            if (keyCacheValue == null || keyCacheValue.isDeleted()){
-                return null;
-            }
-            return keyCacheValue.getCacheValue();
-        }
-
-        /**
-         * @return
-         */
-        public Collection<Map<String, Object>> getAllCacheValues(){
-            List<Map<String, Object>> cacheValueList = new ArrayList<>();
-            for (Map.Entry<K, KeyCacheValue<K>> entry : keyCacheValuesMap.entrySet()) {
-                if (entry.getValue().isDeleted()){
-                  continue;
-                }
-                cacheValueList.add(entry.getValue().getCacheValue());
-            }
-            return cacheValueList;
-        }
-
-        /**
-         * @param secondaryKey
-         * @return
-         */
-        public Map<String, Object> deleteCacheValue(K secondaryKey){
-            KeyCacheValue<K> oldKeyCacheValue = keyCacheValuesMap.remove(secondaryKey);
-            if (oldKeyCacheValue == null){
-                keyCacheValuesMap.put(secondaryKey, new KeyCacheValue<>(secondaryKey, CacheCommand.UPDATE, EMPTY));
-                return null;
-            }
-            if (oldKeyCacheValue.isInsert()) {
-                return oldKeyCacheValue.getCacheValue();
-            }
-            if (oldKeyCacheValue.isDeleted()) {
-                return null;
-            }
-            if (oldKeyCacheValue.isUpdate()){
-                keyCacheValuesMap.put(secondaryKey, new KeyCacheValue<>(secondaryKey, CacheCommand.UPDATE, EMPTY));
-                return oldKeyCacheValue.getCacheValue();
-            }
-            throw new CacheException(oldKeyCacheValue.getCacheCommand().name());
-        }
-
-        /**
-         * @param keyCacheValue
-         */
-        public void add(KeyCacheValue<K> keyCacheValue){
-            add0(keyCacheValue);
-        }
-
-        public KeyCacheValue<K> get(K secondaryKey){
-            return keyCacheValuesMap.get(secondaryKey);
-        }
-
-        public void addAll(Collection<KeyCacheValue<K>> keyCacheValues){
-            for (KeyCacheValue<K> keyCacheValue : keyCacheValues) {
-                add0(keyCacheValue);
-            }
-        }
-
-        private void add0(KeyCacheValue<K> keyCacheValue){
-            K secondaryKey = keyCacheValue.getKey();
-            KeyCacheValue<K> oldPrimaryCacheValue = keyCacheValuesMap.get(secondaryKey);
-            if (oldPrimaryCacheValue == null || oldPrimaryCacheValue.isDeleted()) {
-                keyCacheValuesMap.put(secondaryKey, keyCacheValue);
-            }
-            else if (oldPrimaryCacheValue.isInsert() && keyCacheValue.isDeleted()){
-                keyCacheValuesMap.remove(secondaryKey);
-            }
-            else {
-                HashMap<String, Object> currentCacheValues = new HashMap<>();
-                currentCacheValues.putAll(oldPrimaryCacheValue.getCacheValue());
-                currentCacheValues.putAll(keyCacheValue.getCacheValue());
-                KeyCacheValue<K> newKeyCacheValue = new KeyCacheValue<>(secondaryKey, oldPrimaryCacheValue.getCacheCommand(), currentCacheValues);
-                keyCacheValuesMap.put(secondaryKey, newKeyCacheValue);
-            }
-        }
-
-        /**
-         * @param primaryCacheValues
-         */
-        public void rollbackAll(Collection<KeyCacheValue<K>> primaryCacheValues){
-            for (KeyCacheValue<K> primaryCacheValue : primaryCacheValues) {
-                K secondaryKey = primaryCacheValue.getKey();
-                keyCacheValuesMap.merge(secondaryKey, primaryCacheValue, (oldPrimaryCacheValue, addPrimaryCacheValue)->{
-                    if (oldPrimaryCacheValue.isDeleted() || oldPrimaryCacheValue.isInsert()) {
-                        return oldPrimaryCacheValue;
-                    }
-                    HashMap<String, Object> currentCacheValues = new HashMap<>();
-                    currentCacheValues.putAll(addPrimaryCacheValue.getCacheValue());
-                    currentCacheValues.putAll(oldPrimaryCacheValue.getCacheValue());
-                    return new KeyCacheValue<>(secondaryKey, CacheCommand.UPDATE, currentCacheValues);
-                });
-            }
-        }
-
-        public Collection<KeyCacheValue<K>> getAll(){
-            return keyCacheValuesMap.values();
-        }
+        return pkPrimaryCacheMap.isEmpty();
     }
 }

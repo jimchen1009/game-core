@@ -71,12 +71,13 @@ public class ClassConfig {
         for (IConfig config : configList) {
             String tableName = config.getString("tableName");
             boolean enableRedis = config.getBoolean("enableRedis");
+            List<Integer> loadOnSharedId = config.getList("loadOnSharedId");
             List<IConfig> sharedClassesConfigList = config.getConfigList("sharedClasses");
             for (IConfig classesConfig : sharedClassesConfigList) {
                 String className = classesConfig.getString("className");
                 int primarySharedId = classesConfig.getInt("primarySharedId");
                 boolean delayUpdate = classesConfig.getBoolean("delayUpdate");
-                boolean loadOnShared = classesConfig.getBoolean("loadOnShared");
+                boolean loadOnShared = loadOnSharedId.contains(primarySharedId);
                 int versionId = classesConfig.getInt("versionId");
                 ClassConfig classConfig = new ClassConfig(className, tableName, enableRedis, primarySharedId, delayUpdate, loadOnShared, versionId);
                 class2Configs.put(classConfig.className, classConfig);
