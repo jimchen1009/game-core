@@ -4,8 +4,8 @@ import com.game.cache.mapper.ClassConfig;
 import com.game.cache.source.CacheCollection;
 import com.game.cache.source.ICacheLoginPredicate;
 import com.game.cache.source.ICacheSourceInteract;
+import com.game.common.util.ConcurrentWeakReferenceMap;
 
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -14,11 +14,12 @@ public class CacheInteraction<PK> implements ICacheSourceInteract<PK> {
 
     private final DataDaoManager daoManager;
     private final ICacheLoginPredicate<PK> loginSharedLoad;
-    private WeakReference<Map<Integer, CacheCollection>> weakReference;
+    private final ConcurrentWeakReferenceMap<PK, Map<Integer, CacheCollection>> weakReferenceMap;
 
     public CacheInteraction(DataDaoManager daoManager, ICacheLoginPredicate<PK> loginSharedLoad) {
         this.daoManager = daoManager;
         this.loginSharedLoad = loginSharedLoad;
+        this.weakReferenceMap = new ConcurrentWeakReferenceMap<>();
     }
 
     @Override
@@ -37,7 +38,7 @@ public class CacheInteraction<PK> implements ICacheSourceInteract<PK> {
         if (collections == null || collections.isEmpty()){
             return;
         }
-        this.weakReference = new WeakReference<>(collections);
+        weakReferenceMap.put(primaryKey, collections);
         List<Integer> primarySharedIds = new ArrayList<>(collections.keySet());
         for (Integer primarySharedId : primarySharedIds) {
             ClassConfig classConfig = ClassConfig.getConfig(tableName, primarySharedId);
@@ -56,10 +57,7 @@ public class CacheInteraction<PK> implements ICacheSourceInteract<PK> {
 
     @Override
     public CacheCollection removeCollection(PK primaryKey, String tableName, int primarySharedId) {
-        if (weakReference == null){
-            return null;
-        }
-        Map<Integer, CacheCollection> collections = weakReference.get();
+        Map<Integer, CacheCollection> collections = weakReferenceMap.get(primaryKey);
         return collections == null ? null : collections.remove(primarySharedId);
     }
 

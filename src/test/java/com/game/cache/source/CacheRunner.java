@@ -1,6 +1,8 @@
 package com.game.cache.source;
 
 import com.game.cache.dao.DataDaoManager;
+import com.game.cache.dao.IDataCacheMapDao;
+import com.game.cache.dao.IDataCacheValueDao;
 import com.game.cache.dao.IDataMapDao;
 import com.game.cache.data.IDataLoadPredicate;
 import com.game.cache.key.KeyValueHelper;
@@ -96,7 +98,10 @@ public class CacheRunner {
             currencyDao.replaceBatch(userId, updateCurrencyList);
         }
 
-        ThreadUtil.sleep(TimeUnit.SECONDS.toMillis(10));
+        DataDaoManager.getInstance().getAllDataCacheMapDao().forEach(IDataCacheMapDao::flushAll);
+        DataDaoManager.getInstance().getAllDataCacheValueDao().forEach(IDataCacheValueDao::flushAll);
+
+//        ThreadUtil.sleep(TimeUnit.SECONDS.toMillis(10));
 
 //        itemDao.deleteBatch(userId, updateItemList.stream().map(UserItem::secondaryKey).collect(Collectors.toList()));
 //        currencyDao.deleteBatch(userId, updateCurrencyList.stream().map(UserCurrency::secondaryKey).collect(Collectors.toList()));

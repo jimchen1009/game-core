@@ -131,6 +131,11 @@ public class CacheMongoDBSource<PK, K, V extends IData<K>> extends CacheDbSource
         return writeResult.wasAcknowledged();
     }
 
+    @Override
+    public boolean flushAll() {
+        return true;
+    }
+
     public MongoCollection<Document> getCollection(){
         return MongoDBQueryUtil.getCollection(getClassConfig().tableName);
     }

@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 
 public class ValueConverterRunner {
@@ -16,7 +17,11 @@ public class ValueConverterRunner {
     public void run(){
         ValueConvertMapper mapper = new ValueConvertMapper();
         JsonClass jsonClass = new JsonClass(0, Arrays.asList(0, 2, 4), "Jim");
-        Object[] objects = new Object[]{ 2, 3L, (short)4, "Jim", new Date(), jsonClass};
+        HashMap<String, Object> hashMap = new HashMap<>();
+        hashMap.put("int", Integer.MAX_VALUE);
+        hashMap.put("long", Long.MAX_VALUE);
+        hashMap.put("string", "String");
+        Object[] objects = new Object[]{ 2, 3L, (short)4, "Jim", new Date(),  Arrays.asList(Long.MAX_VALUE, 2, 4), hashMap, jsonClass};
         for (Object object : objects) {
             ValueConverter<?> convert = mapper.getOrDefault(object.getClass());
             Object encode = convert.encode(object);

@@ -113,4 +113,9 @@ abstract class DataSourceDecorator<PK, K, V extends IData<K>> implements IDataSo
     }
 
     protected abstract boolean decoratorEnable();
+
+    @Override
+    public boolean flushAll() {
+        return dataSource.flushAll();
+    }
 }

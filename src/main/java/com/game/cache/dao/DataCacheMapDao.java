@@ -56,6 +56,11 @@ class DataCacheMapDao<PK, K, V extends IData<K>> implements IDataCacheMapDao<PK,
     }
 
     @Override
+    public boolean flushAll() {
+        return mapContainer.flushAll();
+    }
+
+    @Override
     public V replaceOne(PK primaryKey, V value) {
         return mapContainer.replaceOne(primaryKey, value);
     }

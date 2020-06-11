@@ -7,6 +7,8 @@ import java.util.function.Consumer;
 
 public interface ICacheDelaySource<PK, K, V extends IData<K>> extends ICacheSource<PK, K, V>{
 
+    boolean executePrimaryCacheFlushAll();
+
     void executePrimaryCacheFlushAsync(PK primaryKey, Consumer<Boolean> consumer);
 
     boolean executePrimaryCacheFlushSync(PK primaryKey);

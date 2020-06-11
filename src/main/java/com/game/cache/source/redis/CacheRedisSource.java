@@ -119,6 +119,11 @@ public class CacheRedisSource<PK, K, V extends IData<K>> extends CacheSource<PK,
     }
 
     @Override
+    public boolean flushAll() {
+        return true;
+    }
+
+    @Override
     public ICacheDelaySource<PK, K, V> createDelayUpdateSource(ICacheExecutor executor) {
         throw new UnsupportedOperationException();
     }

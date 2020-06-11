@@ -25,4 +25,6 @@ public interface IDataContainer<PK, K, V extends IData<K>> {
     V removeOne(PK primaryKey, K secondaryKeys);
 
     void removeBatch(PK primaryKey, Collection<K> secondaryKeys);
+
+    boolean flushAll();
 }

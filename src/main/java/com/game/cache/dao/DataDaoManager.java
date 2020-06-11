@@ -22,6 +22,7 @@ import com.game.cache.source.redis.CacheRedisSource;
 import com.game.common.config.Configs;
 import com.game.common.config.IConfig;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -79,11 +80,21 @@ public class DataDaoManager {
         return cacheMapDaoMap.get(className);
     }
 
+    public Collection<IDataCacheMapDao> getAllDataCacheMapDao(){
+        return cacheMapDaoMap.values();
+    }
+
+
     public IDataCacheValueDao getDataCacheValueDao(Class<?> aClass){
         return getDataCacheValueDao(aClass.getName());
     }
+
     public IDataCacheValueDao getDataCacheValueDao(String className){
         return cacheValueDaoMap.get(className);
+    }
+
+    public Collection<IDataCacheValueDao> getAllDataCacheValueDao(){
+        return cacheValueDaoMap.values();
     }
 
     public class DataMapDaoBuilder<PK, K, V extends IData<K>>  extends DataDaoBuilder{
@@ -215,6 +226,7 @@ public class DataDaoManager {
                 ICacheSource<PK, K, V> cacheSource;
                 ClassConfig classConfig = ClassConfig.getConfig(aClass);
                 if (classConfig.isNoDbCache()){
+                    //目前REDIS结构的数据，还没有延迟回写实现
                     cacheSource = new CacheRedisSource<>(aClass, primaryBuilder, secondaryBuilder);
                 }
                 else {

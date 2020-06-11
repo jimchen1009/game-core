@@ -87,6 +87,11 @@ public class DataContainer<PK, K, V extends IData<K>> implements IDataContainer<
         primaryDataContainer(primaryKey).removeBatch(secondaryKeys);
     }
 
+    @Override
+    public boolean flushAll() {
+        return dataSource.flushAll();
+    }
+
     private IPrimaryDataContainer<PK, K, V> primaryDataContainer(PK primaryKey){
         return primaryDataMap.computeIfAbsent(primaryKey, key -> new PrimaryDataContainer<>(key, dataSource, loadPredicate));
     }

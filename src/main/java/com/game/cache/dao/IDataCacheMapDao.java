@@ -11,4 +11,6 @@ public interface IDataCacheMapDao<PK, K, V extends IData<K>> extends IDataMapDao
     V getNotCache(PK primaryKey, K secondaryKey);
 
     Collection<V> getAllNotCache(PK primaryKey);
+
+    boolean flushAll();
 }

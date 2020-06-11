@@ -86,6 +86,11 @@ class DataSource<PK, K, V extends IData<K>> implements IDataSource<PK, K, V>{
         return cacheSource.getConverter();
     }
 
+    @Override
+    public boolean flushAll() {
+        return cacheSource.flushAll();
+    }
+
     private V markValueSource(V dataValue){
         ClassInformation information = getConverter().getInformation();
         information.invokeSetBitIndex(dataValue, DataBitIndex.CacheCreated);

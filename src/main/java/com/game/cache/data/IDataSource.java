@@ -27,4 +27,6 @@ public interface IDataSource<PK, K, V extends IData<K>> {
     V cloneValue(V value);
 
     IClassConverter<K, V> getConverter();
+
+    boolean flushAll();
 }

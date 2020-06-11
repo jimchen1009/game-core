@@ -15,12 +15,12 @@ public class PrimaryDelayCache<PK, K, V extends IData<K>>{
     private volatile long expiredTime;
     private final Map<K, KeyDataValue<K, V>> keyDataValuesMap;
 
-    public PrimaryDelayCache(PK primaryKey, int duration) {
+    public PrimaryDelayCache(PK primaryKey, long duration) {
         this.primaryKey = primaryKey;
         if (duration == 0){
-            duration = Configs.getInstance().getInt("cache.flush.expiredDuration");
+            duration = Configs.getInstance().getDuration("cache.flush.expiredDuration", TimeUnit.MILLISECONDS);
         }
-        this.expiredTime = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(duration);
+        this.expiredTime = System.currentTimeMillis() + duration;
         this.keyDataValuesMap = new ConcurrentHashMap<>();
     }
 
