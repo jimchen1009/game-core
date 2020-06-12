@@ -10,11 +10,11 @@ public class RedisIntegerConverter extends ValueConverter<Integer> {
 
     @Override
     protected Integer decode0(Object cacheValue) {
-        return Integer.parseInt(cacheValue.toString());
+        return (Integer)cacheValue;
     }
 
     @Override
     protected Object encode0(Object dataValue) {
-        return dataValue.toString();
+        return dataValue;
     }
 }

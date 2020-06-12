@@ -1,7 +1,5 @@
 package com.game.cache.source.executor;
 
-import jodd.util.ThreadUtil;
-
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -19,7 +17,7 @@ public class CacheExecutor implements ICacheExecutor{
     private final ScheduledExecutorService executorService;
 
     public CacheExecutor(int poolSize) {
-        this.executorService = Executors.newScheduledThreadPool(1);
+        this.executorService = Executors.newScheduledThreadPool(poolSize);
     }
 
     @Override
@@ -53,19 +51,7 @@ public class CacheExecutor implements ICacheExecutor{
 
         @Override
         public T get(long timeout, TimeUnit timeUnit) throws InterruptedException, ExecutionException, TimeoutException {
-            long duration = timeUnit.toMillis(timeout);
-            while (duration > 0){
-                if (future != null){
-                    return future.get(duration, TimeUnit.MILLISECONDS);
-                }
-                long currentTime = System.currentTimeMillis();
-                ThreadUtil.sleep(50);
-                duration -= (System.currentTimeMillis() - currentTime);
-                if (duration <= 0){
-                    return future.get(50, TimeUnit.MILLISECONDS);
-                }
-            }
-            throw new TimeoutException();
+            return future.get(timeout, timeUnit);
         }
     }
 }

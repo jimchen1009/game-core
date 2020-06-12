@@ -12,4 +12,6 @@ public interface ICacheDelaySource<PK, K, V extends IData<K>> extends ICacheSour
     boolean flushOne(PK primaryKey);
 
     ICacheSource<PK, K, V> getCacheSource();
+
+    void addFlushCallback(Consumer<PrimaryDelayCache<PK, K, V>> consumer);
 }

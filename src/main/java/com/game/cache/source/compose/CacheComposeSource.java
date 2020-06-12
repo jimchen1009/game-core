@@ -1,20 +1,32 @@
 package com.game.cache.source.compose;
 
 import com.game.cache.CacheType;
+import com.game.cache.data.DataBitIndex;
 import com.game.cache.data.DataCollection;
 import com.game.cache.data.IData;
 import com.game.cache.mapper.ClassConfig;
+import com.game.cache.mapper.ClassInformation;
 import com.game.cache.mapper.IClassConverter;
 import com.game.cache.source.ICacheDelaySource;
 import com.game.cache.source.ICacheKeyValueBuilder;
+import com.game.cache.source.KeyDataValue;
+import com.game.cache.source.PrimaryDelayCache;
 import com.game.cache.source.executor.ICacheExecutor;
 import com.game.cache.source.executor.ICacheSource;
 import com.game.cache.source.redis.ICacheRedisSource;
 import com.game.common.lock.LockKey;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
+/**
+ * 删除的操作还没有实现~
+ * @param <PK>
+ * @param <K>
+ * @param <V>
+ */
 public class CacheComposeSource<PK, K, V extends IData<K>> implements ICacheSource<PK, K, V> {
 
     private final ICacheRedisSource<PK, K, V> redisSource;
@@ -23,6 +35,9 @@ public class CacheComposeSource<PK, K, V extends IData<K>> implements ICacheSour
     public CacheComposeSource(ICacheRedisSource<PK, K, V> redisSource, ICacheSource<PK, K, V> dbSource) {
         this.redisSource = redisSource;
         this.dbSource = dbSource;
+        if (dbSource instanceof ICacheDelaySource){
+            ((ICacheDelaySource<PK, K, V>)dbSource).addFlushCallback(this::onPrimaryFlushSuccess);
+        }
     }
 
     @Override
@@ -54,25 +69,62 @@ public class CacheComposeSource<PK, K, V extends IData<K>> implements ICacheSour
         if (collection == null || collection.isEmpty()){
             collection = dbSource.getCollection(primaryKey);
         }
+        else {
+            List<V> changeDataList = collection.getDataList().stream().filter(data -> data.hasBitIndex(DataBitIndex.RedisChanged)).collect(Collectors.toList());
+            flushBatchSuccess(primaryKey, changeDataList);
+        }
         return collection;
     }
 
     @Override
     public boolean replaceOne(PK primaryKey, V value) {
+        replaceBatchBefore(Collections.singleton(value));
         boolean isSuccess = redisSource.replaceOne(primaryKey, value);
         if (isSuccess){
-            isSuccess = dbSource.replaceOne(primaryKey, value);
+            isSuccess = replaceBatchSuccess(primaryKey, Collections.singleton(value));
         }
         return isSuccess;
     }
 
     @Override
     public boolean replaceBatch(PK primaryKey, Collection<V> values) {
+        replaceBatchBefore(values);
         boolean isSuccess = redisSource.replaceBatch(primaryKey, values);
         if (isSuccess){
-            isSuccess = dbSource.replaceBatch(primaryKey, values);
+            isSuccess = replaceBatchSuccess(primaryKey, values);
         }
         return isSuccess;
+    }
+
+    private void replaceBatchBefore(Collection<V> values){
+        if (values.isEmpty()){
+            return;
+        }
+        ClassInformation information = getConverter().getInformation();
+        values.forEach(value -> information.invokeSetBitIndex(value, DataBitIndex.RedisChanged));
+    }
+
+    private boolean replaceBatchSuccess(PK primaryKey, Collection<V> values){
+        if (values.isEmpty()){
+            return true;
+        }
+        boolean success = dbSource.replaceBatch(primaryKey, values);
+        if (dbSource instanceof ICacheDelaySource) {
+            return true;    //留给回调的时候调用
+        }
+        else if (success){
+            success = flushBatchSuccess(primaryKey, values);
+        }
+        return success;
+    }
+
+    private boolean flushBatchSuccess(PK primaryKey, Collection<V> values){
+        if (values.isEmpty()){
+            return true;
+        }
+        ClassInformation information = getConverter().getInformation();
+        values.forEach(value -> information.invokeClearBitIndex(value, DataBitIndex.RedisChanged));
+        return redisSource.replaceBatch(primaryKey, values);
     }
 
     @Override
@@ -131,5 +183,11 @@ public class CacheComposeSource<PK, K, V extends IData<K>> implements ICacheSour
     @Override
     public ICacheDelaySource<PK, K, V> createDelayUpdateSource(ICacheExecutor executor) {
         throw new UnsupportedOperationException();
+    }
+
+    private void onPrimaryFlushSuccess(PrimaryDelayCache<PK, K, V> primaryDelayCache){
+        ClassInformation information = getConverter().getInformation();
+        List<V> dataList = primaryDelayCache.getAll().stream().map(KeyDataValue::getDataValue).collect(Collectors.toList());
+        flushBatchSuccess(primaryDelayCache.getPrimaryKey(), dataList);
     }
 }

@@ -90,6 +90,10 @@ public class PrimaryDelayCache<PK, K, V extends IData<K>>{
         return keyDataValuesMap.get(secondaryKey);
     }
 
+    public KeyDataValue<K, V> remove(K secondaryKey){
+        return keyDataValuesMap.remove(secondaryKey);
+    }
+
     public void addAll(Collection<KeyDataValue<K, V>> keyDataValues){
         for (KeyDataValue<K, V> keyDataValue : keyDataValues) {
             keyDataValuesMap.putIfAbsent(keyDataValue.getKey(), keyDataValue);

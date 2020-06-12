@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 public class LockUtil {
 
     private static final long MILLISECONDS = 500L;
-    private static final long WARN_TIME = 500L;
+    private static final long WARN_TIME = 1000L;
 
     private static final Logger logger = LoggerFactory.getLogger(LockUtil.class);
 
@@ -54,12 +54,12 @@ public class LockUtil {
             long current2 = System.currentTimeMillis();
             long duration = current2 - current0;
             if (duration >= WARN_TIME){
-                logger.warn("lock:{} time:{}, call duration:{}(ms), message:{}", lockKeys, current1 - current0, duration, message);
+//                logger.warn("lock:{} time:{}, call duration:{}(ms), message:{}", lockKeys, current1 - current0, duration, message, new Exception());
             }
             return value;
         }
         catch (Throwable t){
-            logger.warn("lock:{} exception, message:{}", lockKeys, message, t);
+            logger.error("lock:{} exception, message:{}", lockKeys, message, t);
             return null;
         }
         finally {

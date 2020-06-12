@@ -10,11 +10,11 @@ public class RedisShortConverter extends ValueConverter<Short> {
 
     @Override
     protected Short decode0(Object cacheValue) {
-        return Short.parseShort(cacheValue.toString());
+        return ((Integer)cacheValue).shortValue();
     }
 
     @Override
     protected Object encode0(Object dataValue) {
-        return dataValue.toString();
+        return (int) (Short) dataValue;
     }
 }

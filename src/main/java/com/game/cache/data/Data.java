@@ -19,7 +19,7 @@ public abstract class Data<K> implements IData<K> {
         VALUE_ERASER = ~value;
     }
 
-    @CacheFiled(index = 63, name = "f1", isInternal = true)
+    @CacheFiled(index = 63, name = "d1", isInternal = true)
     private long dataBitIndexBits = 0;
 
     @Override

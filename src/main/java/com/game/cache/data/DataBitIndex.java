@@ -12,10 +12,12 @@ public class DataBitIndex {
 
     public static DataBitIndex CacheCreated = new DataBitIndex(CacheUniqueId.MAX_ID + 1);
     public static DataBitIndex RedisChanged = new DataBitIndex(CacheUniqueId.MAX_ID + 2);
+    public static DataBitIndex RedisDeleted = new DataBitIndex(CacheUniqueId.MAX_ID + 3);
 
     static {
         uniqueIdBitIndex.put(CacheCreated.getUniqueId(), CacheCreated);
         uniqueIdBitIndex.put(RedisChanged.getUniqueId(), RedisChanged);
+        uniqueIdBitIndex.put(RedisDeleted.getUniqueId(), RedisDeleted);
     }
 
     private final int uniqueId;

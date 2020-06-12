@@ -10,11 +10,11 @@ public class RedisByteConverter extends ValueConverter<Byte> {
 
     @Override
     protected Byte decode0(Object cacheValue) {
-        return Byte.parseByte(cacheValue.toString());
+        return ((Integer)cacheValue).byteValue();
     }
 
     @Override
     protected Object encode0(Object dataValue) {
-        return dataValue.toString();
+        return (int) (Byte) dataValue;
     }
 }
