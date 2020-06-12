@@ -58,13 +58,13 @@ public class DataSourceBuilder<PK, K, V extends IData<K>> {
         for (String decorator : decorators) {
             String className = DataSource.class.getName() + decorator.toUpperCase().charAt(0) + decorator.toLowerCase().substring(1);
             try {
-                logger.info("init decorator:{}", className);
+                logger.info("init decorator: {}", className);
                 Class<?> decoratorClass = Class.forName(className);
                 Constructor<?> constructor = decoratorClass.getConstructor(IDataSource.class);
                 constructor.setAccessible(true);
                 //noinspection unchecked
                 dataSource =  (IDataSource<PK, K, V>)constructor.newInstance(dataSource);
-                logger.info("init decorator:{} finish", className);
+                logger.info("finish decorator: {}", className);
             }
             catch (Throwable t) {
                 logger.error("decorator error, decorator is {}", className, t);

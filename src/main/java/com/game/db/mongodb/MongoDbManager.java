@@ -110,17 +110,17 @@ public class MongoDbManager {
 
         @Override
         public void commandStarted(CommandStartedEvent event) {
-            logger.info("{} {} {} ", event.getCommandName(), event.getRequestId(), event.getDatabaseName());
+            logger.debug("{} {} {} ", event.getCommandName(), event.getRequestId(), event.getDatabaseName());
         }
 
         @Override
         public void commandSucceeded(CommandSucceededEvent event) {
-            logger.info("{} {} {}(ms) ", event.getCommandName(), event.getRequestId(), event.getElapsedTime(TimeUnit.MILLISECONDS));
+            logger.debug("{} {} {}(ms) ", event.getCommandName(), event.getRequestId(), event.getElapsedTime(TimeUnit.MILLISECONDS));
         }
 
         @Override
         public void commandFailed(CommandFailedEvent event) {
-            logger.error("{} {}", event.getCommandName(), event.getRequestId(), event.getThrowable());
+            logger.debug("{} {}", event.getCommandName(), event.getRequestId(), event.getThrowable());
         }
     }
 

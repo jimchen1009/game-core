@@ -3,14 +3,14 @@
 
     <appenders>
         <Console name="STDOUT" target="SYSTEM_OUT">
-        <PatternLayout pattern="[%d{HH:mm:ss:SSS}] [%p] [%t] %l: %m%n"/>
+            <PatternLayout pattern="[%d{HH:mm:ss:SSS}] [%p] [%t] %l: %m%n"/>
         </Console>
 
         <RollingFile name="TRACE" fileName="logs/trace.log" filePattern="logs/$${date:yyyy-MM}/trace_%d{yyyy-MM-dd}_%i.log">
             <!--控制台只输出level及以上级别的信息（onMatch），其他的直接拒绝（onMismatch）-->
             <Filters>
-                <ThresholdFilter level="DEBUG"/>
-                <ThresholdFilter level="INFO" onMatch="DENY" onMismatch="NEUTRAL"/>
+                <ThresholdFilter level="TRACE"/>
+                <ThresholdFilter level="DEBUG" onMatch="DENY" onMismatch="NEUTRAL"/>
             </Filters>
             <PatternLayout pattern="[%d{HH:mm:ss:SSS}] [%p] [%t] %l: %m%n"/>
             <Policies>
@@ -60,7 +60,7 @@
 
         <RollingFile name="ERROR" fileName="logs/error.log" filePattern="logs/$${date:yyyy-MM}/error-%d{yyyy-MM-dd}-%i.log">
             <ThresholdFilter level="ERROR"/>
-          <PatternLayout pattern="[%d{HH:mm:ss:SSS}] [%p] [%t] %l: %m%n"/>
+            <PatternLayout pattern="[%d{HH:mm:ss:SSS}] [%p] [%t] %l: %m%n"/>
             <Policies>
                 <TimeBasedTriggeringPolicy/>
                 <SizeBasedTriggeringPolicy size="1024 MB"/>
@@ -71,7 +71,8 @@
     <loggers>
         <logger name="org.apache" level="INFO"/>
         <logger name="com.mongodb" level="INFO"/>
-        <root level="TRACE">
+        <logger name="com.game" level="INFO"/>
+        <root level="WARN">
             <appender-ref ref="STDOUT"/>
             <appender-ref ref="TRACE"/>
             <appender-ref ref="DEBUG"/>
