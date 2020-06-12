@@ -26,5 +26,5 @@ public interface IDataContainer<PK, K, V extends IData<K>> {
 
     void removeBatch(PK primaryKey, Collection<K> secondaryKeys);
 
-    boolean flushAll();
+    boolean flushAll(long currentTime);
 }

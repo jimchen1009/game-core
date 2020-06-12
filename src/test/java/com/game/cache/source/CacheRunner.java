@@ -1,8 +1,6 @@
 package com.game.cache.source;
 
 import com.game.cache.dao.DataDaoManager;
-import com.game.cache.dao.IDataCacheMapDao;
-import com.game.cache.dao.IDataCacheValueDao;
 import com.game.cache.dao.IDataMapDao;
 import com.game.cache.data.IDataLoadPredicate;
 import com.game.cache.key.KeyValueHelper;
@@ -12,14 +10,11 @@ import com.game.db.redis.IRedisClient;
 import com.game.db.redis.RedisClientManager;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import jodd.util.ThreadUtil;
 import org.bson.Document;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class CacheRunner {
@@ -98,8 +93,7 @@ public class CacheRunner {
             currencyDao.replaceBatch(userId, updateCurrencyList);
         }
 
-        DataDaoManager.getInstance().getAllDataCacheMapDao().forEach(IDataCacheMapDao::flushAll);
-        DataDaoManager.getInstance().getAllDataCacheValueDao().forEach(IDataCacheValueDao::flushAll);
+        DataDaoManager.getInstance().flushAll();
 
 //        ThreadUtil.sleep(TimeUnit.SECONDS.toMillis(10));
 

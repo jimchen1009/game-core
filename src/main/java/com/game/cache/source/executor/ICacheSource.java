@@ -20,7 +20,6 @@ public interface ICacheSource<PK, K, V extends IData<K>> extends IDataSource<PK,
 
     CacheType getCacheType();
 
-
     boolean deleteOne(PK primaryKey, K secondaryKey);
 
     boolean deleteBatch(PK primaryKey, Collection<K> secondaryKeys);

@@ -12,6 +12,7 @@ import com.game.cache.source.executor.ICacheSource;
 import com.game.common.config.Configs;
 import com.game.common.lock.LockKey;
 import com.game.common.log.LogUtil;
+import com.mongodb.Function;
 import jodd.util.ThreadUtil;
 import org.apache.commons.lang3.RandomUtils;
 import org.slf4j.Logger;
@@ -148,13 +149,7 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
     }
 
     @Override
-    public boolean flushAll() {
-        return executePrimaryCacheFlushAll();
-    }
-
-    @Override
-    public boolean executePrimaryCacheFlushAll() {
-        long currentTime = System.currentTimeMillis();
+    public boolean flushAll(long currentTime) {
         String string = Configs.getInstance().getString("cache.flush.logPath");
         File parent = new File(string + "_" + currentTime);
         if (!parent.exists()){
@@ -163,6 +158,7 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
                 logger.error("mkdir error:{}", string);
             }
         }
+        ClassConfig classConfig = getClassConfig();
         ICacheKeyValueBuilder<PK, K> keyValueBuilder = getKeyValueBuilder();
         Collection<PrimaryDelayCache<PK, K, V>> primaryDelayCaches = primaryCacheMap.values();
         for (PrimaryDelayCache<PK, K, V> delayCache : primaryDelayCaches) {
@@ -177,7 +173,7 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
                         .append("data:").append(getConverter().convert2Cache(dataValue.getDataValue())).append("\n");
             }
             try {
-                String filename = String.format("%s_%s.cache", getClassConfig().tableName, keyString);
+                String filename = String.format("%s.cache", classConfig.getRedisKeyString(keyString));
                 FileWriter writer = new FileWriter(parent.getAbsolutePath() + "/" + filename);
                 writer.append(builder.toString());
                 writer.flush();
@@ -207,14 +203,14 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
     }
 
     @Override
-    public void executePrimaryCacheFlushAsync(PK primaryKey, Consumer<Boolean> consumer) {
-        CacheCallable<Boolean> callable = flushPrimaryCacheCallable(primaryKey, "executePrimaryCacheFlushAsync", consumer);
+    public void flush(PK primaryKey, Consumer<Boolean> consumer) {
+        CacheCallable<Boolean> callable = flushPrimaryCacheCallable(primaryKey, "flush", consumer);
         executor.submit(callable);
     }
 
     @Override
-    public boolean executePrimaryCacheFlushSync(PK primaryKey) {
-        CacheCallable<Boolean> callable = flushPrimaryCacheCallable(primaryKey, "executePrimaryCacheFlushSync", null);
+    public boolean flush(PK primaryKey) {
+        CacheCallable<Boolean> callable = flushPrimaryCacheCallable(primaryKey, "flush", null);
         boolean isSuccess = false;
         int tryCount = Configs.getInstance().getInt("cache.flush.tryOneCount");
         long flushTimeOut = Configs.getInstance().getDuration("cache.flush.timeOut", TimeUnit.MILLISECONDS);
@@ -335,5 +331,48 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
             newPrimaryCache.rollbackAll(entry.getValue().getAll());
         }
         return failurePrimaryCacheMap.isEmpty();
+    }
+
+    /**
+     * @param name
+     * @param modelList
+     * @param cacheList
+     * @param function
+     * @param <T>
+     * @param <V>
+     * @return 返回失败的数据
+     */
+    public static <T, V> List<V> handleBatch(String name, List<T> modelList, List<V> cacheList, Function<List<T>, Boolean> function){
+        if (modelList.size() != cacheList.size()){
+            throw new UnsupportedOperationException("");
+        }
+        if (modelList.isEmpty()){
+            return Collections.emptyList();
+        }
+        List<V> failureCacheList = new ArrayList<>();
+        int batchCount = Configs.getInstance().getInt("cache.flush.batchCount");
+        while (modelList.size() > 0) {
+            int count = modelList.size() / batchCount;
+            int index = count * batchCount;
+            if (modelList.size() % batchCount == 0){
+                index -= batchCount;                 //刚好是整数的时候
+            }
+            boolean success = false;
+            try {
+                success = function.apply(modelList.subList(index, modelList.size()));
+            }
+            catch (Throwable t){
+                logger.error("name:{} index:{} modelList:{}", name, index,  modelList.size(), t);
+            }
+            finally {
+                if (success){
+                }
+                else {
+                    failureCacheList.addAll(cacheList.subList(index, modelList.size()));
+                }
+            }
+            modelList = index > 0 ? modelList.subList(0, index) : Collections.emptyList();
+        }
+        return failureCacheList;
     }
 }

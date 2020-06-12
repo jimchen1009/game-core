@@ -35,8 +35,8 @@ class DataCacheValueDao<PK, V extends IData<PK>> implements IDataCacheValueDao<P
     }
 
     @Override
-    public boolean flushAll() {
-        return valueContainer.flushAll();
+    public boolean flushAll(long currentTime) {
+        return valueContainer.flushAll(currentTime);
     }
 
     @Override

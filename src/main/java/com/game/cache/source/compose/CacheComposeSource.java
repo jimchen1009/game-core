@@ -119,8 +119,8 @@ public class CacheComposeSource<PK, K, V extends IData<K>> implements ICacheSour
     }
 
     @Override
-    public boolean flushAll() {
-        return dbSource.flushAll();
+    public boolean flushAll(long currentTime) {
+        return dbSource.flushAll(currentTime);
     }
 
     @Override

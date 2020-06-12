@@ -56,8 +56,8 @@ class DataCacheMapDao<PK, K, V extends IData<K>> implements IDataCacheMapDao<PK,
     }
 
     @Override
-    public boolean flushAll() {
-        return mapContainer.flushAll();
+    public boolean flushAll(long currentTime) {
+        return mapContainer.flushAll(currentTime);
     }
 
     @Override

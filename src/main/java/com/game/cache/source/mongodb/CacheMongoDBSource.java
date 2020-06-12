@@ -132,7 +132,7 @@ public class CacheMongoDBSource<PK, K, V extends IData<K>> extends CacheDbSource
     }
 
     @Override
-    public boolean flushAll() {
+    public boolean flushAll(long currentTime) {
         return true;
     }
 

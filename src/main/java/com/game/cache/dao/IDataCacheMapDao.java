@@ -12,5 +12,5 @@ public interface IDataCacheMapDao<PK, K, V extends IData<K>> extends IDataMapDao
 
     Collection<V> getAllNotCache(PK primaryKey);
 
-    boolean flushAll();
+    boolean flushAll(long currentTime);
 }

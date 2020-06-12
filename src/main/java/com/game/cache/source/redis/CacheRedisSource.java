@@ -119,7 +119,7 @@ public class CacheRedisSource<PK, K, V extends IData<K>> extends CacheSource<PK,
     }
 
     @Override
-    public boolean flushAll() {
+    public boolean flushAll(long currentTime) {
         return true;
     }
 

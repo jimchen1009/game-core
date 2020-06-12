@@ -88,8 +88,8 @@ public class DataContainer<PK, K, V extends IData<K>> implements IDataContainer<
     }
 
     @Override
-    public boolean flushAll() {
-        return dataSource.flushAll();
+    public boolean flushAll(long currentTime) {
+        return dataSource.flushAll(currentTime);
     }
 
     private IPrimaryDataContainer<PK, K, V> primaryDataContainer(PK primaryKey){

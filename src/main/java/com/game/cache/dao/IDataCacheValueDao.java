@@ -8,5 +8,5 @@ public interface IDataCacheValueDao<PK, V extends IData<PK>> extends IDataValueD
 
     V getNotCache(PK primaryKey);
 
-    boolean flushAll();
+    boolean flushAll(long currentTime);
 }

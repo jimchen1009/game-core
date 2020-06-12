@@ -21,13 +21,17 @@ import com.game.cache.source.mongodb.CacheMongoDBSource;
 import com.game.cache.source.redis.CacheRedisSource;
 import com.game.common.config.Configs;
 import com.game.common.config.IConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DataDaoManager {
+
+    private static final Logger logger = LoggerFactory.getLogger(DataDaoManager.class);
 
     private static final DataDaoManager instance = new DataDaoManager();
 
@@ -80,11 +84,6 @@ public class DataDaoManager {
         return cacheMapDaoMap.get(className);
     }
 
-    public Collection<IDataCacheMapDao> getAllDataCacheMapDao(){
-        return cacheMapDaoMap.values();
-    }
-
-
     public IDataCacheValueDao getDataCacheValueDao(Class<?> aClass){
         return getDataCacheValueDao(aClass.getName());
     }
@@ -93,8 +92,28 @@ public class DataDaoManager {
         return cacheValueDaoMap.get(className);
     }
 
-    public Collection<IDataCacheValueDao> getAllDataCacheValueDao(){
-        return cacheValueDaoMap.values();
+
+    public void flushAll(){
+        long currentTime = System.currentTimeMillis();
+        for (Map.Entry<String, IDataCacheMapDao> entry : cacheMapDaoMap.entrySet()) {
+            flushOne(entry.getKey(), () -> entry.getValue().flushAll(currentTime));
+        }
+        for (Map.Entry<String, IDataCacheValueDao> entry : cacheValueDaoMap.entrySet()) {
+            flushOne(entry.getKey(), () -> entry.getValue().flushAll(currentTime));
+        }
+    }
+
+    private void flushOne(String name, Callable<Boolean> callable){
+        try {
+            if (callable.call()){
+            }
+            else {
+                logger.error("flushOne:{} failure.", name);
+            }
+        }
+        catch (Throwable t){
+            logger.error("flushOne:{} error.", name, t);
+        }
     }
 
     public class DataMapDaoBuilder<PK, K, V extends IData<K>>  extends DataDaoBuilder{

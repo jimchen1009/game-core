@@ -87,8 +87,8 @@ class DataSource<PK, K, V extends IData<K>> implements IDataSource<PK, K, V>{
     }
 
     @Override
-    public boolean flushAll() {
-        return cacheSource.flushAll();
+    public boolean flushAll(long currentTime) {
+        return cacheSource.flushAll(currentTime);
     }
 
     private V markValueSource(V dataValue){

@@ -28,5 +28,5 @@ public interface IDataSource<PK, K, V extends IData<K>> {
 
     IClassConverter<K, V> getConverter();
 
-    boolean flushAll();
+    boolean flushAll(long currentTime);
 }

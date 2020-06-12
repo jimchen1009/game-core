@@ -8,7 +8,6 @@ import com.game.cache.source.KeyDataValue;
 import com.game.cache.source.PrimaryDelayCache;
 import com.game.cache.source.executor.ICacheExecutor;
 import com.game.common.arg.Args;
-import com.game.common.config.Configs;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.DeleteOneModel;
@@ -60,7 +59,6 @@ public class CacheDelayMongoDBSource<PK, K, V extends IData<K>> extends CacheDel
 
     @Override
     protected Map<PK, PrimaryDelayCache<PK, K, V>> executeWritePrimaryCache(Map<PK, PrimaryDelayCache<PK, K, V>> pkPrimaryCacheMap) {
-        CacheMongoDBSource<PK, K, V> mongoDBSource = getMongoDBSource();
 
         List<DeleteOneModel<Document>> deleteOneModelList = new ArrayList<>();
         List<UpdateOneModel<Document>> updateOneModelList =  new ArrayList<>();
@@ -68,67 +66,65 @@ public class CacheDelayMongoDBSource<PK, K, V extends IData<K>> extends CacheDel
         List<Args.Two<PK, KeyDataValue<K, V>>> deleteKeyCacheValueList = new ArrayList<>();
         List<Args.Two<PK, KeyDataValue<K, V>>> updateKeyCacheValueList = new ArrayList<>();
 
-        Map<PK, PrimaryDelayCache<PK, K, V>> failureKeyCacheValuesMap = new HashMap<>();
 
-        int primarySharedId = mongoDBSource.getClassConfig().primarySharedId;
-        ICacheKeyValueBuilder<PK, K> keyValueBuilder = mongoDBSource.getKeyValueBuilder();
-        int batchCount = Configs.getInstance().getInt("cache.flush.batchCount");
+        int primarySharedId = getClassConfig().primarySharedId;
+        ICacheKeyValueBuilder<PK, K> keyValueBuilder = getKeyValueBuilder();
         for (Map.Entry<PK, PrimaryDelayCache<PK, K, V>> entry : pkPrimaryCacheMap.entrySet()) {
             for (KeyDataValue<K, V> keyDataValue : entry.getValue().getAll()) {
                 if (keyDataValue.isDeleted()) {
-                    if (deleteOneModelList.size() < batchCount){
-                        List<Map.Entry<String, Object>> entryList = keyValueBuilder.createAllKeyValue(entry.getKey(), keyDataValue.getKey());
-                        deleteOneModelList.add(CacheMongoDBUtil.createDeleteOneModel(primarySharedId, entryList));
-                        deleteKeyCacheValueList.add(Args.create(entry.getKey(), keyDataValue));
-                    }
-                    else {
-                        addFailureKeyDataValue(entry.getKey(), keyDataValue, failureKeyCacheValuesMap);
-                    }
+                    List<Map.Entry<String, Object>> entryList = keyValueBuilder.createAllKeyValue(entry.getKey(), keyDataValue.getKey());
+                    deleteOneModelList.add(CacheMongoDBUtil.createDeleteOneModel(primarySharedId, entryList));
+                    deleteKeyCacheValueList.add(Args.create(entry.getKey(), keyDataValue));
                 }
                 else {
-                    if (updateOneModelList.size() < batchCount){
-                        List<Map.Entry<String, Object>> entryList = keyValueBuilder.createAllKeyValue(entry.getKey(), keyDataValue.getDataValue().secondaryKey());
-                        Map<String, Object> cacheValue = getConverter().convert2Cache(keyDataValue.getDataValue());
-                        updateOneModelList.add(CacheMongoDBUtil.createUpdateOneModel(primarySharedId, entryList, cacheValue.entrySet()));
-                        updateKeyCacheValueList.add(Args.create(entry.getKey(), keyDataValue));
-                    }
-                    else {
-                        addFailureKeyDataValue(entry.getKey(), keyDataValue, failureKeyCacheValuesMap);
-                    }
+                    List<Map.Entry<String, Object>> entryList = keyValueBuilder.createAllKeyValue(entry.getKey(), keyDataValue.getDataValue().secondaryKey());
+                    Map<String, Object> cacheValue = getConverter().convert2Cache(keyDataValue.getDataValue());
+                    updateOneModelList.add(CacheMongoDBUtil.createUpdateOneModel(primarySharedId, entryList, cacheValue.entrySet()));
+                    updateKeyCacheValueList.add(Args.create(entry.getKey(), keyDataValue));
                 }
             }
         }
 
-        MongoCollection<Document> collection = mongoDBSource.getCollection();
-        try {
-            if (!deleteOneModelList.isEmpty()){
-                BulkWriteResult bulkDeleteResult = collection.bulkWrite(deleteOneModelList);
-                int deletedCount = bulkDeleteResult.getDeletedCount();
-                if (deletedCount == deleteOneModelList.size()){
-                    deleteKeyCacheValueList.clear();
-                }
-                else {
-                    logger.error("class:{} deletedCount:{} != cacheCount:{}", getAClass().getName(), deletedCount, deleteKeyCacheValueList.size());
-                }
-            }
-            if (!updateOneModelList.isEmpty()){
-                BulkWriteResult bulkUpdateResult = collection.bulkWrite(updateOneModelList);
-                int modifiedCount = bulkUpdateResult.getMatchedCount() + bulkUpdateResult.getUpserts().size();
-                if (modifiedCount == updateOneModelList.size()){
-                    updateKeyCacheValueList.clear();
-                }
-                else {
-                    logger.error("class:{} updateCount:{} != cacheCount:{}", getAClass().getName(), modifiedCount, updateKeyCacheValueList.size());
-                }
-            }
-        }
-        catch (Throwable t){
-            logger.error("", t);
-        }
-        finally {
-            addFailureKeyDataValue(deleteKeyCacheValueList, failureKeyCacheValuesMap);
-            addFailureKeyDataValue(updateKeyCacheValueList, failureKeyCacheValuesMap);
-        }
+
+        String name = getAClass().getName();
+        deleteKeyCacheValueList = handleBatch(name, deleteOneModelList, deleteKeyCacheValueList, this::deleteDB);
+        updateKeyCacheValueList = handleBatch(name, updateOneModelList, updateKeyCacheValueList, this::updateDB);
+
+        Map<PK, PrimaryDelayCache<PK, K, V>> failureKeyCacheValuesMap = new HashMap<>();
+        addFailureKeyDataValue(deleteKeyCacheValueList, failureKeyCacheValuesMap);
+        addFailureKeyDataValue(updateKeyCacheValueList, failureKeyCacheValuesMap);
         return failureKeyCacheValuesMap;
+    }
+
+    private boolean deleteDB(List<DeleteOneModel<Document>> modelList){
+        if (modelList.isEmpty()){
+            return true;
+        }
+        MongoCollection<Document> collection =  getMongoDBSource().getCollection();
+        BulkWriteResult bulkDeleteResult = collection.bulkWrite(modelList);
+        int deletedCount = bulkDeleteResult.getDeletedCount();
+        if (deletedCount == modelList.size()){
+            return true;
+        }
+        else {
+            logger.error("class:{} deletedCount:{} != modelCount:{}", getAClass().getName(), deletedCount, modelList.size());
+            return false;
+        }
+    }
+
+    private boolean updateDB(List<UpdateOneModel<Document>> modelList){
+        if (modelList.isEmpty()){
+            return true;
+        }
+        MongoCollection<Document> collection =  getMongoDBSource().getCollection();
+        BulkWriteResult bulkUpdateResult = collection.bulkWrite(modelList);
+        int modifiedCount = bulkUpdateResult.getMatchedCount() + bulkUpdateResult.getUpserts().size();
+        if (modifiedCount == modelList.size()){
+            return true;
+        }
+        else {
+            logger.error("class:{} updateCount:{} != modelCount:{}", getAClass().getName(), modifiedCount, modelList.size());
+            return false;
+        }
     }
 }
