@@ -1,52 +1,71 @@
 package com.game.cache.source.executor;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import jodd.util.ThreadUtil;
+
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.TimeoutException;
 
+/**
+ * 线程池需要优化：
+ * 确保一个任务类型：name 同时只有一个线程在处理。
+ * 使用单线程模式处理，存在空闲线程的时候，共享任务堵类型会堵塞name任务。
+ */
 public class CacheExecutor implements ICacheExecutor{
 
-    private final AtomicInteger atomicInteger;
-    private final ScheduledExecutorService[] executorServices;
-    private final Map<String, ScheduledExecutorService> executorServiceMap;
+    private final ScheduledExecutorService executorService;
 
     public CacheExecutor(int poolSize) {
-        this.atomicInteger = new AtomicInteger(0);
-        this.executorServices = new ScheduledExecutorService[poolSize];
-        for (int i = 0; i < poolSize; i++) {
-            this.executorServices[i]  = Executors.newScheduledThreadPool(poolSize);
-        }
-        this.executorServiceMap = new ConcurrentHashMap<>();
+        this.executorService = Executors.newScheduledThreadPool(1);
     }
 
     @Override
-    public <T> Future<T> submit(CacheCallable<T> callable) {
-        getExecutorService(callable.getName()).shutdown();
-        return getExecutorService(callable.getName()).submit(callable);
+    public <T> ICacheFuture<T> submit(CacheCallable<T> callable) {
+        Future<T> future = executorService.submit(callable);
+        return new CacheFuture<>(future);
     }
 
     @Override
-    public ScheduledFuture<?> scheduleAtFixedRate(CacheRunnable command, long initialDelay, long period, TimeUnit unit) {
-        return getExecutorService(command.getName()).scheduleAtFixedRate(command, initialDelay, period, unit);
+    public <V> void schedule(CacheCallable<V> callable, long delay, TimeUnit unit) {
+        executorService.schedule(callable, delay, unit);
+    }
+
+    @Override
+    public void scheduleAtFixedRate(CacheRunnable command, long initialDelay, long period, TimeUnit unit) {
+        executorService.scheduleAtFixedRate(command, initialDelay, period, unit);
     }
 
     @Override
     public void shutdown() {
-        for (ScheduledExecutorService executorService : executorServices) {
-            executorService.shutdown();
-        }
+        executorService.shutdown();
     }
 
-    private ScheduledExecutorService getExecutorService(String name){
-        return executorServiceMap.computeIfAbsent(name, key->{
-            int andIncrement = atomicInteger.getAndIncrement();
-            int index = andIncrement % executorServices.length;
-            return executorServices[index];
-        });
+    private static class CacheFuture<T> implements ICacheFuture<T>{
+
+        private volatile Future<T> future;
+
+        public CacheFuture(Future<T> future) {
+            this.future = future;
+        }
+
+        @Override
+        public T get(long timeout, TimeUnit timeUnit) throws InterruptedException, ExecutionException, TimeoutException {
+            long duration = timeUnit.toMillis(timeout);
+            while (duration > 0){
+                if (future != null){
+                    return future.get(duration, TimeUnit.MILLISECONDS);
+                }
+                long currentTime = System.currentTimeMillis();
+                ThreadUtil.sleep(50);
+                duration -= (System.currentTimeMillis() - currentTime);
+                if (duration <= 0){
+                    return future.get(50, TimeUnit.MILLISECONDS);
+                }
+            }
+            throw new TimeoutException();
+        }
     }
 }

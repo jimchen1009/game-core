@@ -8,10 +8,10 @@ import com.game.cache.mapper.IClassConverter;
 import com.game.cache.source.executor.CacheCallable;
 import com.game.cache.source.executor.CacheRunnable;
 import com.game.cache.source.executor.ICacheExecutor;
+import com.game.cache.source.executor.ICacheFuture;
 import com.game.cache.source.executor.ICacheSource;
 import com.game.common.config.Configs;
 import com.game.common.lock.LockKey;
-import com.game.common.log.LogUtil;
 import com.mongodb.Function;
 import jodd.util.ThreadUtil;
 import org.apache.commons.lang3.RandomUtils;
@@ -30,10 +30,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICacheDelaySource<PK, K, V> {
 
@@ -73,15 +71,18 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
 
     @Override
     public List<V> getAll(PK primaryKey) {
-        List<V> dataValueList = cacheSource.getAll(primaryKey);
-        return replaceAllDataValueList(primaryKey, dataValueList);
+        if (!flushOne(primaryKey)){
+            throw new CacheException("%s %s", getKeyValueBuilder().toPrimaryKeyString(primaryKey), "getAll");
+        }
+        return cacheSource.getAll(primaryKey);
     }
 
     @Override
     public DataCollection<K, V> getCollection(PK primaryKey) {
-        DataCollection<K, V> collection = cacheSource.getCollection(primaryKey);
-        List<V> valueList = replaceAllDataValueList(primaryKey, collection.getDataList());
-        return new DataCollection<>(valueList, collection.getInformation());
+        if (!flushOne(primaryKey)){
+            throw new CacheException("%s %s", getKeyValueBuilder().toPrimaryKeyString(primaryKey), "getCollection");
+        }
+        return cacheSource.getCollection(primaryKey);
     }
 
     @Override
@@ -197,34 +198,40 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
         }
         for (Map.Entry<PK, PrimaryDelayCache<PK, K, V>> entry : primaryCacheMap.entrySet()) {
             String keyString = keyValueBuilder.toPrimaryKeyString(entry.getKey());
-            logger.error("tableName:{} keyString:{}", getClassConfig().tableName, keyString);
+            logger.error("{} primaryKey:{} flushAll error.", getAClass().getName(), getClassConfig().tableName, keyString);
         }
         return true;
     }
 
     @Override
-    public void flush(PK primaryKey, Consumer<Boolean> consumer) {
-        CacheCallable<Boolean> callable = flushPrimaryCacheCallable(primaryKey, "flush", consumer);
+    public void flushOne(PK primaryKey, Consumer<Boolean> consumer) {
+        CacheCallable<Boolean> callable = flushPrimaryCacheCallable(primaryKey, "flushOne.0", consumer);
         executor.submit(callable);
     }
 
     @Override
-    public boolean flush(PK primaryKey) {
-        CacheCallable<Boolean> callable = flushPrimaryCacheCallable(primaryKey, "flush", null);
+    public boolean flushOne(PK primaryKey) {
+        CacheCallable<Boolean> callable = flushPrimaryCacheCallable(primaryKey, "flushOne.1", null);
         boolean isSuccess = false;
         int tryCount = Configs.getInstance().getInt("cache.flush.tryOneCount");
         long flushTimeOut = Configs.getInstance().getDuration("cache.flush.timeOut", TimeUnit.MILLISECONDS);
+        Throwable throwable = null;
         for (int count = 0; count < tryCount; count++) {
             try {
-                Future<Boolean> future = executor.submit(callable);
+                ICacheFuture<Boolean> future = executor.submit(callable);
                 isSuccess = future.get(flushTimeOut, TimeUnit.MILLISECONDS);
                 if (isSuccess) {
                     break;
                 }
-                logger.error("primaryKey:{}.{} count:{} flush failure.", LogUtil.toJSONString(primaryKey), getAClass().getName(), count);
-            } catch (Throwable t) {
-                throw new CacheException(LogUtil.toJSONString(primaryKey), t);
+                logger.error("{} primaryKey:{} count:{} flush failure.", getAClass().getName(), getKeyValueBuilder().toPrimaryKeyString(primaryKey), count);
             }
+            catch (Throwable t) {
+                throwable = t;
+                logger.error("{} primaryKey:{} count:{} flush error.", getAClass().getName(), getKeyValueBuilder().toPrimaryKeyString(primaryKey), count);
+            }
+        }
+        if (!isSuccess && throwable != null){
+            throw new CacheException(getKeyValueBuilder().toPrimaryKeyString(primaryKey), throwable);
         }
         return isSuccess;
     }
@@ -243,7 +250,8 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
                 if (isSuccess) {
                     break;
                 }
-                logger.error("primaryKey:{}.{} count:{} flush failure.", LogUtil.toJSONString(primaryKey), getAClass().getName(), count);
+                logger.error("{} primaryKey:{} count:{} {} failure.", getAClass().getName(), getKeyValueBuilder().toPrimaryKeyString(primaryKey), count, message);
+                ThreadUtil.sleep(RandomUtils.nextLong(50, 200));
             }
             return isSuccess;
         }, consumer);
@@ -300,27 +308,6 @@ public abstract class CacheDelaySource<PK, K, V extends IData<K>> implements ICa
         }
         flushPrimaryCacheInLock(primaryCacheMap0);
     }
-
-    private List<V> replaceAllDataValueList(PK primaryKey, List<V> dateValueList) {
-        PrimaryDelayCache<PK, K, V> primaryCache = primaryCacheMap.get(primaryKey);
-        if (primaryCache == null) {
-            return dateValueList;
-        }
-        Collection<KeyDataValue<K, V>> dataValues = primaryCache.getAll();
-        if (dataValues.isEmpty()) {
-            return dateValueList;
-        }
-        Map<K, V> key2DataValueMap = dateValueList.stream().collect(Collectors.toMap(V::secondaryKey, dataValue -> dataValue));
-        for (KeyDataValue<K, V> dataValue : dataValues) {
-            if (dataValue.isDeleted()) {
-                key2DataValueMap.remove(dataValue.getKey());
-            } else {
-                key2DataValueMap.put(dataValue.getKey(), dataValue.getDataValue());
-            }
-        }
-        return new ArrayList<>(key2DataValueMap.values());
-    }
-
 
     private boolean flushPrimaryCacheInLock(Map<PK, PrimaryDelayCache<PK, K, V>> primaryCacheMap) {
         Map<PK, PrimaryDelayCache<PK, K, V>> failurePrimaryCacheMap = executeWritePrimaryCache(primaryCacheMap);

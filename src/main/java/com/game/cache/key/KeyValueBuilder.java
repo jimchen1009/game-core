@@ -48,13 +48,16 @@ public abstract class KeyValueBuilder<K> implements IKeyValueBuilder<K>{
     private void checkOnlyPrimitiveClass(Object[] objects){
         for (Object object : objects) {
             Class<?> aClass = object.getClass();
-        if (aClass.isPrimitive()
-                || aClass.equals(Long.class)
+            if (aClass.isPrimitive() || aClass.equals(Long.class)
                 || aClass.equals(Integer.class)
                 || aClass.equals(Short.class)
                 || aClass.equals(Byte.class)
                 || aClass.equals(Float.class)
                 || aClass.equals(Double.class)) {
+                //基础类型
+            }
+            else if (aClass.equals(String.class) && !((String) object).contains(".")){
+                //不包括.的符号
             }
             else {
                 throw new CacheException("don't support %s", aClass.getName());
