@@ -84,7 +84,8 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
             }
             return success;
         });
-        if (isSuccess){
+        if (isSuccess != null && isSuccess){
+
         }
         else {
             throw new CacheException("primaryKey:%s replaceBatch error, %s", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(values));
@@ -128,7 +129,7 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
             }
             return success;
         });
-        if (isSuccess){
+        if (isSuccess != null && isSuccess){
         }
         else {
             throw new CacheException("primaryKey:%s deleteBatch error, %s", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(secondaryKeys));

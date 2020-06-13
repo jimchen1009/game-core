@@ -24,18 +24,21 @@ public abstract class SyncLock implements ISyncLock {
     @Override
     public int compareTo(Object o) {
         SyncLock that = (SyncLock) o;
-        int compare = Integer.compare(this.hashCode(), that.hashCode());
+        int compare = Integer.compare(lockKey.hashCode(), that.lockKey.hashCode());
         if (compare == 0) {
             compare =  this.lockKey.toLockName().compareTo(that.getLockKey().toLockName());
         }
         return compare;
     }
 
+    @Override
+    public String toString() {
+       return lockKey.toLockName();
+    }
 
     public static class ReentrantSyncLock extends SyncLock{
 
        private final ReentrantLock reentrantLock;
-
 
         public ReentrantSyncLock(LockKey lockKey) {
             super(lockKey);
@@ -45,8 +48,7 @@ public abstract class SyncLock implements ISyncLock {
         @Override
         public boolean tryLock(long milliseconds) {
             try {
-                reentrantLock.tryLock(milliseconds, TimeUnit.MILLISECONDS);
-                return true;
+                return reentrantLock.tryLock(milliseconds, TimeUnit.MILLISECONDS);
             }
             catch (InterruptedException e) {
                 logger.error("reentrantLock:{} failure.", getLockKey(), e);

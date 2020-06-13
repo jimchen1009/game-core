@@ -10,6 +10,26 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 
+/**
+ *
+ * [19:17:29:194] [ERROR] [pool-2-thread-9] com.game.common.lock.LockUtil.unlockAll(LockUtil.java:121): lock:{primary='@cache', secondary='UserItem.17'} unlock success.
+ * java.lang.IllegalMonitorStateException
+ * 	at java.util.concurrent.locks.ReentrantLock$Sync.tryRelease(ReentrantLock.java:151) ~[?:1.8.0_45]
+ * 	at java.util.concurrent.locks.AbstractQueuedSynchronizer.release(AbstractQueuedSynchronizer.java:1261) ~[?:1.8.0_45]
+ * 	at java.util.concurrent.locks.ReentrantLock.unlock(ReentrantLock.java:457) ~[?:1.8.0_45]
+ * 	at com.game.common.lock.SyncLock$ReentrantSyncLock.unlock(SyncLock.java:58) ~[classes/:?]
+ * 	at com.game.common.lock.LockUtil.unlockAll(LockUtil.java:108) [classes/:?]
+ * 	at com.game.common.lock.LockUtil.unlockAll(LockUtil.java:102) [classes/:?]
+ * 	at com.game.common.lock.LockUtil.syncLock(LockUtil.java:66) [classes/:?]
+ * 	at com.game.common.lock.LockUtil.syncLock(LockUtil.java:37) [classes/:?]
+ * 	at com.game.cache.data.PrimaryDataContainer.replaceBatch(PrimaryDataContainer.java:77) [classes/:?]
+ * 	at com.game.cache.data.DataContainer.replaceBatch(DataContainer.java:77) [classes/:?]
+ * 	at com.game.cache.dao.DataCacheMapDao.replaceBatch(DataCacheMapDao.java:70) [classes/:?]
+ * 	at com.game.cache.source.CacheRunner.lambda$0(CacheRunner.java:97) [classes/:?]
+ * 	at com.game.cache.source.CacheRunner$$Lambda$43/154827180
+ *
+ *
+ */
 public class LockUtil {
 
     private static final long MILLISECONDS = 500L;
@@ -45,7 +65,7 @@ public class LockUtil {
         long current0 = System.currentTimeMillis();
         List<ISyncLock> syncLockList = lockKeys.stream().map(LockManager::getSyncLock).collect(Collectors.toList());
         if (!tryLockAll(syncLockList, milliseconds)) {
-            logger.warn("lock:{} failure, message:{}", lockKeys, message);
+//            logger.error("lock:{} failure, message:{}", lockKeys, message, new Exception());
             return null;
         }
         try {
@@ -54,7 +74,7 @@ public class LockUtil {
             long current2 = System.currentTimeMillis();
             long duration = current2 - current0;
             if (duration >= WARN_TIME){
-                logger.warn("lock:{} time:{}, call duration:{}(ms), message:{}", lockKeys, current1 - current0, duration, message, new Exception());
+//                logger.warn("lock:{} time:{}, call duration:{}(ms), message:{}", lockKeys, current1 - current0, duration, message, new Exception());
             }
             return value;
         }
@@ -84,14 +104,14 @@ public class LockUtil {
         } catch (RuntimeException e) {
             exception = e;
         }
-        if (lockedSyncLockList.size() == syncLockList.size()){
+        if (syncLockList.size() == lockedSyncLockList.size()){
             return true;
         }
         rollback(lockedSyncLockList);
         if (exception != null){
             throw exception;
         }
-        return true;
+        return false;
     }
 
     private static <T extends ISyncLock> void rollback(List<T> syncLockList){
