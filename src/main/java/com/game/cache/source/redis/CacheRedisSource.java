@@ -3,12 +3,14 @@ package com.game.cache.source.redis;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import com.game.cache.CacheDaoUnique;
 import com.game.cache.CacheInformation;
+import com.game.cache.CacheName;
 import com.game.cache.CacheType;
 import com.game.cache.data.DataCollection;
 import com.game.cache.data.IData;
 import com.game.cache.key.IKeyValueBuilder;
-import com.game.cache.mapper.ClassConfig;
+import com.game.cache.mapper.JsonValueConverter;
 import com.game.cache.source.CacheSource;
 import com.game.cache.source.ICacheDelaySource;
 import com.game.cache.source.executor.ICacheExecutor;
@@ -16,8 +18,10 @@ import jodd.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -27,11 +31,10 @@ import java.util.stream.Collectors;
  * com.game.cache.exception.CacheException: cls:com.game.cache.source.UserItem cacheValue:{"itemUniqueId":11,"count":5,"userId":1}
  *
  *
- * @param <PK>
  * @param <K>
  * @param <V>
  */
-public class CacheRedisSource<PK, K, V extends IData<K>> extends CacheSource<PK, K, V> implements ICacheRedisSource<PK, K, V> {
+public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> implements ICacheRedisSource<K, V> {
 
     private static final Logger logger = LoggerFactory.getLogger(CacheRedisSource.class);
 
@@ -44,8 +47,8 @@ public class CacheRedisSource<PK, K, V extends IData<K>> extends CacheSource<PK,
             SerializerFeature.IgnoreNonFieldGetter
     };
 
-    public CacheRedisSource(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder) {
-        super(aClass, primaryBuilder, secondaryBuilder);
+    public CacheRedisSource(CacheDaoUnique cacheDaoKey, IKeyValueBuilder<K> secondaryBuilder) {
+        super(cacheDaoKey, secondaryBuilder);
     }
 
     @Override
@@ -54,7 +57,7 @@ public class CacheRedisSource<PK, K, V extends IData<K>> extends CacheSource<PK,
     }
 
     @Override
-    public V get(PK primaryKey, K secondaryKey) {
+    public V get(long primaryKey, K secondaryKey) {
         String keyString = getPrimaryRedisKey(primaryKey);
         String secondaryKeyVString = keyValueBuilder.toSecondaryKeyString(secondaryKey);
         String string = RedisClientUtil.getRedisClient().hget(keyString, secondaryKeyVString);
@@ -62,15 +65,17 @@ public class CacheRedisSource<PK, K, V extends IData<K>> extends CacheSource<PK,
     }
 
     @Override
-    public List<V> getAll(PK primaryKey) {
+    public List<V> getAll(long primaryKey) {
         String keyString = getPrimaryRedisKey(primaryKey);
         Map<String, String> hgetAll = RedisClientUtil.getRedisClient().hgetAll(keyString);
-        return parseDataValue(hgetAll.values());
+        List<String> stringList = hgetAll.entrySet().stream().filter(entry -> !CacheName.Names.contains(entry.getKey()))
+                .map( Map.Entry::getValue).collect(Collectors.toList());
+        return parseDataValue(stringList);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public DataCollection<K, V> getCollection(PK primaryKey) {
+    public DataCollection<K, V> getCollection(long primaryKey) {
         String keyString = getPrimaryRedisKey(primaryKey);
         //还有BUG
 //        List<Object> objectList = RedisClientUtil.getRedisClient().pipeline(pipeline -> {
@@ -80,12 +85,24 @@ public class CacheRedisSource<PK, K, V extends IData<K>> extends CacheSource<PK,
 //        Map<String, String> strings = (Map<String, String>)objectList.get(0);
 //        long ttl = (Long)objectList.get(1);
         Map<String, String> strings = RedisClientUtil.getRedisClient().hgetAll(keyString);
-        List<V> dataList = parseDataValue(strings.values());
-        return new DataCollection(dataList, new CacheInformation());
+        List<String> stringList = new ArrayList<>();
+        CacheInformation cacheInformation = new CacheInformation();
+        Map<String, Object> map = new HashMap<>();
+        for (Map.Entry<String, String> entry : strings.entrySet()) {
+            if (CacheName.Names.contains(entry.getKey())) {
+                Object object = JsonValueConverter.parse(entry.getValue());
+                map.put(entry.getKey(), object);
+            }
+            else {
+                stringList.add(entry.getValue());
+            }
+        }
+        List<V> dataList = parseDataValue(stringList);
+        return new DataCollection(dataList, new CacheInformation(map));
     }
 
     @Override
-    public boolean replaceOne(PK primaryKey, V value) {
+    public boolean replaceOne(long primaryKey, V value) {
         String keyString = getPrimaryRedisKey(primaryKey);
         String secondaryKeyString = keyValueBuilder.toSecondaryKeyString(value.secondaryKey());
         String jsonString = toJSONString(value);
@@ -94,16 +111,12 @@ public class CacheRedisSource<PK, K, V extends IData<K>> extends CacheSource<PK,
     }
 
     @Override
-    public boolean replaceBatch(PK primaryKey, Collection<V> values) {
-        String keyString = getPrimaryRedisKey(primaryKey);
-        Map<String, String> jsonStringMap = values.stream()
-                .collect(Collectors.toMap(value -> keyValueBuilder.toSecondaryKeyString(value.secondaryKey()), this::toJSONString));
-        RedisClientUtil.getRedisClient().hset(keyString, jsonStringMap);
-        return true;
+    public boolean replaceBatch(long primaryKey, Collection<V> values) {
+        return replaceBatch(primaryKey, values, null);
     }
 
     @Override
-    public boolean deleteOne(PK primaryKey, K secondaryKey) {
+    public boolean deleteOne(long primaryKey, K secondaryKey) {
         String keyString = getPrimaryRedisKey(primaryKey);
         String secondaryKeyString = keyValueBuilder.toSecondaryKeyString(secondaryKey);
         RedisClientUtil.getRedisClient().hdel(keyString, secondaryKeyString);
@@ -111,7 +124,7 @@ public class CacheRedisSource<PK, K, V extends IData<K>> extends CacheSource<PK,
     }
 
     @Override
-    public boolean deleteBatch(PK primaryKey, Collection<K> secondaryKeys) {
+    public boolean deleteBatch(long primaryKey, Collection<K> secondaryKeys) {
         String keyString = getPrimaryRedisKey(primaryKey);
         String[] secondaryKeyStrings = secondaryKeys.stream().map(keyValueBuilder::toSecondaryKeyString).toArray(String[]::new);
         RedisClientUtil.getRedisClient().hdel(keyString, secondaryKeyStrings);
@@ -119,19 +132,12 @@ public class CacheRedisSource<PK, K, V extends IData<K>> extends CacheSource<PK,
     }
 
     @Override
-    public boolean flushAll(long currentTime) {
-        return true;
-    }
-
-    @Override
-    public ICacheDelaySource<PK, K, V> createDelayUpdateSource(ICacheExecutor executor) {
+    public ICacheDelaySource<K, V> createDelayUpdateSource(ICacheExecutor executor) {
         throw new UnsupportedOperationException();
     }
 
-    private String getPrimaryRedisKey(PK primaryKey){
-        ClassConfig classConfig = ClassConfig.getConfig(getAClass());
-        String primaryKeyString = keyValueBuilder.toPrimaryKeyString(primaryKey);
-        return classConfig.getRedisKeyString(primaryKeyString);
+    private String getPrimaryRedisKey(long primaryKey){
+        return getCacheDaoUnique().getRedisKeyString(primaryKey);
     }
 
     private String toJSONString(V data){
@@ -152,5 +158,18 @@ public class CacheRedisSource<PK, K, V extends IData<K>> extends CacheSource<PK,
             return Collections.emptyList();
         }
         return strings.stream().map(this::parseDataValue).collect(Collectors.toList());
+    }
+
+    @Override
+    public boolean replaceBatch(long primaryKey, Collection<V> values, CacheInformation information) {
+        String keyString = getPrimaryRedisKey(primaryKey);
+        Map<String, String> jsonStringMap = values.stream().collect(Collectors.toMap(value -> keyValueBuilder.toSecondaryKeyString(value.secondaryKey()), this::toJSONString));
+        if (information != null){
+            for (Map.Entry<String, Object> entry : information.entrySet()) {
+                jsonStringMap.put(entry.getKey(), JsonValueConverter.toJSONString(entry.getValue()));
+            }
+        }
+        RedisClientUtil.getRedisClient().hset(keyString, jsonStringMap);
+        return true;
     }
 }

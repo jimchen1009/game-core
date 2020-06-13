@@ -9,13 +9,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-public class PrimaryDelayCache<PK, K, V extends IData<K>>{
+public class PrimaryDelayCache<K, V extends IData<K>>{
 
-    private final PK primaryKey;
+    private final long primaryKey;
     private volatile long expiredTime;
     private final Map<K, KeyDataValue<K, V>> keyDataValuesMap;
 
-    public PrimaryDelayCache(PK primaryKey, long duration) {
+    public PrimaryDelayCache(long primaryKey, long duration) {
         this.primaryKey = primaryKey;
         if (duration == 0){
             duration = Configs.getInstance().getDuration("cache.flush.expiredDuration", TimeUnit.MILLISECONDS);
@@ -24,11 +24,11 @@ public class PrimaryDelayCache<PK, K, V extends IData<K>>{
         this.keyDataValuesMap = new ConcurrentHashMap<>();
     }
 
-    public PrimaryDelayCache(PK primaryKey) {
+    public PrimaryDelayCache(long primaryKey) {
         this(primaryKey, 0);
     }
 
-    public PK getPrimaryKey() {
+    public long getPrimaryKey() {
         return primaryKey;
     }
 

@@ -3,11 +3,16 @@ package com.game.cache.source;
 import com.game.cache.data.Data;
 import com.game.cache.mapper.annotation.CacheFiled;
 import com.game.cache.mapper.annotation.CacheIndex;
-import com.game.cache.mapper.annotation.IndexField;
+import com.game.cache.mapper.annotation.CacheIndexes;
 import com.game.cache.mapper.annotation.IndexOptions;
-import com.game.cache.mapper.annotation.IndexType;
+import com.game.cache.mapper.annotation.PrimaryIndex;
+import com.game.cache.mapper.annotation.SecondaryIndex;
 
-@CacheIndex(fields = {@IndexField(name = "userId", type = IndexType.ASC, isPrimary = true)}, options = @IndexOptions(unique = true))
+@CacheIndexes(
+        primaryIndex = @PrimaryIndex(primaryKey = "userId", indexes = {@CacheIndex(name = "userId")}),
+        secondaryIndex = @SecondaryIndex(indexes = {}),
+        options = @IndexOptions(unique = true)
+)
 public class UserPlayer extends Data<Long> {
 
     @CacheFiled(index = 0)
@@ -15,7 +20,6 @@ public class UserPlayer extends Data<Long> {
 
     @CacheFiled(index = 1)
     private String nickName;
-
 
     public UserPlayer(long userId, String nickName) {
         this.userId = userId;

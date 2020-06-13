@@ -2,11 +2,7 @@ package com.game.cache.dao;
 
 import com.game.cache.data.IData;
 
-public interface IDataCacheValueDao<PK, V extends IData<PK>> extends IDataValueDao<PK, V> {
+public interface IDataCacheValueDao<V extends IData<Long>> extends IDataValueDao<V>, IDataCacheDao {
 
-    boolean existCache(PK primaryKey);
-
-    V getNotCache(PK primaryKey);
-
-    boolean flushAll(long currentTime);
+    V getNotCache(long id);
 }

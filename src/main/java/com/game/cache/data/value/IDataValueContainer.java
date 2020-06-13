@@ -4,13 +4,13 @@ import com.game.cache.data.IData;
 import com.game.cache.data.IDataContainer;
 import com.game.common.util.Holder;
 
-public interface IDataValueContainer<K, V extends IData<K>> extends IDataContainer<K, K, V> {
+public interface IDataValueContainer<V extends IData<Long>> extends IDataContainer<Long, V> {
 
-    V get(K primaryKey);
+    V get(long primaryKey);
 
-    Holder<V> getNoCache(K primaryKey);
+    Holder<V> getNoCache(long primaryKey);
 
     V replace(V value);
 
-    V remove(K primaryKey);
+    V remove(long primaryKey);
 }

@@ -6,9 +6,9 @@ import com.game.cache.source.executor.ICacheSource;
 import java.util.List;
 import java.util.Map;
 
-public interface ICacheDbSource<PK, K, V extends IData<K>> extends ICacheSource<PK, K, V> {
+public interface ICacheDbSource<K, V extends IData<K>> extends ICacheSource<K, V> {
 
-    CacheCollection getPrimaryCollection(PK primaryKey);
+    CacheCollection getPrimaryCollection(long primaryKey);
 
-    Map<Integer, CacheCollection> getSharedCollections(PK primaryKey, List<Integer> primarySharedIds);
+    Map<Integer, CacheCollection> getSharedCollections(long primaryKey, List<Integer> primarySharedIds);
 }

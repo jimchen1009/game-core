@@ -6,34 +6,35 @@ import com.game.cache.data.map.DataMapContainer;
 import com.game.common.util.Holder;
 
 import java.util.Collection;
+import java.util.function.Consumer;
 
-class DataCacheMapDao<PK, K, V extends IData<K>> implements IDataCacheMapDao<PK, K, V> {
+class DataCacheMapDao<K, V extends IData<K>> implements IDataCacheMapDao<K, V> {
 
-    private final IDataSource<PK, K, V> dataSource;
-    private final DataMapContainer<PK, K, V> mapContainer;
+    private final IDataSource< K, V> dataSource;
+    private final DataMapContainer<K, V> mapContainer;
 
-    public DataCacheMapDao(IDataSource<PK, K, V> dataSource, DataMapContainer<PK, K, V> mapContainer) {
+    public DataCacheMapDao(IDataSource<K, V> dataSource, DataMapContainer<K, V> mapContainer) {
         this.dataSource = dataSource;
         this.mapContainer = mapContainer;
     }
 
     @Override
-    public boolean existCache(PK primaryKey) {
+    public boolean existCache(long primaryKey) {
         return mapContainer.existCache(primaryKey);
     }
 
     @Override
-    public int count(PK primaryKey) {
+    public int count(long primaryKey) {
         return mapContainer.count(primaryKey);
     }
 
     @Override
-    public V get(PK primaryKey, K secondaryKey) {
+    public V get(long primaryKey, K secondaryKey) {
         return mapContainer.get(primaryKey, secondaryKey);
     }
 
     @Override
-    public V getNotCache(PK primaryKey, K secondaryKey) {
+    public V getNotCache(long primaryKey, K secondaryKey) {
         Holder<V> holder = mapContainer.getNoCache(primaryKey, secondaryKey);
         if (holder != null){
             return holder.getValue();
@@ -42,12 +43,12 @@ class DataCacheMapDao<PK, K, V extends IData<K>> implements IDataCacheMapDao<PK,
     }
 
     @Override
-    public Collection<V> getAll(PK primaryKey) {
+    public Collection<V> getAll(long primaryKey) {
         return mapContainer.getAll(primaryKey);
     }
 
     @Override
-    public Collection<V> getAllNotCache(PK primaryKey) {
+    public Collection<V> getAllNotCache(long primaryKey) {
         Collection<V> values = mapContainer.getAllNoCache(primaryKey);
         if (values == null){
             values = dataSource.getAll(primaryKey);
@@ -61,22 +62,27 @@ class DataCacheMapDao<PK, K, V extends IData<K>> implements IDataCacheMapDao<PK,
     }
 
     @Override
-    public V replaceOne(PK primaryKey, V value) {
+    public void flushOne(long primaryKey, long currentTime, Consumer<Boolean> consumer) {
+        mapContainer.flushOne(primaryKey, currentTime, consumer);
+    }
+
+    @Override
+    public V replaceOne(long primaryKey, V value) {
         return mapContainer.replaceOne(primaryKey, value);
     }
 
     @Override
-    public void replaceBatch(PK primaryKey, Collection<V> values) {
+    public void replaceBatch(long primaryKey, Collection<V> values) {
         mapContainer.replaceBatch(primaryKey, values);
     }
 
     @Override
-    public V deleteOne(PK primaryKey, K secondaryKey) {
+    public V deleteOne(long primaryKey, K secondaryKey) {
         return mapContainer.removeOne(primaryKey, secondaryKey);
     }
 
     @Override
-    public void deleteBatch(PK primaryKey, Collection<K> secondaryKeys) {
+    public void deleteBatch(long primaryKey, Collection<K> secondaryKeys) {
         mapContainer.removeBatch(primaryKey, secondaryKeys);
     }
 }

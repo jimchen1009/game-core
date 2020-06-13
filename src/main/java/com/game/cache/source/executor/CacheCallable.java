@@ -27,20 +27,25 @@ public class CacheCallable<V> implements Callable<V> {
     }
 
     @Override
-    public V call() throws Exception {
-        V value;
+    public V call() {
+        V value = null;
         try {
             value = callable.call();
-            if (consumer != null){
-                consumer.accept(value);
-            }
             logger.trace("callable:{} call success.", getName());
-            return value;
         }
         catch (Throwable t){
             throw new CacheException(name);
         }
         finally {
+            try {
+                if (consumer != null){
+                    consumer.accept(value);
+                }
+            }
+            catch (Throwable t){
+                logger.error("callable:{} call error.", getName());
+            }
         }
+        return value;
     }
 }

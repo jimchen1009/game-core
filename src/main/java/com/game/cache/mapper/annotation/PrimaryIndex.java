@@ -7,9 +7,9 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.ANNOTATION_TYPE})
-public @interface CacheIndex {
+public @interface PrimaryIndex {
 
-    IndexType type() default IndexType.ASC;
+    String primaryKey();
 
-    String name();
+    CacheIndex[] indexes();
 }

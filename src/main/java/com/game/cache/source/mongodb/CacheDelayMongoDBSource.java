@@ -23,33 +23,32 @@ import java.util.Map;
 
 /**
  * 目前缓存设置： 一表多用的情况，回写没有合并[按照实体类单独回写]
- * @param <PK>
  * @param <K>
  * @param <V>
  */
-public class CacheDelayMongoDBSource<PK, K, V extends IData<K>> extends CacheDelaySource<PK, K, V> {
+public class CacheDelayMongoDBSource<K, V extends IData<K>> extends CacheDelaySource<K, V> {
 
     private static final Logger logger = LoggerFactory.getLogger(CacheDelayMongoDBSource.class);
 
 
-    public CacheDelayMongoDBSource(CacheMongoDBSource<PK, K, V> dbSource, ICacheExecutor executor) {
+    public CacheDelayMongoDBSource(CacheMongoDBSource<K, V> dbSource, ICacheExecutor executor) {
         super(dbSource, executor);
     }
 
 
-    private void addFailureKeyDataValue(List<Args.Two<PK, KeyDataValue<K, V>>> keyCacheValueList, Map<PK, PrimaryDelayCache<PK, K, V>> failureKeyCacheValuesMap){
-        for (Args.Two<PK, KeyDataValue<K, V>> arg : keyCacheValueList) {
+    private void addFailureKeyDataValue(List<Args.Two<Long, KeyDataValue<K, V>>> keyCacheValueList, Map<Long, PrimaryDelayCache<K, V>> failureKeyCacheValuesMap){
+        for (Args.Two<Long, KeyDataValue<K, V>> arg : keyCacheValueList) {
             addFailureKeyDataValue(arg.arg0, arg.arg1, failureKeyCacheValuesMap);
         }
     }
 
-    private void addFailureKeyDataValue(PK primaryKey, KeyDataValue<K, V> keyDataValue, Map<PK, PrimaryDelayCache<PK, K, V>> failureKeyCacheValuesMap){
-        PrimaryDelayCache<PK, K, V> primaryCache = failureKeyCacheValuesMap.computeIfAbsent(primaryKey, PrimaryDelayCache::new);
+    private void addFailureKeyDataValue(Long primaryKey, KeyDataValue<K, V> keyDataValue, Map<Long, PrimaryDelayCache<K, V>> failureKeyCacheValuesMap){
+        PrimaryDelayCache<K, V> primaryCache = failureKeyCacheValuesMap.computeIfAbsent(primaryKey, PrimaryDelayCache::new);
         primaryCache.add(keyDataValue);
     }
 
-    private CacheMongoDBSource<PK, K, V> getMongoDBSource() {
-        return (CacheMongoDBSource<PK, K, V>)super.getCacheSource();
+    private CacheMongoDBSource<K, V> getMongoDBSource() {
+        return (CacheMongoDBSource<K, V>)super.getCacheSource();
     }
 
     @Override
@@ -58,26 +57,26 @@ public class CacheDelayMongoDBSource<PK, K, V extends IData<K>> extends CacheDel
     }
 
     @Override
-    protected Map<PK, PrimaryDelayCache<PK, K, V>> executeWritePrimaryCache(Map<PK, PrimaryDelayCache<PK, K, V>> pkPrimaryCacheMap) {
+    protected Map<Long, PrimaryDelayCache<K, V>> executeWritePrimaryCache(Map<Long, PrimaryDelayCache<K, V>> pkPrimaryCacheMap) {
 
         List<DeleteOneModel<Document>> deleteOneModelList = new ArrayList<>();
         List<UpdateOneModel<Document>> updateOneModelList =  new ArrayList<>();
 
-        List<Args.Two<PK, KeyDataValue<K, V>>> deleteKeyCacheValueList = new ArrayList<>();
-        List<Args.Two<PK, KeyDataValue<K, V>>> updateKeyCacheValueList = new ArrayList<>();
+        List<Args.Two<Long, KeyDataValue<K, V>>> deleteKeyCacheValueList = new ArrayList<>();
+        List<Args.Two<Long, KeyDataValue<K, V>>> updateKeyCacheValueList = new ArrayList<>();
 
 
-        int primarySharedId = getClassConfig().primarySharedId;
-        ICacheKeyValueBuilder<PK, K> keyValueBuilder = getKeyValueBuilder();
-        for (Map.Entry<PK, PrimaryDelayCache<PK, K, V>> entry : pkPrimaryCacheMap.entrySet()) {
+        int primarySharedId = getCacheDaoUnique().getPrimarySharedId();
+        ICacheKeyValueBuilder<K> keyValueBuilder = getKeyValueBuilder();
+        for (Map.Entry<Long, PrimaryDelayCache<K, V>> entry : pkPrimaryCacheMap.entrySet()) {
             for (KeyDataValue<K, V> keyDataValue : entry.getValue().getAll()) {
                 if (keyDataValue.isDeleted()) {
-                    List<Map.Entry<String, Object>> entryList = keyValueBuilder.createAllKeyValue(entry.getKey(), keyDataValue.getKey());
+                    List<Map.Entry<String, Object>> entryList = keyValueBuilder.createCombineUniqueKeyValue(entry.getKey(), keyDataValue.getKey());
                     deleteOneModelList.add(CacheMongoDBUtil.createDeleteOneModel(primarySharedId, entryList));
                     deleteKeyCacheValueList.add(Args.create(entry.getKey(), keyDataValue));
                 }
                 else {
-                    List<Map.Entry<String, Object>> entryList = keyValueBuilder.createAllKeyValue(entry.getKey(), keyDataValue.getDataValue().secondaryKey());
+                    List<Map.Entry<String, Object>> entryList = keyValueBuilder.createCombineUniqueKeyValue(entry.getKey(), keyDataValue.getDataValue().secondaryKey());
                     Map<String, Object> cacheValue = getConverter().convert2Cache(keyDataValue.getDataValue());
                     updateOneModelList.add(CacheMongoDBUtil.createUpdateOneModel(primarySharedId, entryList, cacheValue.entrySet()));
                     updateKeyCacheValueList.add(Args.create(entry.getKey(), keyDataValue));
@@ -90,7 +89,7 @@ public class CacheDelayMongoDBSource<PK, K, V extends IData<K>> extends CacheDel
         deleteKeyCacheValueList = handleBatch(name, deleteOneModelList, deleteKeyCacheValueList, this::deleteDB);
         updateKeyCacheValueList = handleBatch(name, updateOneModelList, updateKeyCacheValueList, this::updateDB);
 
-        Map<PK, PrimaryDelayCache<PK, K, V>> failureKeyCacheValuesMap = new HashMap<>();
+        Map<Long, PrimaryDelayCache<K, V>> failureKeyCacheValuesMap = new HashMap<>();
         addFailureKeyDataValue(deleteKeyCacheValueList, failureKeyCacheValuesMap);
         addFailureKeyDataValue(updateKeyCacheValueList, failureKeyCacheValuesMap);
         return failureKeyCacheValuesMap;

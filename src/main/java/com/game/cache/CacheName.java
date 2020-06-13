@@ -10,6 +10,7 @@ public enum CacheName {
     CACHE_DELETE("k2"),
     CACHE_EXPIRED("k3"),
     DATA_BITS("d1"),
+    DATA_EMPTY("d2"),
     ;
 
     private final String keyName;

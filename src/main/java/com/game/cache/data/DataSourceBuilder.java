@@ -10,51 +10,49 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DataSourceBuilder<PK, K, V extends IData<K>> {
+public class DataSourceBuilder<K, V extends IData<K>> {
 
     private static final Logger logger = LoggerFactory.getLogger(DataSourceBuilder.class);
 
-    private final Class<V> aClass;
     private ValueConvertMapper convertMapper;
-    private ICacheSource<PK, K, V> cacheSource;
+    private ICacheSource<K, V> cacheSource;
 
     private List<String> decorators;
 
-    public DataSourceBuilder(Class<V> aClass, ICacheSource<PK, K, V> cacheSource) {
-        this.aClass = aClass;
+    public DataSourceBuilder(ICacheSource<K, V> cacheSource) {
         this.cacheSource = cacheSource;
         this.decorators = new ArrayList<>();
     }
 
-    public DataSourceBuilder<PK, K, V> setConvertMapper(ValueConvertMapper convertMapper) {
+    public DataSourceBuilder<K, V> setConvertMapper(ValueConvertMapper convertMapper) {
         this.convertMapper = convertMapper;
         return this;
     }
 
-    public DataSourceBuilder<PK, K, V> setCacheSource(ICacheSource<PK, K, V> cacheSource) {
+    public DataSourceBuilder<K, V> setCacheSource(ICacheSource<K, V> cacheSource) {
         this.cacheSource = cacheSource;
         return this;
     }
 
-    public DataSourceBuilder<PK, K, V> setDecorators(List<String> decorators) {
+    public DataSourceBuilder<K, V> setDecorators(List<String> decorators) {
         this.decorators = decorators;
         return this;
     }
 
-    public IDataSource<PK, K, V> build(){
+    public IDataSource<K, V> build(){
         return createDataSource(cacheSource);
     }
 
-    public IDataSource<PK, K, V> buildDirect(){
-        ICacheSource<PK, K, V> cacheSource = this.cacheSource;
-        if (cacheSource instanceof ICacheDelaySource){
-            cacheSource = ((ICacheDelaySource<PK, K, V>) cacheSource).getCacheSource();
+    public IDataSource<K, V> buildDirect(){
+        ICacheSource<K, V> cacheSource = this.cacheSource;
+        while (cacheSource instanceof ICacheDelaySource){
+            cacheSource = ((ICacheDelaySource<K, V>) cacheSource).getCacheSource();
         }
         return createDataSource(cacheSource);
     }
 
-    private  IDataSource<PK, K, V> createDataSource(ICacheSource<PK, K, V> cacheSource){
-        IDataSource<PK, K, V> dataSource = new DataSource<>(cacheSource);
+    private  IDataSource<K, V> createDataSource(ICacheSource<K, V> cacheSource){
+        IDataSource<K, V> dataSource = new DataSource<>(cacheSource);
         for (String decorator : decorators) {
             String className = DataSource.class.getName() + decorator.toUpperCase().charAt(0) + decorator.toLowerCase().substring(1);
             try {
@@ -63,7 +61,7 @@ public class DataSourceBuilder<PK, K, V extends IData<K>> {
                 Constructor<?> constructor = decoratorClass.getConstructor(IDataSource.class);
                 constructor.setAccessible(true);
                 //noinspection unchecked
-                dataSource =  (IDataSource<PK, K, V>)constructor.newInstance(dataSource);
+                dataSource =  (IDataSource<K, V>)constructor.newInstance(dataSource);
                 logger.info("finish decorator: {}", className);
             }
             catch (Throwable t) {

@@ -2,9 +2,9 @@ package com.game.cache.data;
 
 import java.util.Collection;
 
-public interface IPrimaryDataContainer<PK, K, V extends IData<K>> {
+public interface IPrimaryDataContainer<K, V extends IData<K>> {
 
-    PK primaryKey();
+    long primaryKey();
 
     int count();
 

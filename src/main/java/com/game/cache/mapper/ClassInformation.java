@@ -8,7 +8,8 @@ import com.game.cache.data.IData;
 import com.game.cache.exception.CacheException;
 import com.game.cache.mapper.annotation.CacheFiled;
 import com.game.cache.mapper.annotation.CacheIndex;
-import com.game.cache.mapper.annotation.IndexField;
+import com.game.cache.mapper.annotation.CacheIndexes;
+import com.game.cache.mapper.annotation.PrimaryIndex;
 import com.game.common.log.LogUtil;
 import jodd.util.StringUtil;
 
@@ -18,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -35,25 +35,36 @@ public class ClassInformation {
         return name2Descriptions.computeIfAbsent(aClass.getName(), key-> new ClassInformation(aClass));
     }
 
+    public static ClassInformation get(String className){
+        return name2Descriptions.computeIfAbsent(className, key->{
+            try {
+                Class<?>  aClass = Class.forName(className);
+                return new ClassInformation(aClass);
+            }
+            catch (ClassNotFoundException e) {
+                throw new CacheException("", e);
+            }
+        });
+    }
+
     private final Class<?> aClass;
-    private final ClassConfig classConfig;
-    private List<String> primaryKeys;
+    private String primaryKey;
+    private List<String> primaryUniqueKeys;
     private List<String> secondaryKeys;
-    private List<String> primarySecondaryKeys;
+    private List<String> combineUniqueKeys;
     private List<FieldInformation> descriptions;
-    private List<FieldInformation> keysDescriptions;
+    private List<FieldInformation> primaryUniqueDescriptions;
     private List<FieldInformation> normalDescriptions;
     private final Method bitIndexSetter;
     private final Method bitIndexCleaner;
 
     private ClassInformation(Class<?> aClass) {
         this.aClass = aClass;
-        this.classConfig = ClassConfig.getConfig(aClass);
-        this.primaryKeys = new ArrayList<>();
+        this.primaryUniqueKeys = new ArrayList<>();
         this.secondaryKeys = new ArrayList<>();
-        this.primarySecondaryKeys = new ArrayList<>();
+        this.combineUniqueKeys = new ArrayList<>();
         this.descriptions = new ArrayList<>();
-        this.keysDescriptions = new ArrayList<>();
+        this.primaryUniqueDescriptions = new ArrayList<>();
         this.normalDescriptions = new ArrayList<>();
         this.bitIndexSetter = searchDataClassMethod(aClass, "setBitIndex");
         this.bitIndexCleaner = searchDataClassMethod(aClass, "clearBitIndex");
@@ -68,24 +79,28 @@ public class ClassInformation {
         return aClass.getSimpleName().toLowerCase();
     }
 
-    public List<String> getPrimaryKeys() {
-        return primaryKeys;
+    public String getPrimaryKey() {
+        return primaryKey;
+    }
+
+    public List<String> getPrimaryUniqueKeys() {
+        return primaryUniqueKeys;
     }
 
     public List<String> getSecondaryKeys() {
         return secondaryKeys;
     }
 
-    public List<String> getPrimarySecondaryKeys() {
-        return primarySecondaryKeys;
+    public List<String> getCombineUniqueKeys() {
+        return combineUniqueKeys;
     }
 
     public List<FieldInformation> fieldDescriptionList() {
         return descriptions;
     }
 
-    public List<FieldInformation> getKeysDescriptions() {
-        return keysDescriptions;
+    public List<FieldInformation> getPrimaryUniqueDescriptions() {
+        return primaryUniqueDescriptions;
     }
 
     public List<FieldInformation> getNormalDescriptions() {
@@ -101,12 +116,8 @@ public class ClassInformation {
         return null;
     }
 
-    public CacheIndex getCacheIndexes(){
-        return aClass.getAnnotation(CacheIndex.class);
-    }
-
-    public ClassConfig getClassConfig(){
-        return classConfig;
+    public CacheIndexes getCacheIndexes(){
+        return aClass.getAnnotation(CacheIndexes.class);
     }
 
     public void invokeSetBitIndex(IData dataValue, DataBitIndex bitIndex) {
@@ -128,29 +139,49 @@ public class ClassInformation {
     }
 
     private void searchAnnotationFieldsAndInit(Class<?> aClass){
+        //索引处理~
+        CacheIndexes cacheIndexes = aClass.getAnnotation(CacheIndexes.class);
+
         //字段处理~
         searchAnnotationFields(aClass, descriptions);
-        Map<String, FieldInformation> name2FieldMap = new HashMap<>();
-        Map<String, FieldInformation> annotationName2FieldMap = new HashMap<>();
+        Map<String, FieldInformation> informationMap = descriptions.stream().collect(Collectors.toMap(FieldInformation::getAnnotationName, information -> information));
+
+        PrimaryIndex primaryIndex = cacheIndexes.primaryIndex();
+        this.primaryKey = primaryIndex.primaryKey();
+        this.primaryUniqueKeys = Collections.unmodifiableList(Arrays.stream(primaryIndex.indexes()).map(CacheIndex::name).collect(Collectors.toList()));
+        this.secondaryKeys = getCacheIndexNames(cacheIndexes.secondaryIndex().indexes(), informationMap);
+        List<String> combineUniqueKeys = new ArrayList<>();
+        combineUniqueKeys.addAll(primaryUniqueKeys);
+        combineUniqueKeys.addAll(secondaryKeys);
+        if (new HashSet<>(combineUniqueKeys).size() != combineUniqueKeys.size()){
+            throw new CacheException("combineUniqueKeys:%s, class:%s", combineUniqueKeys, aClass.getName());
+        }
+        this.combineUniqueKeys = Collections.unmodifiableList(combineUniqueKeys);
+
         Set<Integer> indexes = new HashSet<>();
+        Set<String> fieldNames = new HashSet<>();
+        Set<String> annotationNames = new HashSet<>();
         for (FieldInformation description : descriptions) {
-            if (name2FieldMap.put(description.getName(), description) != null) {
+            if (!fieldNames.add(description.getName())) {
                 throw new CacheException("multiple name:%s, class:%s", description.getName(), aClass.getName());
-            }
-            if (annotationName2FieldMap.put(description.getAnnotationName(), description) != null) {
-                throw new CacheException("multiple annotation name:%s, class:%s", description.getAnnotationName(),aClass.getName());
             }
             if (!indexes.add(description.getUniqueId())){
                 throw new CacheException("multiple uniqueId:%s, class:%s", description.getUniqueId(), aClass.getName());
             }
-            if (!description.isInternal() && CacheName.Names.contains(description.getAnnotationName())){
-                throw new CacheException("annotation annotation name can't be %s, class:%s", description.getAnnotationName(), aClass.getName());
+            if (!annotationNames.add(description.getAnnotationName())) {
+                throw new CacheException("multiple annotation name:%s, class:%s", description.getAnnotationName(),aClass.getName());
+            }
+            if (description.isInternal() && !CacheName.Names.contains(description.getAnnotationName())){
+                throw new CacheException("annotation name can't be %s, class:%s", description.getAnnotationName(), aClass.getName());
             }
             if (description.getUniqueId() > CacheUniqueId.MAX_ID && !description.isInternal()){
-                throw new CacheException("field count is exceeds the maximum of 64, class:%s", aClass.getName());
+                throw new CacheException("field count is exceeds the maximum of %s, class:%s", CacheUniqueId.MAX_ID, aClass.getName());
             }
-            if (primarySecondaryKeys.contains(description.getAnnotationName())){
-                keysDescriptions.add(description);
+            if (!description.getAnnotationName().equals(primaryKey) && primaryUniqueKeys.contains(description.getAnnotationName())){
+                throw new CacheException("appendKeys includes annotation name %s, class:%s", description.getAnnotationName(), aClass.getName());
+            }
+            if (primaryUniqueKeys.contains(description.getAnnotationName())){
+                primaryUniqueDescriptions.add(description);
             }
             else {
                 normalDescriptions.add(description);
@@ -158,32 +189,21 @@ public class ClassInformation {
         }
         this.descriptions = sortUniqueIdAndUnmodifiableList(descriptions);
 
-        //索引处理~
-        CacheIndex cacheIndex = aClass.getAnnotation(CacheIndex.class);
-        this.primaryKeys = getCacheIndexNames(cacheIndex, IndexField::isPrimary, annotationName2FieldMap);
-        List<String> secondaryKeys = getCacheIndexNames(cacheIndex, field -> !field.isPrimary(), annotationName2FieldMap);
-        this.secondaryKeys = secondaryKeys.isEmpty() ? primaryKeys : secondaryKeys;
-        this.primarySecondaryKeys = getCacheIndexNames(cacheIndex, field-> true, annotationName2FieldMap);
-        Set<String> primaryAndSecondaryKeys = new HashSet<>(this.primarySecondaryKeys);
-        if (primaryAndSecondaryKeys.size() != this.primarySecondaryKeys.size()){
-            throw new CacheException("primarySecondaryKeys:%s, class:%s", this.primarySecondaryKeys, aClass.getName());
-        }
         for (FieldInformation description : descriptions) {
-            if (primaryAndSecondaryKeys.contains(description.getAnnotationName())){
-                keysDescriptions.add(description);
+            if (primaryUniqueKeys.contains(description.getAnnotationName())){
+                primaryUniqueDescriptions.add(description);
             }
             else {
                 normalDescriptions.add(description);
             }
         }
-        this.keysDescriptions = sortUniqueIdAndUnmodifiableList(keysDescriptions);
+        this.primaryUniqueDescriptions = sortUniqueIdAndUnmodifiableList(primaryUniqueDescriptions);
         this.normalDescriptions = sortUniqueIdAndUnmodifiableList(normalDescriptions);
     }
 
-    private List<String> getCacheIndexNames(CacheIndex cacheIndex, Predicate<IndexField> predicate, Map<String, FieldInformation> name2FieldMap){
-        List<String> indexKeyList = Arrays.stream(cacheIndex.fields())
-                .filter(predicate)
-                .map(IndexField::name)
+    private List<String> getCacheIndexNames(CacheIndex[] fields, Map<String, FieldInformation> name2FieldMap){
+        List<String> indexKeyList = Arrays.stream(fields)
+                .map(CacheIndex::name)
                 .sorted(Comparator.comparingInt( name -> name2FieldMap.get(name).getUniqueId()))
                 .collect(Collectors.toList());
         return Collections.unmodifiableList(indexKeyList);
@@ -214,16 +234,17 @@ public class ClassInformation {
     }
 
     private static Method searchDataClassMethod(Class<?> aClass, String name) {
-        while (!aClass.equals(Object.class)){
-            if (aClass.equals(Data.class)){
-                for (Method method : aClass.getDeclaredMethods()) {
+        Class<?> findClass = aClass;
+        while (!findClass.equals(Object.class)){
+            if (findClass.equals(Data.class)){
+                for (Method method : findClass.getDeclaredMethods()) {
                     if (method.getName().equals(name)){
                         method.setAccessible(true);
                         return method;
                     }
                 }
             }
-            aClass = aClass.getSuperclass();
+            findClass = findClass.getSuperclass();
         }
         throw new CacheException("no method name:%s class:%s", name, aClass.getName());
     }

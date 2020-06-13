@@ -14,18 +14,18 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimaryDataContainer<PK, K, V>{
+public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryDataContainer<K, V>{
 
     private static final Logger logger = LoggerFactory.getLogger(PrimaryDataContainer.class);
 
-    private final PK primaryKey;
+    private final long primaryKey;
     private ConcurrentHashMap<K, V> secondary2Values;
     private CacheInformation information;
-    private final IDataSource<PK, K, V> dataSource;
-    private final IDataLoadPredicate<PK> loadPredicate;
+    private final IDataSource<K, V> dataSource;
+    private final IDataLoadPredicate loadPredicate;
     private volatile long latestUpdateTime;
 
-    public PrimaryDataContainer(PK primaryKey, IDataSource<PK, K, V> dataSource, IDataLoadPredicate<PK> loadPredicate) {
+    public PrimaryDataContainer(long primaryKey, IDataSource<K, V> dataSource, IDataLoadPredicate loadPredicate) {
         this.primaryKey = primaryKey;
         this.secondary2Values = new ConcurrentHashMap<>();
         this.information = null;
@@ -35,7 +35,7 @@ public class PrimaryDataContainer<PK, K, V extends IData<K>> implements IPrimary
     }
 
     @Override
-    public PK primaryKey() {
+    public long primaryKey() {
         return primaryKey;
     }
 

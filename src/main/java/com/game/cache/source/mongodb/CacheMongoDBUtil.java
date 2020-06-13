@@ -2,7 +2,7 @@ package com.game.cache.source.mongodb;
 
 import com.game.cache.CacheName;
 import com.game.cache.mapper.annotation.CacheIndex;
-import com.game.cache.mapper.annotation.IndexField;
+import com.game.cache.mapper.annotation.CacheIndexes;
 import com.game.cache.mapper.annotation.IndexType;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.DeleteOneModel;
@@ -26,28 +26,26 @@ public class CacheMongoDBUtil {
     public static final UpdateOptions UPDATE_OPTIONS = new UpdateOptions().upsert(true);
     public static final String DB_NAME = "demo";
 
-    public static void ensureIndexes(MongoCollection<Document> collection, int primarySharedId, CacheIndex cacheIndex) {
-        createHashIndex(collection, cacheIndex);
-        createUniqueIndex(collection, primarySharedId, cacheIndex);
+    public static void ensureIndexes(MongoCollection<Document> collection, int primarySharedId, CacheIndexes cacheIndexes) {
+        createHashIndex(collection, cacheIndexes);
+        createUniqueIndex(collection, primarySharedId, cacheIndexes);
     }
 
-    private static void createUniqueIndex(MongoCollection<Document> collection, int primarySharedId, CacheIndex cacheIndex){
+    private static void createUniqueIndex(MongoCollection<Document> collection, int primarySharedId, CacheIndexes cacheIndexes){
         Document primaryDocument = new Document();
         Document secondaryDocument = new Document();
-        for (IndexField indexField : cacheIndex.fields()) {
-            if (indexField.isPrimary()){
-                /**
-                 * 设置成哈希索引会报错~
-                 * primaryDocument.append(indexField.name(), IndexType.HASHED.toIndexValue());
-                 * The full response is {"raw": {"rs3/127.0.0.1:27029,127.0.0.1:27030,127.0.0.1:27031": {"ok": 0.0, "errmsg": "Caught exception during uniqueId builder initialization demo.material (fc2bfbd7-bc57-45cb-a1dd-dad9e51b1746): 1 provided. First uniqueId spec: { v: 2, key: { userId: \"hashed\", k1: 1, itemUniqueId: 1 }, name: \"userId_hashed_k1_1_itemUniqueId_1\", ns: \"demo.material\", unique: true, partialFilterExpression: { itemUniqueId: { $exists: true } } }", "code": 16763, "codeName": "Location16763"}}, "code": 16763, "codeName": "Location16763", "ok": 0.0, "errmsg": "Caught exception during uniqueId builder initialization demo.material (fc2bfbd7-bc57-45cb-a1dd-dad9e51b1746): 1 provided. First uniqueId spec: { v: 2, key: { userId: \"hashed\", k1: 1, itemUniqueId: 1 }, name: \"userId_hashed_k1_1_itemUniqueId_1\", ns: \"demo.material\", unique: true, partialFilterExpression: { itemUniqueId: { $exists: true } } }", "operationTime": {"$timestamp": {"t": 1589426882, "i": 1}}, "$clusterTime": {"clusterTime": {"$timestamp": {"t": 1589426883, "i": 3}}, "signature": {"hash": {"$binary": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=", "$type": "00"}, "keyId": {"$numberLong": "0"}}}}
-                 */
-                primaryDocument.append(indexField.name(), indexField.type().toIndexValue());
-            }
-            else {
-                secondaryDocument.append(indexField.name(), indexField.type().toIndexValue());
-            }
+        for (CacheIndex index : cacheIndexes.primaryIndex().indexes()) {
+            /**
+             * 设置成哈希索引会报错~
+             * primaryDocument.append(cacheIndex.name(), IndexType.HASHED.toIndexValue());
+             * The full response is {"raw": {"rs3/127.0.0.1:27029,127.0.0.1:27030,127.0.0.1:27031": {"ok": 0.0, "errmsg": "Caught exception during uniqueId builder initialization demo.material (fc2bfbd7-bc57-45cb-a1dd-dad9e51b1746): 1 provided. First uniqueId spec: { v: 2, key: { userId: \"hashed\", k1: 1, itemUniqueId: 1 }, name: \"userId_hashed_k1_1_itemUniqueId_1\", ns: \"demo.material\", unique: true, partialFilterExpression: { itemUniqueId: { $exists: true } } }", "code": 16763, "codeName": "Location16763"}}, "code": 16763, "codeName": "Location16763", "ok": 0.0, "errmsg": "Caught exception during uniqueId builder initialization demo.material (fc2bfbd7-bc57-45cb-a1dd-dad9e51b1746): 1 provided. First uniqueId spec: { v: 2, key: { userId: \"hashed\", k1: 1, itemUniqueId: 1 }, name: \"userId_hashed_k1_1_itemUniqueId_1\", ns: \"demo.material\", unique: true, partialFilterExpression: { itemUniqueId: { $exists: true } } }", "operationTime": {"$timestamp": {"t": 1589426882, "i": 1}}, "$clusterTime": {"clusterTime": {"$timestamp": {"t": 1589426883, "i": 3}}, "signature": {"hash": {"$binary": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=", "$type": "00"}, "keyId": {"$numberLong": "0"}}}}
+             */
+            primaryDocument.append(index.name(), index.type().toIndexValue());
         }
-        IndexOptions indexOptions = new IndexOptions().unique(cacheIndex.options().unique());
+        for (CacheIndex index : cacheIndexes.secondaryIndex().indexes()) {
+            secondaryDocument.append(index.name(), index.type().toIndexValue());
+        }
+        IndexOptions indexOptions = new IndexOptions().unique(cacheIndexes.options().unique());
         Document appendDocument = new Document();
         if (primarySharedId > 0){
             Document partialDocument = new Document();
@@ -63,12 +61,10 @@ public class CacheMongoDBUtil {
         collection.createIndex(document, indexOptions);
     }
 
-    private static void createHashIndex(MongoCollection<Document> collection, CacheIndex cacheIndex){
+    private static void createHashIndex(MongoCollection<Document> collection, CacheIndexes cacheIndexes){
         Document hashDocument = new Document();
-        for (IndexField indexField : cacheIndex.fields()) {
-            if (indexField.isPrimary()){
-                hashDocument.append(indexField.name(), IndexType.HASHED.toIndexValue());
-            }
+        for (CacheIndex index : cacheIndexes.primaryIndex().indexes()) {
+            hashDocument.append(index.name(), index.type().toIndexValue());
         }
         collection.createIndex(hashDocument, new IndexOptions());
     }

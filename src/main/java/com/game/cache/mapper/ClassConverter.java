@@ -57,7 +57,7 @@ public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, 
     public Map<String, Object> convert2Cache(V dataValue){
         try {
             Map<String, Object> cacheValue = new HashMap<>();
-            for (FieldInformation description : information.getKeysDescriptions()) {
+            for (FieldInformation description : information.getPrimaryUniqueDescriptions()) {
                 encodeValue(dataValue, cacheValue, description, true);
             }
             for (FieldInformation description : information.getNormalDescriptions()) {

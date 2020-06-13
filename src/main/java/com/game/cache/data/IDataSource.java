@@ -5,28 +5,31 @@ import com.game.common.lock.LockKey;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Consumer;
 
-public interface IDataSource<PK, K, V extends IData<K>> {
+public interface IDataSource<K, V extends IData<K>> {
 
-    LockKey getLockKey(PK primaryKey);
+    LockKey getLockKey(long primaryKey);
 
-    V get(PK primaryKey, K secondaryKey);
+    V get(long primaryKey, K secondaryKey);
 
-    List<V> getAll(PK primaryKey);
+    List<V> getAll(long primaryKey);
 
-    DataCollection<K, V> getCollection(PK primaryKey);
+    DataCollection<K, V> getCollection(long primaryKey);
 
-    boolean replaceOne(PK primaryKey, V value);
+    boolean replaceOne(long primaryKey, V value);
 
-    boolean replaceBatch(PK primaryKey, Collection<V> values);
+    boolean replaceBatch(long primaryKey, Collection<V> values);
 
-    boolean deleteOne(PK primaryKey, K secondaryKey);
+    boolean deleteOne(long primaryKey, K secondaryKey);
 
-    boolean deleteBatch(PK primaryKey, Collection<K> secondaryKeys);
+    boolean deleteBatch(long primaryKey, Collection<K> secondaryKeys);
 
     V cloneValue(V value);
 
     IClassConverter<K, V> getConverter();
 
     boolean flushAll(long currentTime);
+
+    void flushOne(long primaryKey, long currentTime, Consumer<Boolean> consumer);
 }

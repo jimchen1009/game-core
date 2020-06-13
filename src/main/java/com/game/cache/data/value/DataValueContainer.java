@@ -6,20 +6,20 @@ import com.game.cache.data.IDataLoadPredicate;
 import com.game.cache.data.IDataSource;
 import com.game.common.util.Holder;
 
-public class DataValueContainer<PK, V extends IData<PK>> extends DataContainer<PK,PK,V> implements IDataValueContainer<PK, V> {
+public class DataValueContainer<V extends IData<Long>> extends DataContainer<Long, V> implements IDataValueContainer<V> {
 
-    public DataValueContainer(IDataSource<PK, PK, V> dataSource, IDataLoadPredicate<PK> loadPredicate) {
+    public DataValueContainer(IDataSource<Long, V> dataSource, IDataLoadPredicate loadPredicate) {
         super(dataSource, loadPredicate);
     }
 
     @Override
-    public V get(PK primaryPKey) {
-        return get(primaryPKey, primaryPKey);
+    public V get(long primaryKey) {
+        return get(primaryKey, primaryKey);
     }
 
     @Override
-    public Holder<V> getNoCache(PK primaryPKey) {
-        return getNoCache(primaryPKey, primaryPKey);
+    public Holder<V> getNoCache(long primaryKey) {
+        return getNoCache(primaryKey, primaryKey);
     }
 
     @Override
@@ -28,7 +28,7 @@ public class DataValueContainer<PK, V extends IData<PK>> extends DataContainer<P
     }
 
     @Override
-    public V remove(PK primaryPKey) {
-        return removeOne(primaryPKey, primaryPKey);
+    public V remove(long primaryKey) {
+        return removeOne(primaryKey, primaryKey);
     }
 }

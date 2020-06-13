@@ -1,30 +1,30 @@
 package com.game.cache.source.executor;
 
 import com.game.cache.CacheType;
+import com.game.cache.ICacheDaoUnique;
 import com.game.cache.data.IData;
 import com.game.cache.data.IDataSource;
-import com.game.cache.mapper.ClassConfig;
 import com.game.cache.source.ICacheDelaySource;
 import com.game.cache.source.ICacheKeyValueBuilder;
 import com.game.common.lock.LockKey;
 
 import java.util.Collection;
 
-public interface ICacheSource<PK, K, V extends IData<K>> extends IDataSource<PK, K, V> {
+public interface ICacheSource<K, V extends IData<K>> extends IDataSource<K, V> {
 
-    LockKey getLockKey(PK primaryKey);
+    LockKey getLockKey(long primaryKey);
 
     Class<V> getAClass();
 
-    ClassConfig getClassConfig();
+    ICacheDaoUnique getCacheDaoUnique();
 
     CacheType getCacheType();
 
-    boolean deleteOne(PK primaryKey, K secondaryKey);
+    boolean deleteOne(long primaryKey, K secondaryKey);
 
-    boolean deleteBatch(PK primaryKey, Collection<K> secondaryKeys);
+    boolean deleteBatch(long primaryKey, Collection<K> secondaryKeys);
 
-    ICacheKeyValueBuilder<PK, K> getKeyValueBuilder();
+    ICacheKeyValueBuilder<K> getKeyValueBuilder();
 
-    ICacheDelaySource<PK, K, V> createDelayUpdateSource(ICacheExecutor executor);
+    ICacheDelaySource<K, V> createDelayUpdateSource(ICacheExecutor executor);
 }

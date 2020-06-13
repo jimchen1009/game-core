@@ -7,31 +7,31 @@ import com.game.common.log.LogUtil;
 
 import java.util.Collection;
 
-class DataMapDao<PK, K, V extends IData<K>> implements IDataMapDao<PK, K, V> {
+class DataMapDao<K, V extends IData<K>> implements IDataMapDao<K, V> {
 
-    private final IDataSource<PK, K, V> dataSource;
+    private final IDataSource<K, V> dataSource;
 
-    public DataMapDao(IDataSource<PK, K, V> dataSource) {
+    public DataMapDao(IDataSource<K, V> dataSource) {
         this.dataSource = dataSource;
     }
 
     @Override
-    public int count(PK primaryKey) {
+    public int count(long primaryKey) {
         return dataSource.getAll(primaryKey).size();
     }
 
     @Override
-    public V get(PK primaryKey, K secondaryKey) {
+    public V get(long primaryKey, K secondaryKey) {
         return dataSource.get(primaryKey, secondaryKey);
     }
 
     @Override
-    public Collection<V> getAll(PK primaryKey) {
+    public Collection<V> getAll(long primaryKey) {
         return dataSource.getAll(primaryKey);
     }
 
     @Override
-    public V replaceOne(PK primaryKey, V value) {
+    public V replaceOne(long primaryKey, V value) {
         boolean isSuccess = dataSource.replaceOne(primaryKey, value);
         if (isSuccess){
             value.clearCacheBitIndex();
@@ -43,7 +43,7 @@ class DataMapDao<PK, K, V extends IData<K>> implements IDataMapDao<PK, K, V> {
     }
 
     @Override
-    public void replaceBatch(PK primaryKey, Collection<V> values) {
+    public void replaceBatch(long primaryKey, Collection<V> values) {
         boolean isSuccess = dataSource.replaceBatch(primaryKey, values);
         if (isSuccess){
             values.forEach(V::clearCacheBitIndex);
@@ -54,7 +54,7 @@ class DataMapDao<PK, K, V extends IData<K>> implements IDataMapDao<PK, K, V> {
     }
 
     @Override
-    public V deleteOne(PK primaryKey, K secondaryKey) {
+    public V deleteOne(long primaryKey, K secondaryKey) {
         boolean isSuccess = dataSource.deleteOne(primaryKey, secondaryKey);
         if (isSuccess){
             return null;
@@ -65,7 +65,7 @@ class DataMapDao<PK, K, V extends IData<K>> implements IDataMapDao<PK, K, V> {
     }
 
     @Override
-    public void deleteBatch(PK primaryKey, Collection<K> secondaryKeys) {
+    public void deleteBatch(long primaryKey, Collection<K> secondaryKeys) {
         boolean isSuccess = dataSource.deleteBatch(primaryKey, secondaryKeys);
         if (isSuccess){
         }

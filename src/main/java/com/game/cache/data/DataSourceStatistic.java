@@ -6,41 +6,41 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.List;
 
-class DataSourceStatistic<PK, K, V extends IData<K>> extends DataSourceDecorator<PK, K, V>{
+class DataSourceStatistic<K, V extends IData<K>> extends DataSourceDecorator<K, V>{
 
     private static final Logger logger = LoggerFactory.getLogger(DataSourceStatistic.class);
 
-    public DataSourceStatistic(IDataSource<PK, K, V> dataSource) {
+    public DataSourceStatistic(IDataSource<K, V> dataSource) {
         super(dataSource);
     }
 
     @Override
-    protected void onGet(PK primaryKey, K secondaryKey, V value) {
+    protected void onGet(long primaryKey, K secondaryKey, V value) {
     }
 
 
     @Override
-    protected void onGetAll(PK primaryKey, List<V> values) {
+    protected void onGetAll(long primaryKey, List<V> values) {
     }
 
     @Override
-    protected void onReplaceOne(PK primaryKey, V value, boolean isSuccess) {
+    protected void onReplaceOne(long primaryKey, V value, boolean isSuccess) {
     }
 
     @Override
-    protected void onReplaceBatch(PK primaryKey, Collection<V> values, boolean isSuccess) {
+    protected void onReplaceBatch(long primaryKey, Collection<V> values, boolean isSuccess) {
     }
 
     @Override
-    protected void onDeleteOne(PK primaryKey, K secondaryKey, boolean isSuccess) {
+    protected void onDeleteOne(long primaryKey, K secondaryKey, boolean isSuccess) {
     }
 
     @Override
-    protected void onDeleteBatch(PK primaryKey, Collection<K> secondaryKeys, boolean isSuccess) {
+    protected void onDeleteBatch(long primaryKey, Collection<K> secondaryKeys, boolean isSuccess) {
     }
 
     @Override
-    protected void onGetCollection(PK primaryKey, DataCollection<K, V> collection) {
+    protected void onGetCollection(long primaryKey, DataCollection<K, V> collection) {
     }
 
     @Override

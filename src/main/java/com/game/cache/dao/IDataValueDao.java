@@ -2,13 +2,13 @@ package com.game.cache.dao;
 
 import com.game.cache.data.IData;
 
-public interface IDataValueDao<PK, V extends IData<PK>> {
+public interface IDataValueDao<V extends IData<Long>> {
 
-    V get(PK primaryKey);
+    V get(long primaryKey);
 
-    V getNotCache(PK primaryKey);
+    V getNotCache(long primaryKey);
 
     V replace(V value);
 
-    V delete(PK primaryKey);
+    V delete(long primaryKey);
 }

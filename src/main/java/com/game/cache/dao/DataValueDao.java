@@ -5,21 +5,21 @@ import com.game.cache.data.IDataSource;
 import com.game.cache.exception.CacheException;
 import com.game.common.log.LogUtil;
 
-class DataValueDao<PK, V extends IData<PK>> implements IDataValueDao<PK, V> {
+class DataValueDao<V extends IData<Long>> implements IDataValueDao<V> {
 
-    private final IDataSource<PK, PK, V> dataSource;
+    private final IDataSource<Long, V> dataSource;
 
-    public DataValueDao(IDataSource<PK, PK, V> dataSource) {
+    public DataValueDao(IDataSource<Long, V> dataSource) {
         this.dataSource = dataSource;
     }
 
     @Override
-    public V get(PK primaryKey) {
+    public V get(long primaryKey) {
         return dataSource.get(primaryKey, primaryKey);
     }
 
     @Override
-    public V getNotCache(PK primaryKey) {
+    public V getNotCache(long primaryKey) {
         return dataSource.get(primaryKey, primaryKey);
     }
 
@@ -36,7 +36,7 @@ class DataValueDao<PK, V extends IData<PK>> implements IDataValueDao<PK, V> {
     }
 
     @Override
-    public V delete(PK primaryKey) {
+    public V delete(long primaryKey) {
         boolean isSuccess = dataSource.deleteOne(primaryKey, primaryKey);
         if (isSuccess){
             return null;

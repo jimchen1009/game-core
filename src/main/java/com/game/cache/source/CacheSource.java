@@ -1,37 +1,38 @@
 package com.game.cache.source;
 
+import com.game.cache.CacheDaoUnique;
+import com.game.cache.ICacheDaoUnique;
 import com.game.cache.data.IData;
 import com.game.cache.key.IKeyValueBuilder;
-import com.game.cache.mapper.ClassConfig;
 import com.game.cache.mapper.ClassConverter;
-import com.game.cache.mapper.ClassInformation;
 import com.game.cache.mapper.IClassConverter;
 import com.game.cache.source.executor.ICacheSource;
 import com.game.common.lock.LockKey;
 
 import java.util.Map;
+import java.util.function.Consumer;
 
-public abstract class CacheSource<PK, K, V extends IData<K>> implements ICacheSource<PK, K, V> {
+public abstract class CacheSource<K, V extends IData<K>> implements ICacheSource<K, V> {
 
     private static final Object[] EMPTY = new Object[0];
 
-    private final Class<V> aClass;
+    private final CacheDaoUnique cacheDaoUnique;
     private final LockKey lockKey;
-    protected final CacheKeyValueBuilder<PK, K> keyValueBuilder;
+    protected final CacheKeyValueBuilder<K> keyValueBuilder;
     protected final IClassConverter<K, V> converter;
 
 
-    public CacheSource(Class<V> aClass, IKeyValueBuilder<PK> primaryBuilder, IKeyValueBuilder<K> secondaryBuilder) {
-        this.aClass = aClass;
+    public CacheSource(CacheDaoUnique cacheDaoUnique, IKeyValueBuilder<K> secondaryBuilder) {
+        this.cacheDaoUnique = cacheDaoUnique;
+        Class<V> aClass = cacheDaoUnique.getAClass();
         this.lockKey = LockKey.systemLockKey("cache").createLockKey(aClass.getSimpleName());
-        this.keyValueBuilder = new CacheKeyValueBuilder<>(ClassInformation.get(aClass), primaryBuilder, secondaryBuilder);
+        this.keyValueBuilder = new CacheKeyValueBuilder<>(cacheDaoUnique, secondaryBuilder);
         this.converter = new ClassConverter<>(aClass, getCacheType());
     }
 
     @Override
-    public LockKey getLockKey(PK primaryKey) {
-        Object[] objects = keyValueBuilder.toPrimaryKeyValue(primaryKey);
-        return lockKey.createLockKey(objects[0].toString());
+    public LockKey getLockKey(long primaryKey) {
+        return lockKey.createLockKey(String.valueOf(primaryKey));
     }
 
     @SuppressWarnings("unchecked")
@@ -47,21 +48,31 @@ public abstract class CacheSource<PK, K, V extends IData<K>> implements ICacheSo
 
     @Override
     public Class<V> getAClass() {
-        return aClass;
+        return cacheDaoUnique.getAClass();
     }
 
     @Override
-    public ClassConfig getClassConfig() {
-        return keyValueBuilder.getClassInformation().getClassConfig();
+    public ICacheDaoUnique getCacheDaoUnique() {
+        return cacheDaoUnique;
     }
 
     @Override
-    public ICacheKeyValueBuilder<PK, K> getKeyValueBuilder() {
+    public ICacheKeyValueBuilder<K> getKeyValueBuilder() {
         return keyValueBuilder;
     }
 
     private V convertClone(V value){
         Map<String, Object> cacheValue = converter.convert2Cache(value);
         return converter.convert2Value(cacheValue);
+    }
+
+    @Override
+    public boolean flushAll(long currentTime) {
+        return true;
+    }
+
+    @Override
+    public void flushOne(long primaryKey, long currentTime, Consumer<Boolean> consumer) {
+        consumer.accept(true);
     }
 }

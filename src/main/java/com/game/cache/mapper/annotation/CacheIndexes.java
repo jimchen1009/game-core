@@ -6,10 +6,12 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.ANNOTATION_TYPE})
-public @interface CacheIndex {
+@Target({ElementType.TYPE})
+public @interface CacheIndexes {
 
-    IndexType type() default IndexType.ASC;
+    PrimaryIndex primaryIndex();
 
-    String name();
+    SecondaryIndex secondaryIndex();
+
+    IndexOptions options();
 }

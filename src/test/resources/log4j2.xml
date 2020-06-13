@@ -71,7 +71,7 @@
     <loggers>
         <logger name="org.apache" level="INFO"/>
         <logger name="com.mongodb" level="INFO"/>
-        <logger name="com.game" level="INFO"/>
+        <logger name="com.game" level="DEBUG"/>
         <root level="WARN">
             <appender-ref ref="STDOUT"/>
             <appender-ref ref="TRACE"/>

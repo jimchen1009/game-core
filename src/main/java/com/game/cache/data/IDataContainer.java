@@ -3,28 +3,31 @@ package com.game.cache.data;
 import com.game.common.util.Holder;
 
 import java.util.Collection;
+import java.util.function.Consumer;
 
-public interface IDataContainer<PK, K, V extends IData<K>> {
+public interface IDataContainer<K, V extends IData<K>> {
 
-    boolean existCache(PK primaryKey);
+    boolean existCache(long id);
 
-    int count(PK primaryKey);
+    int count(long id);
 
-    V get(PK primaryKey, K secondaryKey);
+    V get(long id, K secondaryKey);
 
-    Holder<V> getNoCache(PK primaryKey, K secondaryKey);
+    Holder<V> getNoCache(long id, K secondaryKey);
 
-    Collection<V> getAll(PK primaryKey);
+    Collection<V> getAll(long id);
 
-    Collection<V> getAllNoCache(PK primaryKey);
+    Collection<V> getAllNoCache(long id);
 
-    V replaceOne(PK primaryKey, V value);
+    V replaceOne(long id, V value);
 
-    void replaceBatch(PK primaryKey, Collection<V> values);
+    void replaceBatch(long id, Collection<V> values);
 
-    V removeOne(PK primaryKey, K secondaryKeys);
+    V removeOne(long id, K secondaryKeys);
 
-    void removeBatch(PK primaryKey, Collection<K> secondaryKeys);
+    void removeBatch(long id, Collection<K> secondaryKeys);
 
     boolean flushAll(long currentTime);
+
+    void flushOne(long primaryKey, long currentTime, Consumer<Boolean> consumer);
 }

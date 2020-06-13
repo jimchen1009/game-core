@@ -4,13 +4,9 @@ import com.game.cache.data.IData;
 
 import java.util.Collection;
 
-public interface IDataCacheMapDao<PK, K, V extends IData<K>> extends IDataMapDao<PK, K, V>{
+public interface IDataCacheMapDao<K, V extends IData<K>> extends IDataMapDao<K, V>, IDataCacheDao{
 
-    boolean existCache(PK primaryKey);
+    V getNotCache(long primaryKey, K secondaryKey);
 
-    V getNotCache(PK primaryKey, K secondaryKey);
-
-    Collection<V> getAllNotCache(PK primaryKey);
-
-    boolean flushAll(long currentTime);
+    Collection<V> getAllNotCache(long primaryKey);
 }

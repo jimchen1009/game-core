@@ -5,33 +5,35 @@ import com.game.cache.data.IDataSource;
 import com.game.cache.data.value.IDataValueContainer;
 import com.game.common.util.Holder;
 
-class DataCacheValueDao<PK, V extends IData<PK>> implements IDataCacheValueDao<PK, V> {
+import java.util.function.Consumer;
 
-    private final IDataSource<PK, PK, V> dataSource;
-    private final IDataValueContainer<PK, V> valueContainer;
+class DataCacheValueDao<V extends IData<Long>> implements IDataCacheValueDao<V> {
 
-    public DataCacheValueDao(IDataSource<PK, PK, V> dataSource, IDataValueContainer<PK, V> valueContainer) {
+    private final IDataSource<Long, V> dataSource;
+    private final IDataValueContainer<V> valueContainer;
+
+    public DataCacheValueDao(IDataSource<Long, V> dataSource, IDataValueContainer<V> valueContainer) {
         this.dataSource = dataSource;
         this.valueContainer = valueContainer;
     }
 
     @Override
-    public V get(PK primaryKey) {
-        return valueContainer.get(primaryKey);
+    public V get(long id) {
+        return valueContainer.get(id);
     }
 
     @Override
-    public boolean existCache(PK primaryKey) {
-        return valueContainer.existCache(primaryKey);
+    public boolean existCache(long id) {
+        return valueContainer.existCache(id);
     }
 
     @Override
-    public V getNotCache(PK primaryKey) {
-        Holder<V> holder = valueContainer.getNoCache(primaryKey);
+    public V getNotCache(long id) {
+        Holder<V> holder = valueContainer.getNoCache(id);
         if (holder != null){
             return holder.getValue();
         }
-        return dataSource.get(primaryKey, primaryKey);
+        return dataSource.get(id, id);
     }
 
     @Override
@@ -39,13 +41,18 @@ class DataCacheValueDao<PK, V extends IData<PK>> implements IDataCacheValueDao<P
         return valueContainer.flushAll(currentTime);
     }
 
-    @Override
+	@Override
+	public void flushOne(long primaryKey, long currentTime, Consumer<Boolean> consumer) {
+		valueContainer.flushOne(primaryKey, currentTime, consumer);
+	}
+
+	@Override
     public V replace(V value) {
         return valueContainer.replace(value);
     }
 
     @Override
-    public V delete(PK primaryKey) {
-        return valueContainer.remove(primaryKey);
+    public V delete(long id) {
+        return valueContainer.remove(id);
     }
 }

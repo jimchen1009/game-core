@@ -1,31 +1,24 @@
 package com.game.cache.source;
 
-import java.util.List;
+import com.game.cache.ICacheDaoUnique;
+
 import java.util.Map;
 
-public interface ICacheSourceInteract<PK> extends ICacheLoginPredicate<PK>{
+public interface ICacheSourceInteract extends ICacheLoginPredicate{
 
     /**
      * 抢夺加载的数据内容
-     * @param tableName
+     * @param cacheDaoUnique
      * @param primaryKey
      * @param collections
      */
-    void addCollections(PK primaryKey, String tableName, Map<Integer, CacheCollection> collections);
+    void addCollections(long primaryKey, ICacheDaoUnique cacheDaoUnique, Map<Integer, CacheCollection> collections);
 
     /**
      * 获取被抢夺加载的内容
-     * @param tableName
+     * @param cacheDaoUnique
      * @param primaryKey
      * @return
      */
-    CacheCollection removeCollection(PK primaryKey, String tableName, int primarySharedId);
-
-    /**
-     *
-     * @param tableName
-     * @param primarySharedId
-     * @return
-     */
-    List<Integer> getPrimarySharedIds(PK primaryKey, String tableName, int primarySharedId);
+    CacheCollection removeCollection(long primaryKey, ICacheDaoUnique cacheDaoUnique, int primarySharedId);
 }

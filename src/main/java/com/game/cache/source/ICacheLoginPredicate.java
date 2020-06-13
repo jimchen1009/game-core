@@ -1,12 +1,14 @@
 package com.game.cache.source;
 
-public interface ICacheLoginPredicate<PK>  {
+import com.game.cache.ICacheDaoUnique;
+
+public interface ICacheLoginPredicate  {
     /**
      * 抢夺登录的第一次加载
      * @param primaryKey
      */
-    boolean loginSharedLoadTable(PK primaryKey, String tableName);
+    boolean loginSharedLoadTable(long primaryKey, ICacheDaoUnique cacheDaoUnique);
 
 
-    boolean loginSharedLoadRedis(PK primaryKey, int redisSharedId);
+    boolean loginSharedLoadRedis(long primaryKey, int redisSharedId);
 }
