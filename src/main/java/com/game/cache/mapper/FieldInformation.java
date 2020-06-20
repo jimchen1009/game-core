@@ -9,13 +9,11 @@ public class FieldInformation {
     private final DataBitIndex bitIndex;
     private final Field field;
     private final String annotationName;
-    private final boolean internal;
 
-    public FieldInformation(int index, Field field, String annotationName, boolean internal) {
+    public FieldInformation(int index, Field field, String annotationName) {
         this.bitIndex = DataBitIndex.getBitIndex(index);
         this.field = field;
         this.annotationName = annotationName;
-        this.internal = internal;
     }
 
     public int getUniqueId() {
@@ -26,9 +24,6 @@ public class FieldInformation {
         return bitIndex;
     }
 
-    public boolean isInternal() {
-        return internal;
-    }
 
     public Field getField() {
         return field;

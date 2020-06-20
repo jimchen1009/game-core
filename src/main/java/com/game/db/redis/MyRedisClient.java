@@ -237,7 +237,7 @@ public abstract class MyRedisClient implements IRedisClient {
     }
 
     @Override
-    public List<Object> pipeline(Consumer<IRedisPipeline> consumer) {
+    public List<Map.Entry<String, Object>> executeBatch(Consumer<IRedisPipeline> consumer) {
         return null;
     }
 }

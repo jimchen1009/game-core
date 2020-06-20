@@ -2,13 +2,13 @@ package com.game.cache.data.value;
 
 import com.game.cache.data.DataContainer;
 import com.game.cache.data.IData;
-import com.game.cache.data.IDataLoadPredicate;
+import com.game.cache.data.IDataLifePredicate;
 import com.game.cache.data.IDataSource;
 import com.game.common.util.Holder;
 
 public class DataValueContainer<V extends IData<Long>> extends DataContainer<Long, V> implements IDataValueContainer<V> {
 
-    public DataValueContainer(IDataSource<Long, V> dataSource, IDataLoadPredicate loadPredicate) {
+    public DataValueContainer(IDataSource<Long, V> dataSource, IDataLifePredicate loadPredicate) {
         super(dataSource, loadPredicate);
     }
 

@@ -66,13 +66,10 @@ public class PrimaryDelayCache<K, V extends IData<K>>{
             keyDataValuesMap.put(secondaryKey, KeyDataValue.createDelete(secondaryKey));
             return null;
         }
-        if (oldKeyDataValue.isInsert()) {
-            return oldKeyDataValue.getDataValue();
-        }
         if (oldKeyDataValue.isDeleted()) {
             return null;
         }
-        if (oldKeyDataValue.isUpdate()){
+        if (oldKeyDataValue.isUpsert()){
             keyDataValuesMap.put(secondaryKey, KeyDataValue.createDelete(secondaryKey));
             return oldKeyDataValue.getDataValue();
         }
@@ -83,7 +80,7 @@ public class PrimaryDelayCache<K, V extends IData<K>>{
      * @param keyDataValue
      */
     public void add(KeyDataValue<K, V> keyDataValue){
-        keyDataValuesMap.putIfAbsent(keyDataValue.getKey(), keyDataValue);
+        keyDataValuesMap.put(keyDataValue.getKey(), keyDataValue);
     }
 
     public KeyDataValue<K, V> get(K secondaryKey){

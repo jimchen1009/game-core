@@ -17,10 +17,10 @@ public class DataContainer<K, V extends IData<K>> implements IDataContainer<K, V
     private static final CacheInformation INIT_INFO = new CacheInformation();
 
     private final IDataSource<K, V> dataSource;
-    private final IDataLoadPredicate loadPredicate;
+    private final IDataLifePredicate loadPredicate;
     private ConcurrentHashMap<Long, IPrimaryDataContainer<K, V>> primaryDataMap;
 
-    public DataContainer(IDataSource<K, V> dataSource, IDataLoadPredicate loadPredicate) {
+    public DataContainer(IDataSource<K, V> dataSource, IDataLifePredicate loadPredicate) {
         this.dataSource = dataSource;
         this.loadPredicate = loadPredicate;
         this.primaryDataMap = new ConcurrentHashMap<>();

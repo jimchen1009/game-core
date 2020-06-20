@@ -1,6 +1,5 @@
 package com.game.common.config;
 
-import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigList;
 
 import java.util.List;
@@ -10,20 +9,15 @@ import java.util.stream.Collectors;
 
 public class Configs implements IConfig {
 
-    private static Configs applicationConfig;
-    static {
-        String property = System.getProperty("application.conf.path", "application.conf");
-        com.typesafe.config.Config config = ConfigFactory.load(property);
-        applicationConfig = new Configs(config);
-    }
+    private static IConfig appConfig = ConfigUtil.loadConfig(System.getProperty("application.config.path", "application.conf"));
 
-    public static Configs getInstance() {
-        return applicationConfig;
+    public static IConfig getInstance() {
+        return appConfig;
     }
 
     private final com.typesafe.config.Config config;
 
-    private Configs(com.typesafe.config.Config config) {
+    Configs(com.typesafe.config.Config config) {
         this.config = config;
     }
 

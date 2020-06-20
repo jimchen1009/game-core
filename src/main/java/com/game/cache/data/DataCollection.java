@@ -25,4 +25,8 @@ public class DataCollection<K, V extends IData<K>> {
     public boolean isEmpty(){
         return information.isEmpty() && dataList.isEmpty();
     }
+
+    public boolean isExpired(long currentTime){
+        return information.isExpired(currentTime);
+    }
 }

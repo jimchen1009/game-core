@@ -1,6 +1,6 @@
 package com.game.cache;
 
-import com.game.cache.mapper.ClassConfig;
+import com.game.cache.config.ClassConfig;
 import com.game.cache.mapper.ClassInformation;
 import jodd.util.StringUtil;
 
@@ -12,19 +12,19 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class CacheDaoUnique implements ICacheDaoUnique {
+public class CacheUniqueKey implements ICacheUniqueKey {
 
 	protected final ClassConfig classConfig;
 	protected final List<Map.Entry<String, Object>> primaryUniqueKeys;
 	private final ClassInformation information;
-	protected final String daoUniqueId;
+	protected final String stringUniqueId;
 	protected final String formatRedisKey;
 
-	public CacheDaoUnique(ClassConfig classConfig, List<Map.Entry<String, Object>> primaryUniqueKeys) {
+	public CacheUniqueKey(ClassConfig classConfig, List<Map.Entry<String, Object>> primaryUniqueKeys) {
 		this.classConfig = classConfig;
 		this.primaryUniqueKeys = primaryUniqueKeys;
 		this.information = ClassInformation.get(classConfig.className);
-		this.daoUniqueId = classConfig.getClass().getName() + "_" + classConfig.primarySharedId + "_" + StringUtil.join(information.getCombineUniqueKeys(),",");
+		this.stringUniqueId = classConfig.getClass().getName() + "_" + classConfig.primarySharedId + "_" + StringUtil.join(information.getCombineUniqueKeys(),",");
 		List<String> strings = new ArrayList<>(information.getPrimaryUniqueKeys());
 		strings.remove(information.getPrimaryKey());
 		String primarySharedId = "";
@@ -32,11 +32,11 @@ public class CacheDaoUnique implements ICacheDaoUnique {
 			primarySharedId = "." + classConfig.primarySharedId;
 		}
 		if (strings.isEmpty()) {
-			this.formatRedisKey = "100:%s_" + String.format("%s%s.v%s", classConfig.tableName , primarySharedId, classConfig.versionId);
+			this.formatRedisKey = "100:%s_" + String.format("%s%s.v%s", classConfig.name , primarySharedId, classConfig.versionId);
 		}
 		else {
 			String string = StringUtil.join(strings, ".");
-			this.formatRedisKey = "100:%s." + String.format("%s_%s%s.v%s", string, classConfig.tableName , primarySharedId, classConfig.versionId);
+			this.formatRedisKey = "100:%s." + String.format("%s_%s%s.v%s", string, classConfig.name , primarySharedId, classConfig.versionId);
 		}
 	}
 
@@ -58,8 +58,8 @@ public class CacheDaoUnique implements ICacheDaoUnique {
 	}
 
 	@Override
-	public String getDaoUniqueId() {
-		return daoUniqueId;
+	public String getStringUniqueId() {
+		return stringUniqueId;
 	}
 
 	@Override
@@ -79,8 +79,8 @@ public class CacheDaoUnique implements ICacheDaoUnique {
 	}
 
 	@Override
-	public String getTableName() {
-		return classConfig.tableName;
+	public String getName() {
+		return classConfig.name;
 	}
 
 	@Override
@@ -89,48 +89,53 @@ public class CacheDaoUnique implements ICacheDaoUnique {
 	}
 
 
-	public List<ICacheDaoUnique> sharedCacheDaoUniqueList(){
-		List<ClassConfig> sharedConfigList = ClassConfig.getPrimarySharedConfigList(getTableName());
-		List<ICacheDaoUnique> cacheDaoUniqueList = sharedConfigList.stream().filter(config -> config.primarySharedId != getPrimarySharedId())
-				.map(config -> new CacheDaoUnique(config, primaryUniqueKeys)).collect(Collectors.toList());
+	public List<ICacheUniqueKey> sharedCacheDaoUniqueList(){
+		List<ClassConfig> sharedConfigList = ClassConfig.getPrimarySharedConfigList(getName());
+		List<ICacheUniqueKey> cacheDaoUniqueList = sharedConfigList.stream()
+				.map(config -> new CacheUniqueKey(config, primaryUniqueKeys)).collect(Collectors.toList());
 		return cacheDaoUniqueList;
 	}
 
 	@Override
-	public boolean isUserCache() {
-		return classConfig.isUserClass;
+	public boolean isAccountCache() {
+		return classConfig.accountCache;
 	}
 
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		ICacheDaoUnique that = (ICacheDaoUnique) o;
-		return Objects.equals(getDaoUniqueId(), that.getDaoUniqueId());
+		ICacheUniqueKey that = (ICacheUniqueKey) o;
+		return Objects.equals(getStringUniqueId(), that.getStringUniqueId());
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(daoUniqueId);
+		return Objects.hash(stringUniqueId);
 	}
+
 
 	@Override
 	public String toString() {
 		return "{" +
-				"daoUniqueId='" + daoUniqueId + '\'' +
+				"classConfig=" + classConfig +
+				", primaryUniqueKeys=" + primaryUniqueKeys +
+				", information=" + information +
+				", stringUniqueId='" + stringUniqueId + '\'' +
+				", formatRedisKey='" + formatRedisKey + '\'' +
 				'}';
 	}
 
-	public static CacheDaoUnique create(Class<?> aClass) {
+	public static CacheUniqueKey create(Class<?> aClass) {
 		return create(aClass, Collections.emptyList());
 	}
 
-	public static CacheDaoUnique create(Class<?> aClass, List<Map.Entry<String, Object>> appendKeyList) {
+	public static CacheUniqueKey create(Class<?> aClass, List<Map.Entry<String, Object>> appendKeyList) {
 		ClassInformation information = ClassInformation.get(aClass);
 		List<String> primaryUniqueKeys = information.getPrimaryUniqueKeys();
 		int indexOf = primaryUniqueKeys.indexOf(information.getPrimaryKey());
 		List<Map.Entry<String, Object>> primaryUniqueKeys0 = new ArrayList<>(appendKeyList);
 		primaryUniqueKeys0.add(indexOf, new AbstractMap.SimpleEntry<>(information.getPrimaryKey(), null));
-		return new CacheDaoUnique(ClassConfig.getConfig(aClass), primaryUniqueKeys0);
+		return new CacheUniqueKey(ClassConfig.getConfig(aClass), primaryUniqueKeys0);
 	}
 }

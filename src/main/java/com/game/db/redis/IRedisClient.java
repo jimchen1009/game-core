@@ -98,5 +98,5 @@ public interface IRedisClient {
 
     Map<String, String> hgetAll(String key);
 
-    List<Object> pipeline(Consumer<IRedisPipeline> consumer);
+    List<Map.Entry<String, Object>> executeBatch(Consumer<IRedisPipeline> consumer);
 }

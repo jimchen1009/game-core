@@ -1,7 +1,7 @@
 package com.game.cache.source.executor;
 
 import com.game.cache.CacheType;
-import com.game.cache.ICacheDaoUnique;
+import com.game.cache.ICacheUniqueKey;
 import com.game.cache.data.IData;
 import com.game.cache.data.IDataSource;
 import com.game.cache.source.ICacheDelaySource;
@@ -16,7 +16,7 @@ public interface ICacheSource<K, V extends IData<K>> extends IDataSource<K, V> {
 
     Class<V> getAClass();
 
-    ICacheDaoUnique getCacheDaoUnique();
+    ICacheUniqueKey getCacheUniqueKey();
 
     CacheType getCacheType();
 

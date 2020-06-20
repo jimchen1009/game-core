@@ -19,11 +19,6 @@ class DataValueDao<V extends IData<Long>> implements IDataValueDao<V> {
     }
 
     @Override
-    public V getNotCache(long primaryKey) {
-        return dataSource.get(primaryKey, primaryKey);
-    }
-
-    @Override
     public V replace(V value) {
         boolean isSuccess = dataSource.replaceOne(value.secondaryKey(), value);
         if (isSuccess){
@@ -42,7 +37,7 @@ class DataValueDao<V extends IData<Long>> implements IDataValueDao<V> {
             return null;
         }
         else {
-            throw new CacheException("remove error, %s", LogUtil.toJSONString(primaryKey));
+            throw new CacheException("remove error, %s", primaryKey);
         }
     }
 }

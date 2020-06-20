@@ -1,7 +1,6 @@
 package com.game.cache.mapper;
 
 import com.game.cache.CacheName;
-import com.game.cache.CacheUniqueId;
 import com.game.cache.data.Data;
 import com.game.cache.data.DataBitIndex;
 import com.game.cache.data.IData;
@@ -36,15 +35,18 @@ public class ClassInformation {
     }
 
     public static ClassInformation get(String className){
-        return name2Descriptions.computeIfAbsent(className, key->{
+        ClassInformation information = name2Descriptions.get(className);
+        if (information == null){
+            Class<?> aClass;
             try {
-                Class<?>  aClass = Class.forName(className);
-                return new ClassInformation(aClass);
+                aClass = Class.forName(className);
             }
             catch (ClassNotFoundException e) {
                 throw new CacheException("", e);
             }
-        });
+            information = get(aClass);
+        }
+       return information;
     }
 
     private final Class<?> aClass;
@@ -171,11 +173,11 @@ public class ClassInformation {
             if (!annotationNames.add(description.getAnnotationName())) {
                 throw new CacheException("multiple annotation name:%s, class:%s", description.getAnnotationName(),aClass.getName());
             }
-            if (description.isInternal() && !CacheName.Names.contains(description.getAnnotationName())){
+            if (CacheName.Names.contains(description.getAnnotationName())){
                 throw new CacheException("annotation name can't be %s, class:%s", description.getAnnotationName(), aClass.getName());
             }
-            if (description.getUniqueId() > CacheUniqueId.MAX_ID && !description.isInternal()){
-                throw new CacheException("field count is exceeds the maximum of %s, class:%s", CacheUniqueId.MAX_ID, aClass.getName());
+            if (description.getUniqueId() > DataBitIndex.MaximumIndex){
+                throw new CacheException("field count is exceeds the maximum of %s, class:%s", DataBitIndex.MaximumIndex, aClass.getName());
             }
             if (!description.getAnnotationName().equals(primaryKey) && primaryUniqueKeys.contains(description.getAnnotationName())){
                 throw new CacheException("appendKeys includes annotation name %s, class:%s", description.getAnnotationName(), aClass.getName());
@@ -227,8 +229,7 @@ public class ClassInformation {
             String name = field.getName();
             field.setAccessible(true);
             String annotationName = StringUtil.isEmpty(cacheFiled.name()) ? name : cacheFiled.name();
-            boolean internal = cacheFiled.isInternal();
-            FieldInformation information = new FieldInformation(cacheFiled.index(), field, annotationName, internal);
+            FieldInformation information = new FieldInformation(cacheFiled.index(), field, annotationName);
             descriptions.add(information);
         }
     }

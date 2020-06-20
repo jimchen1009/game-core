@@ -1,6 +1,5 @@
 package com.game.cache.mapper;
 
-import com.game.cache.CacheName;
 import com.game.cache.CacheType;
 import com.game.cache.data.IData;
 import com.game.cache.exception.CacheException;
@@ -23,15 +22,18 @@ public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, 
         this.cacheType = cacheType;
     }
 
+    @Override
     public ClassInformation getInformation() {
         return information;
     }
 
     @SuppressWarnings("unchecked")
+    @Override
     public Class<V> getConvertedClass() {
         return (Class<V>) information.getAClass();
     }
 
+    @Override
     public V convert2Value(Map<String, Object> cacheValue){
         Class<V> convertedClass = getConvertedClass();
         try {
@@ -54,26 +56,19 @@ public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, 
         return cacheValues.stream().map(this::convert2Value).collect(Collectors.toList());
     }
 
+    @Override
     public Map<String, Object> convert2Cache(V dataValue){
         try {
             Map<String, Object> cacheValue = new HashMap<>();
             for (FieldInformation description : information.getPrimaryUniqueDescriptions()) {
                 encodeValue(dataValue, cacheValue, description, true);
             }
+            boolean cacheBitIndex = !dataValue.existCacheBitIndex();
             for (FieldInformation description : information.getNormalDescriptions()) {
-                if (description.isInternal()){
-                    if (cacheType.isCacheInternal()){
-                        encodeValue(dataValue, cacheValue, description, true);
-                    }
-                }
-                if (cacheType.isFullCache() || dataValue.hasBitIndex(description.getBitIndex())){
+                encodeValue(dataValue, cacheValue, description, true);
+                if (cacheBitIndex || cacheType.isFullCache() || dataValue.hasBitIndex(description.getBitIndex())){
                     encodeValue(dataValue, cacheValue, description, false);
                 }
-            }
-            if (cacheType.isFullCache()){
-                ValueConverter<?> converter = cacheType.getConvertMapper().get(int.class);
-                Object encode = converter.encode(dataValue.getBitIndexBits());
-                cacheValue.put(CacheName.DATA_BITS.getKeyName(), encode);
             }
             return cacheValue;
         }

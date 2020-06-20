@@ -1,7 +1,7 @@
 package com.game.cache.source;
 
-import com.game.cache.CacheDaoUnique;
-import com.game.cache.ICacheDaoUnique;
+import com.game.cache.CacheUniqueKey;
+import com.game.cache.ICacheUniqueKey;
 import com.game.cache.data.IData;
 import com.game.cache.key.IKeyValueBuilder;
 import com.game.cache.mapper.ClassConverter;
@@ -16,17 +16,17 @@ public abstract class CacheSource<K, V extends IData<K>> implements ICacheSource
 
     private static final Object[] EMPTY = new Object[0];
 
-    private final CacheDaoUnique cacheDaoUnique;
+    private final CacheUniqueKey cacheUniqueKey;
     private final LockKey lockKey;
     protected final CacheKeyValueBuilder<K> keyValueBuilder;
     protected final IClassConverter<K, V> converter;
 
 
-    public CacheSource(CacheDaoUnique cacheDaoUnique, IKeyValueBuilder<K> secondaryBuilder) {
-        this.cacheDaoUnique = cacheDaoUnique;
-        Class<V> aClass = cacheDaoUnique.getAClass();
+    public CacheSource(CacheUniqueKey cacheUniqueKey, IKeyValueBuilder<K> secondaryBuilder) {
+        this.cacheUniqueKey = cacheUniqueKey;
+        Class<V> aClass = cacheUniqueKey.getAClass();
         this.lockKey = LockKey.systemLockKey("cache").createLockKey(aClass.getSimpleName());
-        this.keyValueBuilder = new CacheKeyValueBuilder<>(cacheDaoUnique, secondaryBuilder);
+        this.keyValueBuilder = new CacheKeyValueBuilder<>(cacheUniqueKey, secondaryBuilder);
         this.converter = new ClassConverter<>(aClass, getCacheType());
     }
 
@@ -48,12 +48,12 @@ public abstract class CacheSource<K, V extends IData<K>> implements ICacheSource
 
     @Override
     public Class<V> getAClass() {
-        return cacheDaoUnique.getAClass();
+        return cacheUniqueKey.getAClass();
     }
 
     @Override
-    public ICacheDaoUnique getCacheDaoUnique() {
-        return cacheDaoUnique;
+    public ICacheUniqueKey getCacheUniqueKey() {
+        return cacheUniqueKey;
     }
 
     @Override

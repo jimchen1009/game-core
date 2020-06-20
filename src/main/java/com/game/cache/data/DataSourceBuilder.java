@@ -1,6 +1,5 @@
 package com.game.cache.data;
 
-import com.game.cache.mapper.ValueConvertMapper;
 import com.game.cache.source.ICacheDelaySource;
 import com.game.cache.source.executor.ICacheSource;
 import org.slf4j.Logger;
@@ -14,7 +13,6 @@ public class DataSourceBuilder<K, V extends IData<K>> {
 
     private static final Logger logger = LoggerFactory.getLogger(DataSourceBuilder.class);
 
-    private ValueConvertMapper convertMapper;
     private ICacheSource<K, V> cacheSource;
 
     private List<String> decorators;
@@ -24,10 +22,6 @@ public class DataSourceBuilder<K, V extends IData<K>> {
         this.decorators = new ArrayList<>();
     }
 
-    public DataSourceBuilder<K, V> setConvertMapper(ValueConvertMapper convertMapper) {
-        this.convertMapper = convertMapper;
-        return this;
-    }
 
     public DataSourceBuilder<K, V> setCacheSource(ICacheSource<K, V> cacheSource) {
         this.cacheSource = cacheSource;
@@ -39,11 +33,11 @@ public class DataSourceBuilder<K, V extends IData<K>> {
         return this;
     }
 
-    public IDataSource<K, V> build(){
+    public IDataSource<K, V> create(){
         return createDataSource(cacheSource);
     }
 
-    public IDataSource<K, V> buildDirect(){
+    public IDataSource<K, V> createNoDelay(){
         ICacheSource<K, V> cacheSource = this.cacheSource;
         while (cacheSource instanceof ICacheDelaySource){
             cacheSource = ((ICacheDelaySource<K, V>) cacheSource).getCacheSource();

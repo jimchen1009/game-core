@@ -53,7 +53,7 @@ public class CacheMongoDBUtil {
                 partialDocument.append(entry.getKey(), new Document("$exists", true));
             }
             indexOptions.partialFilterExpression(partialDocument);
-            appendDocument.append(CacheName.CACHE_KEY.getKeyName(), IndexType.ASC.toIndexValue());
+            appendDocument.append(CacheName.PrimaryId.getKeyName(), IndexType.ASC.toIndexValue());
         }
         Document document = new Document(primaryDocument);
         document.putAll(appendDocument);
@@ -90,7 +90,7 @@ public class CacheMongoDBUtil {
             document.append(entry.getKey(), entry.getValue());
         }
         if (primarySharedId > 0){
-            document.append(CacheName.CACHE_KEY.getKeyName(),primarySharedId);
+            document.append(CacheName.PrimaryId.getKeyName(),primarySharedId);
         }
         return document;
     }
@@ -101,7 +101,7 @@ public class CacheMongoDBUtil {
             document.append(entry.getKey(), entry.getValue());
         }
         primarySharedIds = primarySharedIds.stream().filter( primarySharedId -> primarySharedId > 0).collect(Collectors.toList());
-        document.append(CacheName.CACHE_KEY.getKeyName(), new Document("$in", primarySharedIds));
+        document.append(CacheName.PrimaryId.getKeyName(), new Document("$in", primarySharedIds));
         return document;
     }
 

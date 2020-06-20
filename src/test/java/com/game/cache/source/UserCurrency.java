@@ -27,12 +27,16 @@ public class UserCurrency extends Data<Integer> {
     @CacheFiled(index = 3)
     private long gainedCount;
 
+    @CacheFiled(index = 4)
+    private byte[] bytes;
+
 
     public UserCurrency(long userId, int currencyId, int count) {
         this.userId = userId;
         this.currencyId = currencyId;
         this.count = count;
         this.gainedCount = count;
+        this.bytes = String.valueOf(currencyId).getBytes();
     }
 
     public UserCurrency() {

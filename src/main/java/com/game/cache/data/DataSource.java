@@ -1,6 +1,5 @@
 package com.game.cache.data;
 
-import com.game.cache.mapper.ClassInformation;
 import com.game.cache.mapper.IClassConverter;
 import com.game.cache.source.executor.ICacheSource;
 import com.game.common.lock.LockKey;
@@ -29,15 +28,12 @@ class DataSource<K, V extends IData<K>> implements IDataSource<K, V>{
     @Override
     public V get(long primaryKey, K secondaryKey) {
         V data = cacheSource.get(primaryKey, secondaryKey);
-        return data == null ? null : markValueSource(data);
+        return data ;
     }
 
     @Override
     public List<V> getAll(long primaryKey) {
         List<V> dataList = cacheSource.getAll(primaryKey);
-        for (V data : dataList) {
-            markValueSource(data);
-        }
         return dataList;
     }
 
@@ -45,6 +41,7 @@ class DataSource<K, V extends IData<K>> implements IDataSource<K, V>{
     public boolean replaceOne(long primaryKey, V value) {
         boolean isSuccess = cacheSource.replaceOne(primaryKey, value);
         if (isSuccess){
+
         }
         return isSuccess;
     }
@@ -70,9 +67,6 @@ class DataSource<K, V extends IData<K>> implements IDataSource<K, V>{
     @Override
     public DataCollection<K, V> getCollection(long primaryKey) {
         DataCollection<K, V> collection = cacheSource.getCollection(primaryKey);
-        for (V data : collection.getDataList()) {
-            markValueSource(data);
-        }
         return collection;
     }
 
@@ -95,11 +89,5 @@ class DataSource<K, V extends IData<K>> implements IDataSource<K, V>{
     @Override
     public void flushOne(long primaryKey, long currentTime, Consumer<Boolean> consumer) {
         cacheSource.flushOne(primaryKey, currentTime, consumer);
-    }
-
-    private V markValueSource(V dataValue){
-        ClassInformation information = getConverter().getInformation();
-        information.invokeSetBitIndex(dataValue, DataBitIndex.CacheCreated);
-        return dataValue;
     }
 }

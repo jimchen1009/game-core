@@ -1,6 +1,6 @@
 package com.game.cache.source;
 
-import com.game.cache.ICacheDaoUnique;
+import com.game.cache.ICacheUniqueKey;
 import com.game.cache.data.DataCollection;
 import com.game.cache.data.IData;
 import com.game.cache.exception.CacheException;
@@ -73,18 +73,15 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
 
     @Override
     public List<V> getAll(long primaryKey) {
-        if (primaryCacheMap.containsKey(primaryKey) && !flushOne(primaryKey)){
-            throw new CacheException("%s %s", primaryKey, "getAll");
-        }
-        return cacheSource.getAll(primaryKey);
+        List<V> dataValueList = cacheSource.getAll(primaryKey);
+        return replaceAllDataValueList(primaryKey, dataValueList);
     }
 
     @Override
     public DataCollection<K, V> getCollection(long primaryKey) {
-        if (primaryCacheMap.containsKey(primaryKey) && !flushOne(primaryKey)){
-            throw new CacheException("%s %s", primaryKey, "getCollection");
-        }
-        return cacheSource.getCollection(primaryKey);
+        DataCollection<K, V> collection = cacheSource.getCollection(primaryKey);
+        List<V> valueList = replaceAllDataValueList(primaryKey, collection.getDataList());
+        return new DataCollection<>(valueList, collection.getInformation());
     }
 
     @Override
@@ -92,7 +89,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
         V cloneValue = cloneValue(value);
         PrimaryDelayCache<K, V> primaryCache = primaryCacheMap.computeIfAbsent(primaryKey, PrimaryDelayCache::new);
         KeyDataValue<K, V> keyDataValue = KeyDataValue.createCache(cloneValue.secondaryKey(), cloneValue);
-        primaryCache.add(keyDataValue);
+        primaryCache.add(keyDataValue);	//直接替换还有BUG，因为里面的标记会被覆盖【暂时用全量覆盖掉】
         return true;
     }
 
@@ -111,8 +108,8 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
     }
 
     @Override
-    public ICacheDaoUnique getCacheDaoUnique() {
-        return cacheSource.getCacheDaoUnique();
+    public ICacheUniqueKey getCacheUniqueKey() {
+        return cacheSource.getCacheUniqueKey();
     }
 
     @Override
@@ -161,7 +158,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
                 logger.error("mkdir error:{}", string);
             }
         }
-        ICacheDaoUnique cacheDaoUnique = getCacheDaoUnique();
+        ICacheUniqueKey cacheDaoUnique = getCacheUniqueKey();
         ICacheKeyValueBuilder<K> keyValueBuilder = getKeyValueBuilder();
         Collection<PrimaryDelayCache<K, V>> primaryDelayCaches = primaryCacheMap.values();
         for (PrimaryDelayCache<K, V> delayCache : primaryDelayCaches) {
@@ -192,7 +189,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
         }
         for (Map.Entry<Long, PrimaryDelayCache<K, V>> entry : primaryCacheMap.entrySet()) {
             String keyString = String.valueOf(entry.getKey());
-            logger.error("{} primaryKey:{} flushAll error.", getAClass().getName(), getCacheDaoUnique().getTableName(), keyString);
+            logger.error("{} primaryKey:{} flushAll error.", getAClass().getName(), getCacheUniqueKey().getName(), keyString);
         }
         return true;
     }
@@ -243,7 +240,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
     }
 
     protected String getScheduleName() {
-        return getCacheDaoUnique().getTableName();
+        return getCacheUniqueKey().getName();
     }
 
     @Override
@@ -330,6 +327,26 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
         }
 
         return failurePrimaryCacheMap.isEmpty();
+    }
+
+    private List<V> replaceAllDataValueList(long primaryKey, List<V> dateValueList) {
+        PrimaryDelayCache<K, V> primaryCache = primaryCacheMap.get(primaryKey);
+        if (primaryCache == null) {
+            return dateValueList;
+        }
+        Collection<KeyDataValue<K, V>> dataValues = primaryCache.getAll();
+        if (dataValues.isEmpty()) {
+            return dateValueList;
+        }
+        Map<K, V> key2DataValueMap = dateValueList.stream().collect(Collectors.toMap(V::secondaryKey, dataValue -> dataValue));
+        for (KeyDataValue<K, V> dataValue : dataValues) {
+            if (dataValue.isDeleted()) {
+                key2DataValueMap.remove(dataValue.getKey());
+            } else {
+                key2DataValueMap.put(dataValue.getKey(), dataValue.getDataValue());
+            }
+        }
+        return new ArrayList<>(key2DataValueMap.values());
     }
 
     /**

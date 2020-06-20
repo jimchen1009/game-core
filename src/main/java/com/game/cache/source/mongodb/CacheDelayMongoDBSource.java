@@ -66,7 +66,7 @@ public class CacheDelayMongoDBSource<K, V extends IData<K>> extends CacheDelaySo
         List<Args.Two<Long, KeyDataValue<K, V>>> updateKeyCacheValueList = new ArrayList<>();
 
 
-        int primarySharedId = getCacheDaoUnique().getPrimarySharedId();
+        int primarySharedId = getCacheUniqueKey().getPrimarySharedId();
         ICacheKeyValueBuilder<K> keyValueBuilder = getKeyValueBuilder();
         for (Map.Entry<Long, PrimaryDelayCache<K, V>> entry : pkPrimaryCacheMap.entrySet()) {
             for (KeyDataValue<K, V> keyDataValue : entry.getValue().getAll()) {

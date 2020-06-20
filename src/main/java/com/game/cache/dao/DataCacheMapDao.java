@@ -3,6 +3,8 @@ package com.game.cache.dao;
 import com.game.cache.data.IData;
 import com.game.cache.data.IDataSource;
 import com.game.cache.data.map.DataMapContainer;
+import com.game.cache.exception.CacheException;
+import com.game.common.lock.LockUtil;
 import com.game.common.util.Holder;
 
 import java.util.Collection;
@@ -51,7 +53,12 @@ class DataCacheMapDao<K, V extends IData<K>> implements IDataCacheMapDao<K, V> {
     public Collection<V> getAllNotCache(long primaryKey) {
         Collection<V> values = mapContainer.getAllNoCache(primaryKey);
         if (values == null){
-            values = dataSource.getAll(primaryKey);
+            values  = LockUtil.syncLock(dataSource.getLockKey(primaryKey), "getAllNotCache", () -> dataSource.getAll(primaryKey));
+            if (values != null){
+            }
+            else {
+                throw new CacheException("primaryKey:%s getAllNotCache error", primaryKey);
+            }
         }
         return values;
     }

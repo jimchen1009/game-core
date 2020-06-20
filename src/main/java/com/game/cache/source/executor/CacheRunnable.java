@@ -25,7 +25,7 @@ public class CacheRunnable implements Runnable{
             runnable.run();
         }
         catch (Throwable t){
-            logger.error("{} {}", name, this.getClass().getName());
+            logger.error("{}", name, t);
         }
         finally {
         }

@@ -6,11 +6,9 @@ import java.util.Collections;
 import java.util.stream.Collectors;
 
 public enum CacheName {
-    CACHE_KEY("k1"),
-    CACHE_DELETE("k2"),
-    CACHE_EXPIRED("k3"),
-    DATA_BITS("d1"),
-    DATA_EMPTY("d2"),
+    PrimaryId("k1"),
+    ExpiredTime("e1"),
+    DataIndexBit("d1"),
     ;
 
     private final String keyName;

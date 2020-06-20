@@ -1,11 +1,12 @@
 package com.game.cache;
 
 import com.game.cache.mapper.ValueConvertMapper;
+import com.game.cache.mapper.ValueConverter;
 import com.game.cache.mapper.mongodb.MongoDBConvertMapper;
 import com.game.cache.mapper.redis.RedisConvertMapper;
 
 public enum CacheType {
-    MongoDb(false, false, new MongoDBConvertMapper()),
+    MongoDb(true, false, new MongoDBConvertMapper()),
     Redis(true, true, new RedisConvertMapper()),
     ;
 
@@ -23,12 +24,15 @@ public enum CacheType {
         return fullCache;
     }
 
-
     public boolean isCacheInternal() {
         return cacheInternal;
     }
 
     public ValueConvertMapper getConvertMapper() {
         return valueConvertMapper;
+    }
+
+    public void addValueConverter(ValueConverter<?> convert){
+        valueConvertMapper.add(convert);
     }
 }

@@ -22,10 +22,10 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
     private ConcurrentHashMap<K, V> secondary2Values;
     private CacheInformation information;
     private final IDataSource<K, V> dataSource;
-    private final IDataLoadPredicate loadPredicate;
+    private final IDataLifePredicate loadPredicate;
     private volatile long latestUpdateTime;
 
-    public PrimaryDataContainer(long primaryKey, IDataSource<K, V> dataSource, IDataLoadPredicate loadPredicate) {
+    public PrimaryDataContainer(long primaryKey, IDataSource<K, V> dataSource, IDataLifePredicate loadPredicate) {
         this.primaryKey = primaryKey;
         this.secondary2Values = new ConcurrentHashMap<>();
         this.information = null;
@@ -155,19 +155,20 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
     }
 
     private ConcurrentHashMap<K, V> currentMap(){
-        if (information != null) {
-            return secondary2Values;
-        }
-        if (loadPredicate.predicateNoCache(primaryKey)){
-            information = new CacheInformation();
-            loadPredicate.onPredicateCacheLoaded(primaryKey);
-        }
-        else {
-            DataCollection<K, V> collection = dataSource.getCollection(primaryKey);
-            information = collection.getInformation();
-            List<V> valueList = collection.getDataList();
-            for (V value : valueList) {
-                secondary2Values.put(value.secondaryKey(), value);
+        long currentTime = System.currentTimeMillis();
+        if (information == null || information.isExpired(currentTime)){
+            if (loadPredicate.isNewLife(primaryKey)){
+                information = new CacheInformation();
+                information.updateExpiredTime(currentTime);
+                loadPredicate.setOldLife(primaryKey);
+            }
+            else {
+                DataCollection<K, V> collection = dataSource.getCollection(primaryKey);
+                information = collection.getInformation();
+                List<V> valueList = collection.getDataList();
+                for (V value : valueList) {
+                    secondary2Values.put(value.secondaryKey(), value);
+                }
             }
         }
         return secondary2Values;

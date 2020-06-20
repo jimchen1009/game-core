@@ -1,22 +1,22 @@
 package com.game.db.redis;
 
 import com.game.cache.exception.CacheException;
-import com.game.cache.mapper.ClassConfig;
 import com.game.common.config.IConfig;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.JedisShardInfo;
+import redis.clients.jedis.Response;
 import redis.clients.jedis.ShardedJedis;
 import redis.clients.jedis.ShardedJedisPipeline;
 import redis.clients.jedis.ShardedJedisPool;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class MyShardedJedisPool extends MyJedisClientPool<ShardedJedis> {
@@ -56,12 +56,12 @@ public class MyShardedJedisPool extends MyJedisClientPool<ShardedJedis> {
     }
 
     @Override
-    public List<Object> pipeline(Consumer<IRedisPipeline> consumer) {
-        return execute( pipeline -> {
-            ShardedJedisPipeline pipelined = pipeline.pipelined();
-            consumer.accept(new MyRedisPipeline(pipelined));
-            return pipelined.getResults();
-        }, "runCommand");
+    public List<Map.Entry<String, Object>> executeBatch(Consumer<IRedisPipeline> consumer) {
+        return execute( jedis -> {
+            MyRedisPipeline redisPipeline = new MyRedisPipeline(jedis.pipelined());
+            consumer.accept(redisPipeline);
+            return redisPipeline.syncResponse();
+        }, "executeBatch");
     }
 
     @Override
@@ -79,7 +79,6 @@ public class MyShardedJedisPool extends MyJedisClientPool<ShardedJedis> {
     @Override
     protected <T> T runCommand(String key, IRedisCommand command) {
         return execute( shardedJedis -> {
-            ShardedJedisPipeline pipelined = shardedJedis.pipelined();
             Jedis jedis = shardedJedis.getShard(key);
             try {
                 return (T)command.execute(jedis);
@@ -111,5 +110,56 @@ public class MyShardedJedisPool extends MyJedisClientPool<ShardedJedis> {
                 throw new RedisException("multi command error. key:%s, node:%s" , e, RedisClientKey.logCreate(jedis));
             }
         }, "runMultiCommand");
+    }
+
+
+
+    public class MyRedisPipeline implements IRedisPipeline {
+
+        private final ShardedJedisPipeline pipeline;
+        private final List<Map.Entry<String, Response<?>>> responseList;
+
+        public MyRedisPipeline(ShardedJedisPipeline pipeline) {
+            this.pipeline = pipeline;
+            this.responseList = new ArrayList<>();
+        }
+
+        @Override
+        public void hgetAll(String key) {
+            responseList.add(new AbstractMap.SimpleEntry<>(key, pipeline.hgetAll(key)));
+        }
+
+        @Override
+        public void hset(String key, Map<String, String> hash) {
+            responseList.add(new AbstractMap.SimpleEntry<>(key, pipeline.hset(key, hash)));
+        }
+
+        @Override
+        public void ttl(String key) {
+            responseList.add(new AbstractMap.SimpleEntry<>(key, pipeline.ttl(key)));
+        }
+
+        @Override
+        public void pttl(String key) {
+            responseList.add(new AbstractMap.SimpleEntry<>(key, pipeline.pttl(key)));
+        }
+
+        @Override
+        public void pexpireAt(String key, long millisecondsTimestamp) {
+            responseList.add(new AbstractMap.SimpleEntry<>(key, pipeline.pexpireAt(key, millisecondsTimestamp)));
+        }
+
+        public List<Map.Entry<String, Object>> syncResponse() {
+            if (responseList.isEmpty()) {
+                return new ArrayList<>();
+            }
+            pipeline.sync();
+            List<Map.Entry<String, Object>> resultList = new ArrayList<>(responseList.size());
+            for (Map.Entry<String, Response<?>> entry : responseList) {
+                Object object = entry.getValue().get();
+                resultList.add(new AbstractMap.SimpleEntry<>(entry.getKey(), object));
+            }
+            return resultList;
+        }
     }
 }

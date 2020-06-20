@@ -30,6 +30,7 @@ class DataMapDao<K, V extends IData<K>> implements IDataMapDao<K, V> {
         return dataSource.getAll(primaryKey);
     }
 
+
     @Override
     public V replaceOne(long primaryKey, V value) {
         boolean isSuccess = dataSource.replaceOne(primaryKey, value);
@@ -38,7 +39,7 @@ class DataMapDao<K, V extends IData<K>> implements IDataMapDao<K, V> {
             return null;
         }
         else {
-            throw new CacheException("primaryKey:%s replaceOne error, %s", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(value));
+            throw new CacheException("primaryKey:%s replaceOne error, %s", primaryKey, LogUtil.toJSONString(value));
         }
     }
 
@@ -49,7 +50,7 @@ class DataMapDao<K, V extends IData<K>> implements IDataMapDao<K, V> {
             values.forEach(V::clearCacheBitIndex);
         }
         else {
-            throw new CacheException("primaryKey:%s replaceBatch error, %s", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(values));
+            throw new CacheException("primaryKey:%s replaceBatch error, %s", primaryKey, LogUtil.toJSONString(values));
         }
     }
 
@@ -60,7 +61,7 @@ class DataMapDao<K, V extends IData<K>> implements IDataMapDao<K, V> {
             return null;
         }
         else {
-            throw new CacheException("primaryKey:%s deleteOne error, %s", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(secondaryKey));
+            throw new CacheException("primaryKey:%s deleteOne error, %s", primaryKey, LogUtil.toJSONString(secondaryKey));
         }
     }
 
@@ -70,7 +71,8 @@ class DataMapDao<K, V extends IData<K>> implements IDataMapDao<K, V> {
         if (isSuccess){
         }
         else {
-            throw new CacheException("primaryKey:%s deleteBatch error, %s", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(secondaryKeys));
+            throw new CacheException("primaryKey:%s deleteBatch error, %s", primaryKey, LogUtil.toJSONString(secondaryKeys));
         }
     }
+
 }

@@ -3,6 +3,8 @@ package com.game.cache.dao;
 import com.game.cache.data.IData;
 import com.game.cache.data.IDataSource;
 import com.game.cache.data.value.IDataValueContainer;
+import com.game.cache.exception.CacheException;
+import com.game.common.lock.LockUtil;
 import com.game.common.util.Holder;
 
 import java.util.function.Consumer;
@@ -18,22 +20,26 @@ class DataCacheValueDao<V extends IData<Long>> implements IDataCacheValueDao<V> 
     }
 
     @Override
-    public V get(long id) {
-        return valueContainer.get(id);
+    public V get(long primaryKey) {
+        return valueContainer.get(primaryKey);
     }
 
     @Override
-    public boolean existCache(long id) {
-        return valueContainer.existCache(id);
+    public boolean existCache(long primaryKey) {
+        return valueContainer.existCache(primaryKey);
     }
 
     @Override
-    public V getNotCache(long id) {
-        Holder<V> holder = valueContainer.getNoCache(id);
+    public V getNotCache(long primaryKey) {
+        Holder<V> holder = valueContainer.getNoCache(primaryKey);
         if (holder != null){
             return holder.getValue();
         }
-        return dataSource.get(id, id);
+        holder = LockUtil.syncLock(dataSource.getLockKey(primaryKey), "getAllNotCache", () -> new Holder<>(dataSource.get(primaryKey, primaryKey)));
+        if (holder == null){
+            throw new CacheException("primaryKey:%s getNotCache error", primaryKey);
+        }
+        return holder.getValue();
     }
 
     @Override
@@ -52,7 +58,7 @@ class DataCacheValueDao<V extends IData<Long>> implements IDataCacheValueDao<V> 
     }
 
     @Override
-    public V delete(long id) {
-        return valueContainer.remove(id);
+    public V delete(long primaryKey) {
+        return valueContainer.remove(primaryKey);
     }
 }

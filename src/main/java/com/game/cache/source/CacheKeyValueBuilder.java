@@ -1,6 +1,6 @@
 package com.game.cache.source;
 
-import com.game.cache.CacheDaoUnique;
+import com.game.cache.CacheUniqueKey;
 import com.game.cache.key.IKeyValueBuilder;
 import com.game.cache.mapper.ClassInformation;
 
@@ -11,23 +11,23 @@ import java.util.Objects;
 
 public class CacheKeyValueBuilder<K> implements ICacheKeyValueBuilder<K> {
 
-    private final CacheDaoUnique cacheDaoUnique;
+    private final CacheUniqueKey cacheUniqueKey;
     private final IKeyValueBuilder<K> secondaryBuilder;
 
-    public CacheKeyValueBuilder(CacheDaoUnique cacheDaoUnique, IKeyValueBuilder<K> secondaryBuilder) {
-        this.cacheDaoUnique = cacheDaoUnique;
+    public CacheKeyValueBuilder(CacheUniqueKey cacheUniqueKey, IKeyValueBuilder<K> secondaryBuilder) {
+        this.cacheUniqueKey = cacheUniqueKey;
         this.secondaryBuilder = Objects.requireNonNull(secondaryBuilder);
     }
 
     @Override
     public List<Map.Entry<String, Object>> createPrimaryKeyValue(long primaryKey) {
-        return cacheDaoUnique.createPrimaryUniqueKeys(primaryKey);
+        return cacheUniqueKey.createPrimaryUniqueKeys(primaryKey);
     }
 
     @Override
     public List<Map.Entry<String, Object>> createCombineUniqueKeyValue(long primaryKey, K secondaryKey) {
         List<Map.Entry<String, Object>> entryList = createPrimaryKeyValue(primaryKey);
-        return addKeyValue(entryList, cacheDaoUnique.getInformation().getSecondaryKeys(), secondaryBuilder.toKeyValue(secondaryKey));
+        return addKeyValue(entryList, cacheUniqueKey.getInformation().getSecondaryKeys(), secondaryBuilder.toKeyValue(secondaryKey));
     }
 
     private List<Map.Entry<String, Object>> addKeyValue(List<Map.Entry<String, Object>> keyValue, List<String> keyNames, Object[] objectValues){
@@ -39,8 +39,8 @@ public class CacheKeyValueBuilder<K> implements ICacheKeyValueBuilder<K> {
 
     @Override
     public List<Map.Entry<String, Object>> createCombineUniqueKeyValue(Map<String, Object> cacheValue){
-        ClassInformation information = cacheDaoUnique.getInformation();
-        List<Map.Entry<String, Object>> entryList = cacheDaoUnique.createPrimaryUniqueKeys((long) cacheValue.get(information.getPrimaryKey()));
+        ClassInformation information = cacheUniqueKey.getInformation();
+        List<Map.Entry<String, Object>> entryList = cacheUniqueKey.createPrimaryUniqueKeys((long) cacheValue.get(information.getPrimaryKey()));
         for (String secondaryKey : information.getSecondaryKeys()) {
             entryList.add(new AbstractMap.SimpleEntry<>(secondaryKey, cacheValue.get(secondaryKey)));
         }
@@ -49,7 +49,7 @@ public class CacheKeyValueBuilder<K> implements ICacheKeyValueBuilder<K> {
 
     @Override
     public K createSecondaryKey(Map<String, Object> cacheValue) {
-        return secondaryBuilder.createKey(addKeyValue(cacheDaoUnique.getInformation().getSecondaryKeys(), cacheValue));
+        return secondaryBuilder.createKey(addKeyValue(cacheUniqueKey.getInformation().getSecondaryKeys(), cacheValue));
     }
 
     @Override
@@ -59,7 +59,7 @@ public class CacheKeyValueBuilder<K> implements ICacheKeyValueBuilder<K> {
 
     @Override
     public String toSecondaryKeyString(Map<String, Object> cacheValue) {
-        Object[] objectValue = addKeyValue(cacheDaoUnique.getInformation().getSecondaryKeys(), cacheValue);
+        Object[] objectValue = addKeyValue(cacheUniqueKey.getInformation().getSecondaryKeys(), cacheValue);
         return secondaryBuilder.toKeyString(objectValue);
     }
 
