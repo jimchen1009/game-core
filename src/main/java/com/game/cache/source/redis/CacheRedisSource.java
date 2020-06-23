@@ -6,8 +6,7 @@ import com.alibaba.fastjson.serializer.SerializerFeature;
 import com.game.cache.CacheInformation;
 import com.game.cache.CacheName;
 import com.game.cache.CacheType;
-import com.game.cache.CacheUniqueKey;
-import com.game.cache.ICacheUniqueKey;
+import com.game.cache.ICacheUniqueId;
 import com.game.cache.data.DataCollection;
 import com.game.cache.data.IData;
 import com.game.cache.key.IKeyValueBuilder;
@@ -54,14 +53,9 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
 
     private final ICacheRedisInteract cacheRedisInteract;
 
-    public CacheRedisSource(CacheUniqueKey cacheDaoKey, IKeyValueBuilder<K> secondaryBuilder, ICacheRedisInteract cacheRedisInteract) {
-        super(cacheDaoKey, secondaryBuilder);
+    public CacheRedisSource(ICacheUniqueId cacheUniqueId, IKeyValueBuilder<K> secondaryBuilder, ICacheRedisInteract cacheRedisInteract) {
+        super(cacheUniqueId, secondaryBuilder);
         this.cacheRedisInteract = cacheRedisInteract;
-    }
-
-    @Override
-    public CacheType getCacheType() {
-        return CacheType.Redis;
     }
 
     @Override
@@ -84,28 +78,33 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
     @SuppressWarnings("unchecked")
     @Override
     public DataCollection<K, V> getCollection(long primaryKey) {
-        ICacheUniqueKey currentDaoUnique = getCacheUniqueKey();
-        CacheRedisCollection redisCollection = cacheRedisInteract.removeCollection(primaryKey, currentDaoUnique);
+        ICacheUniqueId currentDaoUniqueId = getCacheUniqueId();
+        CacheRedisCollection redisCollection = cacheRedisInteract.removeCollection(primaryKey, currentDaoUniqueId);
         if (redisCollection != null){
             return readDataCollection(redisCollection.getRedisKeyValueList());
         }
-        boolean redisSharedLoad = cacheRedisInteract.getAndSetSharedLoad(primaryKey, currentDaoUnique);
-        List<ICacheUniqueKey> cacheDaoUniqueList = redisSharedLoad ? currentDaoUnique.sharedCacheDaoUniqueList() : Collections.singletonList(currentDaoUnique);
+        boolean redisSharedLoad = cacheRedisInteract.getAndSetSharedLoad(primaryKey, currentDaoUniqueId);
+        List<ICacheUniqueId> cacheDaoUniqueIdList;
+        if (redisSharedLoad){
+            cacheDaoUniqueIdList = cacheRedisInteract.getSharedCacheUniqueIdList(primaryKey, currentDaoUniqueId);
+        }
+        else {
+            cacheDaoUniqueIdList = Collections.singletonList(currentDaoUniqueId);
+        }
         List<Map.Entry<String, Object>> entryList = RedisClientUtil.getRedisClient().executeBatch(redisPipeline -> {
-            for (ICacheUniqueKey cacheDaoUnique : cacheDaoUniqueList) {
+            for (ICacheUniqueId cacheDaoUnique : cacheDaoUniqueIdList) {
                 executeCommand(primaryKey, redisPipeline, cacheDaoUnique);
             }
         });
-        Map<Integer, CacheRedisCollection> redisCollectionMap = new HashMap<>(cacheDaoUniqueList.size());
-        int batchCount = entryList.size() / cacheDaoUniqueList.size();
+        Map<ICacheUniqueId, CacheRedisCollection> redisCollectionMap = new HashMap<>(cacheDaoUniqueIdList.size());
+        int batchCount = entryList.size() / cacheDaoUniqueIdList.size();
         for (int i = 0; i < entryList.size(); i += batchCount) {
-            ICacheUniqueKey cacheDaoUnique = cacheDaoUniqueList.get(i / batchCount);
+            ICacheUniqueId cacheDaoUnique = cacheDaoUniqueIdList.get(i / batchCount);
             List<Map.Entry<String, Object>> entrySubList = entryList.subList(0, batchCount);
-            int primarySharedId = cacheDaoUnique.getPrimarySharedId();
-            redisCollectionMap.put(primarySharedId, new CacheRedisCollection(primarySharedId, entrySubList));
+            redisCollectionMap.put(cacheDaoUnique, new CacheRedisCollection(entrySubList));
         }
-        redisCollection = redisCollectionMap.remove(currentDaoUnique.getPrimarySharedId());
-        cacheRedisInteract.addCollections(primaryKey, currentDaoUnique, redisCollectionMap);
+        redisCollection = redisCollectionMap.remove(currentDaoUniqueId);
+        cacheRedisInteract.addCollections(primaryKey, currentDaoUniqueId, redisCollectionMap);
         return readDataCollection(redisCollection.getRedisKeyValueList());
     }
 
@@ -121,6 +120,11 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
     @Override
     public boolean replaceBatch(long primaryKey, Collection<V> values) {
         return replaceBatch(primaryKey, values, null);
+    }
+
+    @Override
+    public CacheType getCacheType() {
+        return CacheType.Redis;
     }
 
     @Override
@@ -177,7 +181,7 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
      * @param redisPipeline
      * @param daoUnique
      */
-    private void executeCommand(long primaryKey, IRedisPipeline redisPipeline, ICacheUniqueKey daoUnique){
+    private void executeCommand(long primaryKey, IRedisPipeline redisPipeline, ICacheUniqueId daoUnique){
         String redisKeyString = daoUnique.getRedisKeyString(primaryKey);
         redisPipeline.hgetAll(redisKeyString);
         redisPipeline.pttl(redisKeyString);
@@ -214,7 +218,7 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
      * @return
      */
     private String getPrimaryRedisKey(long primaryKey){
-        return getCacheUniqueKey().getRedisKeyString(primaryKey);
+        return getCacheUniqueId().getRedisKeyString(primaryKey);
     }
 
     /**

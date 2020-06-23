@@ -1,7 +1,7 @@
 package com.game.cache.source.executor;
 
 import com.game.cache.CacheType;
-import com.game.cache.ICacheUniqueKey;
+import com.game.cache.ICacheUniqueId;
 import com.game.cache.data.IData;
 import com.game.cache.data.IDataSource;
 import com.game.cache.source.ICacheDelaySource;
@@ -12,13 +12,13 @@ import java.util.Collection;
 
 public interface ICacheSource<K, V extends IData<K>> extends IDataSource<K, V> {
 
+    CacheType getCacheType();
+
     LockKey getLockKey(long primaryKey);
 
     Class<V> getAClass();
 
-    ICacheUniqueKey getCacheUniqueKey();
-
-    CacheType getCacheType();
+    ICacheUniqueId getCacheUniqueId();
 
     boolean deleteOne(long primaryKey, K secondaryKey);
 

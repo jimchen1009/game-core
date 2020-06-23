@@ -1,5 +1,6 @@
 package com.game.cache.data;
 
+import com.game.cache.ICacheUniqueId;
 import com.game.cache.mapper.IClassConverter;
 import com.game.common.lock.LockKey;
 
@@ -8,6 +9,8 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public interface IDataSource<K, V extends IData<K>> {
+
+    ICacheUniqueId getCacheUniqueId();
 
     LockKey getLockKey(long primaryKey);
 

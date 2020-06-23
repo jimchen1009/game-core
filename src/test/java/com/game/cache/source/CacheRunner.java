@@ -1,11 +1,14 @@
 package com.game.cache.source;
 
-import com.game.cache.ICacheUniqueKey;
+import com.game.cache.ClassConfig;
+import com.game.cache.ICacheUniqueId;
 import com.game.cache.dao.DataDaoManager;
+import com.game.cache.dao.DataDaoUtil;
+import com.game.cache.dao.IDataCacheMapDao;
 import com.game.cache.dao.IDataMapDao;
 import com.game.cache.data.IDataLifePredicate;
 import com.game.cache.key.KeyValueHelper;
-import com.game.cache.source.interact.ICacheDBLifeInteract;
+import com.game.cache.source.interact.ICacheLifeInteract;
 import com.game.cache.source.redis.RedisClientUtil;
 import com.game.db.mongodb.MongoDbManager;
 import com.game.db.redis.IRedisClient;
@@ -48,7 +51,7 @@ public class CacheRunner {
 
 //        collection.insertOne(new Document("userId", userId).append("item", Collections.emptyList()));
 
-        IDataLifePredicate loadPredicate = new IDataLifePredicate() {
+        IDataLifePredicate lifePredicate = new IDataLifePredicate() {
             @Override
             public void setOldLife(long primaryKey) {
             }
@@ -60,34 +63,44 @@ public class CacheRunner {
         };
 
         AtomicBoolean atomicBoolean = new AtomicBoolean(false);
-        ICacheDBLifeInteract loginPredicate = new ICacheDBLifeInteract() {
+        ICacheLifeInteract loginPredicate = new ICacheLifeInteract() {
 
             private final Map<Long, AtomicBoolean> atomicBoolean0 = new ConcurrentHashMap<>();
-            private final Map<Long, AtomicBoolean> atomicBoolean1 = new ConcurrentHashMap<>();
             @Override
-            public boolean dbGetAndSetSharedLoad(long primaryKey, ICacheUniqueKey cacheDaoUnique) {
-                return atomicBoolean0.computeIfAbsent(primaryKey, key -> new AtomicBoolean(false)).compareAndSet(false, true);
-            }
-
-            @Override
-            public boolean getAndSetSharedLoad(long primaryKey, ICacheUniqueKey cacheDaoUnique) {
+            public boolean getAndSetSharedLoad(long primaryKey, ICacheUniqueId cacheDaoUnique) {
                 return atomicBoolean0.computeIfAbsent(primaryKey, key -> new AtomicBoolean(false)).compareAndSet(false, true);
             }
         };
 
-        IDataMapDao<Long, UserItem> itemDao = DataDaoManager.getInstance()
-                .newMapDaoBuilder(UserItem.class, KeyValueHelper.LongBuilder)
-                .setCacheLoginPredicate(loginPredicate)
-                .setLoadPredicate(loadPredicate).createCache();
+        IDataCacheMapDao<Long, UserItem> itemDao = DataDaoUtil.newMapDaoBuilder(UserItem.class, KeyValueHelper.LongBuilder, builder -> {
+            builder.setCacheLoginPredicate(loginPredicate);
+            builder.setLifePredicate(lifePredicate);
+            ClassConfig classConfig = builder.getClassConfig();
+            classConfig.setDelayUpdate(true)
+                    .setName("material")
+                    .setPrimarySharedId(1)
+                    .setRedisSupport(true)
+                    .setCacheLoadAdvance(true)
+                    .setAccountCache(true);
+        }).createIfAbsent();
 
-        IDataMapDao<Integer, UserCurrency> currencyDao = DataDaoManager.getInstance()
-                .newMapDaoBuilder(UserCurrency.class, KeyValueHelper.IntegerBuilder)
-                .setCacheLoginPredicate(loginPredicate)
-                .setLoadPredicate(loadPredicate).createCache();
+
+        IDataMapDao<Integer, UserCurrency> currencyDao = DataDaoUtil.newMapDaoBuilder(UserCurrency.class, KeyValueHelper.IntegerBuilder, builder -> {
+            builder.setCacheLoginPredicate(loginPredicate);
+            builder.setLifePredicate(lifePredicate);
+            ClassConfig classConfig = builder.getClassConfig();
+            classConfig.setDelayUpdate(true)
+                    .setName("material")
+                    .setPrimarySharedId(2)
+                    .setRedisSupport(true)
+                    .setCacheLoadAdvance(true)
+                    .setAccountCache(true);
+        }).createIfAbsent();
+
 
         List<UserDaoAll> userDaoAllList = new ArrayList<>();
         ScheduledExecutorService executorService = Executors.newScheduledThreadPool(10);
-        for (long userId = 1L; userId <= 2; userId++) {
+        for (long userId = 1L; userId <= 1; userId++) {
 
             userDaoAllList.add(new UserDaoAll(userId, itemDao, currencyDao));
         }

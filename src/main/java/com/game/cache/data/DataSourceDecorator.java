@@ -1,5 +1,6 @@
 package com.game.cache.data;
 
+import com.game.cache.ICacheUniqueId;
 import com.game.cache.mapper.IClassConverter;
 import com.game.common.lock.LockKey;
 import org.slf4j.Logger;
@@ -17,6 +18,11 @@ abstract class DataSourceDecorator<K, V extends IData<K>> implements IDataSource
 
     public DataSourceDecorator(IDataSource<K, V> dataSource) {
         this.dataSource = dataSource;
+    }
+
+    @Override
+    public ICacheUniqueId getCacheUniqueId() {
+        return dataSource.getCacheUniqueId();
     }
 
     @Override

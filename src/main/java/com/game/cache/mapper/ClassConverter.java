@@ -14,23 +14,25 @@ import java.util.stream.Collectors;
 
 public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, V> {
 
-    private final ClassInformation information;
+    private final Class<V> aClass;
+    private final IClassAnnotation classAnnotation;
     private final CacheType cacheType;
 
-    public ClassConverter(Class<V> aClass, CacheType cacheType) {
-        this.information = ClassInformation.get(aClass);
+    public ClassConverter(Class<V> aClass, IClassAnnotation classAnnotation, CacheType cacheType) {
+        this.aClass = aClass;
+        this.classAnnotation = classAnnotation;
         this.cacheType = cacheType;
     }
 
     @Override
-    public ClassInformation getInformation() {
-        return information;
+    public IClassAnnotation getClassAnnotation() {
+        return classAnnotation;
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public Class<V> getConvertedClass() {
-        return (Class<V>) information.getAClass();
+        return aClass;
     }
 
     @Override
@@ -38,7 +40,7 @@ public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, 
         Class<V> convertedClass = getConvertedClass();
         try {
             V newInstance = convertedClass.newInstance();
-            for (FieldInformation description : information.fieldDescriptionList()) {
+            for (FieldAnnotation description : classAnnotation.getFiledAnnotationList()) {
                 Field field = description.getField();
                 ValueConverter<?> converter = cacheType.getConvertMapper().getOrDefault(description.getType());
                 Object object = converter.decode(cacheValue.get(description.getAnnotationName()));
@@ -60,11 +62,11 @@ public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, 
     public Map<String, Object> convert2Cache(V dataValue){
         try {
             Map<String, Object> cacheValue = new HashMap<>();
-            for (FieldInformation description : information.getPrimaryUniqueDescriptions()) {
+            for (FieldAnnotation description : classAnnotation.getPrimaryFieldAnnotationList()) {
                 encodeValue(dataValue, cacheValue, description, true);
             }
             boolean cacheBitIndex = !dataValue.existCacheBitIndex();
-            for (FieldInformation description : information.getNormalDescriptions()) {
+            for (FieldAnnotation description : classAnnotation.getNormalFieldAnnotationList()) {
                 encodeValue(dataValue, cacheValue, description, true);
                 if (cacheBitIndex || cacheType.isFullCache() || dataValue.hasBitIndex(description.getBitIndex())){
                     encodeValue(dataValue, cacheValue, description, false);
@@ -82,7 +84,7 @@ public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, 
         return dataValues.stream().map(this::convert2Cache).collect(Collectors.toList());
     }
 
-    private void encodeValue(V dataValue, Map<String, Object> cacheValue, FieldInformation description, boolean checkNullObject) throws IllegalAccessException {
+    private void encodeValue(V dataValue, Map<String, Object> cacheValue, FieldAnnotation description, boolean checkNullObject) throws IllegalAccessException {
         Field field = description.getField();
         ValueConverter<?> converter = cacheType.getConvertMapper().getOrDefault(description.getType());
         Object encode = converter.encode(field.get(dataValue));

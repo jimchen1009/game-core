@@ -1,9 +1,8 @@
 package com.game.cache.dao;
 
-import com.game.cache.CacheUniqueKey;
 import com.game.cache.CacheType;
-import com.game.cache.config.ClassConfig;
-import com.game.cache.data.DataSourceBuilder;
+import com.game.cache.CacheUniqueId;
+import com.game.cache.ClassConfig;
 import com.game.cache.data.IData;
 import com.game.cache.data.IDataLifePredicate;
 import com.game.cache.exception.CacheException;
@@ -12,26 +11,24 @@ import com.game.cache.source.compose.CacheComposeSource;
 import com.game.cache.source.executor.ICacheSource;
 import com.game.cache.source.interact.ICacheDBInteract;
 import com.game.cache.source.interact.ICacheDBLifeInteract;
+import com.game.cache.source.interact.ICacheLifeInteract;
 import com.game.cache.source.interact.ICacheRedisInteract;
 import com.game.cache.source.mongodb.CacheMongoDBSource;
 import com.game.cache.source.redis.CacheRedisSource;
-import com.game.common.config.Configs;
-import com.game.common.config.IConfig;
-
-import java.util.List;
-import java.util.Map;
 
 public class DataDaoBuilder <K, V extends IData<K>> {
 
-	protected CacheUniqueKey cacheUniqueKey;
-	private final IKeyValueBuilder<K> secondaryBuilder;
-	protected IDataLifePredicate lifePredicate;
-	protected ICacheDBLifeInteract cacheLifeInteract;
+	protected final ClassConfig classConfig;
+	protected final IKeyValueBuilder<K> secondaryBuilder;
+
+	protected String primaryAddKeyParams = "";
+	protected IDataLifePredicate lifePredicate = IDataLifePredicate.DEFAULT;
+	protected ICacheLifeInteract cacheLifeInteract = ICacheDBLifeInteract.DEFAULT;
 
 	protected DataDaoManager daoManager;
 
 	protected DataDaoBuilder(Class<V> aClass, IKeyValueBuilder<K> secondaryBuilder) {
-		this.cacheUniqueKey = CacheUniqueKey.create(aClass);
+		this.classConfig = new ClassConfig(aClass);
 		this.secondaryBuilder = secondaryBuilder;
 	}
 
@@ -39,69 +36,65 @@ public class DataDaoBuilder <K, V extends IData<K>> {
 		this.daoManager = daoManager;
 	}
 
-	public void setAppendKeyList(List<Map.Entry<String, Object>> appendKeyList) {
-		cacheUniqueKey = CacheUniqueKey.create(cacheUniqueKey.getAClass(), appendKeyList);
+
+	public void setPrimaryAddKeyParams(String primaryAddKeyParams) {
+		this.primaryAddKeyParams = primaryAddKeyParams;
 	}
 
-	public CacheUniqueKey getCacheUniqueKey() {
-		return cacheUniqueKey;
+	public void setLifePredicate(IDataLifePredicate lifePredicate) {
+		this.lifePredicate = lifePredicate;
 	}
 
-	protected IDataLifePredicate getLifePredicate() {
-		return lifePredicate == null ? IDataLifePredicate.DEFAULT : lifePredicate;
+	public void setCacheLoginPredicate(ICacheLifeInteract cacheLifeInteract) {
+		this.cacheLifeInteract = cacheLifeInteract;
 	}
 
-	public ICacheDBLifeInteract getCacheLifeInteract() {
-		return cacheLifeInteract == null ? ICacheDBLifeInteract.DEFAULT : cacheLifeInteract;
+	public ClassConfig getClassConfig() {
+		return classConfig;
 	}
 
-	protected DataSourceBuilder<K, V> newDataSourceBuilder(){
-		ICacheSource<K, V> cacheSource = createCacheSource();
-		DataSourceBuilder<K, V> dataSourceBuilder = new DataSourceBuilder<>(cacheSource);
-		IConfig dataConfig = Configs.getInstance().getConfig("cache.data");
-		return dataSourceBuilder.setDecorators(dataConfig.getList("decorators"));
+	protected ICacheSource<K, V> createCacheSource(){
+		return createCacheSource(classConfig);
 	}
 
-	@SuppressWarnings("unchecked")
-	private ICacheSource<K, V> createCacheSource(){
+	protected ICacheSource<K, V> createCacheSource(ClassConfig classConfig){
+		CacheUniqueId cacheUniqueId = new CacheUniqueId(classConfig, primaryAddKeyParams.trim());
 		try {
 			ICacheSource<K, V> cacheSource;
-			ClassConfig classConfig = cacheUniqueKey.getClassConfig();
-			CacheType cacheType = classConfig.getCacheType();
+			CacheType cacheType = cacheUniqueId.getCacheType();
 			if (cacheType.equals(CacheType.Redis)){
-				cacheSource = changeIfDelayCacheSource(createCacheRedisSource());
+				cacheSource = changeIfDelayCacheSource(createCacheRedisSource(cacheUniqueId));
 			}
 			else {
 				if (cacheType.equals(CacheType.MongoDb)) {
-					cacheSource = changeIfDelayCacheSource(createCacheMongoDBSource());
+					cacheSource = changeIfDelayCacheSource(createCacheMongoDBSource(cacheUniqueId));
 				}
 				else {
 					throw new CacheException("unexpected cache type:%s", cacheType.name());
 				}
-				if (classConfig.isRedisSupport()){
-					cacheSource = new CacheComposeSource<>(createCacheRedisSource(), cacheSource, daoManager.getExecutor());
+				if (cacheUniqueId.isRedisSupport()){
+					cacheSource = new CacheComposeSource<>(createCacheRedisSource(cacheUniqueId), cacheSource, daoManager.getExecutor());
 				}
 			}
 			return cacheSource;
 		}
 		catch (Throwable t) {
-			throw new CacheException("%s", t, cacheUniqueKey.getAClass().getName());
+			throw new CacheException("%s", t, cacheUniqueId.getAClass().getName());
 		}
 	}
 
-	private CacheRedisSource<K, V> createCacheRedisSource(){
-		ICacheRedisInteract cacheRedisInteract = daoManager.getCacheRedisInteract(cacheUniqueKey, getCacheLifeInteract());
-		return new CacheRedisSource<>(cacheUniqueKey, secondaryBuilder, cacheRedisInteract);
+	private CacheRedisSource<K, V> createCacheRedisSource(CacheUniqueId cacheUniqueId){
+		ICacheRedisInteract cacheRedisInteract = daoManager.getCacheRedisInteract(cacheUniqueId, cacheLifeInteract);
+		return new CacheRedisSource<>(cacheUniqueId, secondaryBuilder, cacheRedisInteract);
 	}
 
-	private CacheMongoDBSource<K, V> createCacheMongoDBSource(){
-		ICacheDBInteract cacheDBInteract = daoManager.getCacheDBInteract(cacheUniqueKey, getCacheLifeInteract());
-		return new CacheMongoDBSource<>(cacheUniqueKey, secondaryBuilder, cacheDBInteract);
+	private CacheMongoDBSource<K, V> createCacheMongoDBSource(CacheUniqueId cacheUniqueId){
+		ICacheDBInteract cacheDBInteract = daoManager.getCacheDBInteract(cacheUniqueId, cacheLifeInteract);
+		return new CacheMongoDBSource<>(cacheUniqueId, secondaryBuilder, cacheDBInteract);
 	}
 
 	private ICacheSource<K, V> changeIfDelayCacheSource(ICacheSource<K, V> cacheSource){
-		ClassConfig classConfig = cacheUniqueKey.getClassConfig();
-		if (classConfig.delayUpdate){
+		if (cacheSource.getCacheUniqueId().isDelayUpdate()){
 			cacheSource = cacheSource.createDelayUpdateSource(daoManager.getExecutor());
 		}
 		return cacheSource;

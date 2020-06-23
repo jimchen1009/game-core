@@ -4,20 +4,20 @@ import com.game.cache.data.DataBitIndex;
 
 import java.lang.reflect.Field;
 
-public class FieldInformation {
+public class FieldAnnotation {
 
     private final DataBitIndex bitIndex;
     private final Field field;
     private final String annotationName;
 
-    public FieldInformation(int index, Field field, String annotationName) {
+    public FieldAnnotation(int index, Field field, String annotationName) {
         this.bitIndex = DataBitIndex.getBitIndex(index);
         this.field = field;
         this.annotationName = annotationName;
     }
 
     public int getUniqueId() {
-        return bitIndex.getUniqueId();
+        return bitIndex.getId();
     }
 
     public DataBitIndex getBitIndex() {

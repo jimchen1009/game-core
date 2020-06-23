@@ -1,7 +1,6 @@
 package com.game.cache.source;
 
-import com.game.cache.CacheUniqueKey;
-import com.game.cache.ICacheUniqueKey;
+import com.game.cache.ICacheUniqueId;
 import com.game.cache.data.IData;
 import com.game.cache.key.IKeyValueBuilder;
 import com.game.cache.mapper.ClassConverter;
@@ -16,18 +15,17 @@ public abstract class CacheSource<K, V extends IData<K>> implements ICacheSource
 
     private static final Object[] EMPTY = new Object[0];
 
-    private final CacheUniqueKey cacheUniqueKey;
+    private final ICacheUniqueId cacheUniqueId;
     private final LockKey lockKey;
     protected final CacheKeyValueBuilder<K> keyValueBuilder;
     protected final IClassConverter<K, V> converter;
 
-
-    public CacheSource(CacheUniqueKey cacheUniqueKey, IKeyValueBuilder<K> secondaryBuilder) {
-        this.cacheUniqueKey = cacheUniqueKey;
-        Class<V> aClass = cacheUniqueKey.getAClass();
+    public CacheSource(ICacheUniqueId cacheUniqueId, IKeyValueBuilder<K> secondaryBuilder) {
+        this.cacheUniqueId = cacheUniqueId;
+        Class<V> aClass = cacheUniqueId.getAClass();
         this.lockKey = LockKey.systemLockKey("cache").createLockKey(aClass.getSimpleName());
-        this.keyValueBuilder = new CacheKeyValueBuilder<>(cacheUniqueKey, secondaryBuilder);
-        this.converter = new ClassConverter<>(aClass, getCacheType());
+        this.keyValueBuilder = new CacheKeyValueBuilder<>(cacheUniqueId, secondaryBuilder);
+        this.converter = new ClassConverter<>(aClass, cacheUniqueId, getCacheType());
     }
 
     @Override
@@ -48,12 +46,12 @@ public abstract class CacheSource<K, V extends IData<K>> implements ICacheSource
 
     @Override
     public Class<V> getAClass() {
-        return cacheUniqueKey.getAClass();
+        return cacheUniqueId.getAClass();
     }
 
     @Override
-    public ICacheUniqueKey getCacheUniqueKey() {
-        return cacheUniqueKey;
+    public ICacheUniqueId getCacheUniqueId() {
+        return cacheUniqueId;
     }
 
     @Override

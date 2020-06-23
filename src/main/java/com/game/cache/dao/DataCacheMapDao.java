@@ -1,5 +1,6 @@
 package com.game.cache.dao;
 
+import com.game.cache.ICacheUniqueId;
 import com.game.cache.data.IData;
 import com.game.cache.data.IDataSource;
 import com.game.cache.data.map.DataMapContainer;
@@ -18,6 +19,11 @@ class DataCacheMapDao<K, V extends IData<K>> implements IDataCacheMapDao<K, V> {
     public DataCacheMapDao(IDataSource<K, V> dataSource, DataMapContainer<K, V> mapContainer) {
         this.dataSource = dataSource;
         this.mapContainer = mapContainer;
+    }
+
+    @Override
+    public ICacheUniqueId getCacheUniqueId() {
+        return dataSource.getCacheUniqueId();
     }
 
     @Override

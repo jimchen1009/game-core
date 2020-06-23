@@ -1,5 +1,6 @@
 package com.game.cache.dao;
 
+import com.game.cache.ICacheUniqueId;
 import com.game.cache.data.IData;
 import com.game.cache.data.IDataSource;
 import com.game.cache.data.value.IDataValueContainer;
@@ -22,6 +23,11 @@ class DataCacheValueDao<V extends IData<Long>> implements IDataCacheValueDao<V> 
     @Override
     public V get(long primaryKey) {
         return valueContainer.get(primaryKey);
+    }
+
+    @Override
+    public ICacheUniqueId getCacheUniqueId() {
+        return dataSource.getCacheUniqueId();
     }
 
     @Override

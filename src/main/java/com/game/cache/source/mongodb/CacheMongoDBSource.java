@@ -1,7 +1,7 @@
 package com.game.cache.source.mongodb;
 
 import com.game.cache.CacheType;
-import com.game.cache.CacheUniqueKey;
+import com.game.cache.ICacheUniqueId;
 import com.game.cache.data.IData;
 import com.game.cache.key.IKeyValueBuilder;
 import com.game.cache.mapper.annotation.CacheIndexes;
@@ -33,36 +33,31 @@ public class CacheMongoDBSource<K, V extends IData<K>> extends CacheDbSource<K, 
     private static final Logger logger = LoggerFactory.getLogger(CacheMongoDBSource.class);
 
 
-    public CacheMongoDBSource(CacheUniqueKey cacheUniqueKey, IKeyValueBuilder<K> secondaryBuilder, ICacheDBInteract cacheInteract) {
-        super(cacheUniqueKey, secondaryBuilder, cacheInteract);
+    public CacheMongoDBSource(ICacheUniqueId cacheUniqueId, IKeyValueBuilder<K> secondaryBuilder, ICacheDBInteract cacheInteract) {
+        super(cacheUniqueId, secondaryBuilder, cacheInteract);
         MongoCollection<Document> collection = getCollection();
-        CacheIndexes cacheIndexes = cacheUniqueKey.getInformation().getCacheIndexes();
-        CacheMongoDBUtil.ensureIndexes(collection, getCacheUniqueKey().getPrimarySharedId(), cacheIndexes);
-    }
-
-    @Override
-    public CacheType getCacheType() {
-        return CacheType.MongoDb;
+        CacheIndexes cacheIndexes = cacheUniqueId.getCacheIndexes();
+        CacheMongoDBUtil.ensureIndexes(collection, getCacheUniqueId().getPrimarySharedId(), cacheIndexes);
     }
 
 
     @Override
     public V get(long primaryKey, K secondaryKey) {
         List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createCombineUniqueKeyValue(primaryKey, secondaryKey);
-        Map<String, Object> cacheValue = MongoDBQueryUtil.queryOne(getCollection(), getCacheUniqueKey().getPrimarySharedId(), entryList);
+        Map<String, Object> cacheValue = MongoDBQueryUtil.queryOne(getCollection(), getCacheUniqueId().getPrimarySharedId(), entryList);
         return cacheValue == null ? null : converter.convert2Value(cacheValue);
     }
 
     @Override
     public List<V> getAll(long primaryKey) {
         List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createPrimaryKeyValue(primaryKey);
-        Collection<Map<String, Object>> cacheValuesList = MongoDBQueryUtil.queryAll(getCollection(), getCacheUniqueKey().getPrimarySharedId(), entryList);
+        Collection<Map<String, Object>> cacheValuesList = MongoDBQueryUtil.queryAll(getCollection(), getCacheUniqueId().getPrimarySharedId(), entryList);
         return converter.convert2ValueList(cacheValuesList);
     }
 
     @Override
     public CacheDBCollection getPrimaryCollection(long primaryKey) {
-        int primarySharedId = getCacheUniqueKey().getPrimarySharedId();
+        int primarySharedId = getCacheUniqueId().getPrimarySharedId();
         List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createPrimaryKeyValue(primaryKey);
         Collection<Map<String, Object>> mapCollection = MongoDBQueryUtil.queryAll(getCollection(), primarySharedId, entryList);
         return new CacheDBCollection(primarySharedId, mapCollection);
@@ -89,7 +84,7 @@ public class CacheMongoDBSource<K, V extends IData<K>> extends CacheDbSource<K, 
     public boolean replaceOne(long primaryKey, V value) {
         Map<String, Object> cacheValue = getConverter().convert2Cache(value);
         List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createCombineUniqueKeyValue(primaryKey, value.secondaryKey());
-        Document queryDocument = CacheMongoDBUtil.getQueryDocument(getCacheUniqueKey().getPrimarySharedId(),  entryList);
+        Document queryDocument = CacheMongoDBUtil.getQueryDocument(getCacheUniqueId().getPrimarySharedId(),  entryList);
         Document document = CacheMongoDBUtil.toDocument(cacheValue.entrySet());
         MongoCollection<Document> collection = getCollection();
         UpdateResult updateOne = collection.updateOne(queryDocument, document, CacheMongoDBUtil.UPDATE_OPTIONS);
@@ -101,7 +96,7 @@ public class CacheMongoDBSource<K, V extends IData<K>> extends CacheDbSource<K, 
         List<UpdateOneModel<Document>> updateOneModelList = values.stream().map(value -> {
             Map<String, Object> cacheValue = getConverter().convert2Cache(value);
             List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createCombineUniqueKeyValue(primaryKey, value.secondaryKey());
-            return CacheMongoDBUtil.createUpdateOneModel(getCacheUniqueKey().getPrimarySharedId(), entryList, cacheValue.entrySet());
+            return CacheMongoDBUtil.createUpdateOneModel(getCacheUniqueId().getPrimarySharedId(), entryList, cacheValue.entrySet());
         }).collect(Collectors.toList());
         MongoCollection<Document> collection = getCollection();
         BulkWriteResult writeResult = collection.bulkWrite(updateOneModelList);
@@ -109,9 +104,14 @@ public class CacheMongoDBSource<K, V extends IData<K>> extends CacheDbSource<K, 
     }
 
     @Override
+    public CacheType getCacheType() {
+        return CacheType.MongoDb;
+    }
+
+    @Override
     public boolean deleteOne(long primaryKey, K secondaryKey) {
         List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createCombineUniqueKeyValue(primaryKey, secondaryKey);
-        Document queryDocument = CacheMongoDBUtil.getQueryDocument(getCacheUniqueKey().getPrimarySharedId(),  entryList);
+        Document queryDocument = CacheMongoDBUtil.getQueryDocument(getCacheUniqueId().getPrimarySharedId(),  entryList);
         MongoCollection<Document> collection = getCollection();
         DeleteResult deleteOne = collection.deleteOne(queryDocument);
         return deleteOne.wasAcknowledged();
@@ -124,14 +124,14 @@ public class CacheMongoDBSource<K, V extends IData<K>> extends CacheDbSource<K, 
             List<Map.Entry<String, Object>> entryList = getKeyValueBuilder().createCombineUniqueKeyValue(primaryKey, secondaryKey);
             key2ValuesList.add(entryList);
         }
-        List<DeleteOneModel<Document>> deleteOneModelList = CacheMongoDBUtil.createDeleteOneModelList(getCacheUniqueKey().getPrimarySharedId(),  key2ValuesList);
+        List<DeleteOneModel<Document>> deleteOneModelList = CacheMongoDBUtil.createDeleteOneModelList(getCacheUniqueId().getPrimarySharedId(),  key2ValuesList);
         MongoCollection<Document> collection = getCollection();
         BulkWriteResult writeResult = collection.bulkWrite(deleteOneModelList);
         return writeResult.wasAcknowledged();
     }
 
     public MongoCollection<Document> getCollection(){
-        return MongoDBQueryUtil.getCollection(getCacheUniqueKey().getName());
+        return MongoDBQueryUtil.getCollection(getCacheUniqueId().getName());
     }
 
     @Override

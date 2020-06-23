@@ -1,8 +1,7 @@
 package com.game.cache.dao;
 
-import com.game.cache.CacheUniqueKey;
-import com.game.cache.ICacheUniqueKey;
-import com.game.cache.config.ClassConfig;
+import com.game.cache.CacheUniqueId;
+import com.game.cache.ICacheUniqueId;
 import com.game.cache.data.IData;
 import com.game.cache.key.IKeyValueBuilder;
 import com.game.cache.source.executor.CacheExecutor;
@@ -20,7 +19,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -38,15 +36,15 @@ public class DataDaoManager {
     }
 
     private final ICacheExecutor executor;
-    private final Map<ICacheUniqueKey, IDataMapDao> mapDaoMap;
-    private final Map<ICacheUniqueKey, IDataValueDao> valueDaoMap;
-    private final Map<ICacheUniqueKey, IDataCacheDao> cacheDaoMap;
+    private final Map<ICacheUniqueId, IDataCacheMapDao> mapDaoMap;
+    private final Map<ICacheUniqueId, IDataCacheValueDao> valueDaoMap;
+    private final Map<ICacheUniqueId, IDataCacheDao> cacheDaoMap;
 
     private final Map<String, ICacheDBInteract> name2DBInteracts;
     private final Map<String, ICacheRedisInteract> name2RedisInteracts;
 
 
-    public DataDaoManager() {
+    private DataDaoManager() {
         IConfig executorConfig = Configs.getInstance().getConfig("cache.executor");
         this.executor = new CacheExecutor(executorConfig.getInt("threadCount"));
         this.mapDaoMap = new ConcurrentHashMap<>();
@@ -56,25 +54,9 @@ public class DataDaoManager {
         this.name2RedisInteracts = new ConcurrentHashMap<>();
     }
 
-    public void initClass(Class<?> aClass){
-        Objects.requireNonNull(ClassConfig.getConfig(aClass), aClass.getName());
-    }
-
-    public <K, V extends IData<K>> DataMapDaoBuilder<K, V> newMapDaoBuilder(Class<V> aClass, IKeyValueBuilder<K> secondaryBuilder){
-        DataMapDaoBuilder<K, V> builder = new DataMapDaoBuilder<>(aClass, secondaryBuilder);
-        builder.setDaoManager(this);
-        return builder;
-    }
-
-    public <V extends IData<Long>> DataValueDaoBuilder<V> newValueDaoBuilder(Class<V> aClass){
-        DataValueDaoBuilder<V> builder = new DataValueDaoBuilder<>(aClass);
-        builder.setDaoManager(this);
-        return builder;
-    }
-
     public void flushAll(){
         long currentTime = System.currentTimeMillis();
-        for (Map.Entry<ICacheUniqueKey, IDataCacheDao> entry : cacheDaoMap.entrySet()) {
+        for (Map.Entry<ICacheUniqueId, IDataCacheDao> entry : cacheDaoMap.entrySet()) {
             try {
                 if (entry.getValue().flushAll(currentTime)){
 
@@ -91,7 +73,7 @@ public class DataDaoManager {
 
     public void flushUserAll(long primaryId, Consumer<Boolean> consumer){
         long currentTime = System.currentTimeMillis();
-        List<Map.Entry<ICacheUniqueKey, IDataCacheDao>> entryList = cacheDaoMap.entrySet().stream().filter(entry -> entry.getKey().isAccountCache()).collect(Collectors.toList());
+        List<Map.Entry<ICacheUniqueId, IDataCacheDao>> entryList = cacheDaoMap.entrySet().stream().filter(entry -> entry.getKey().isAccountCache()).collect(Collectors.toList());
         if (entryList.isEmpty()){
             consumer.accept(true);
             return;
@@ -99,7 +81,7 @@ public class DataDaoManager {
         List<String> stringList = new ArrayList<>();
         CountDownLatch downLatch = new CountDownLatch(entryList.size());
         AtomicBoolean atomicBoolean = new AtomicBoolean(false);
-        for (Map.Entry<ICacheUniqueKey, IDataCacheDao> entry : entryList) {
+        for (Map.Entry<ICacheUniqueId, IDataCacheDao> entry : entryList) {
             entry.getValue().flushOne(primaryId, currentTime, success -> {
                 downLatch.countDown();
                 atomicBoolean.compareAndSet(false, success != null && success);
@@ -117,16 +99,28 @@ public class DataDaoManager {
 
     /**************************================================= 以下是内部方法 ==============================================****************************/
 
+    <K, V extends IData<K>> DataMapDaoBuilder<K, V> newMapDaoBuilder(Class<V> aClass, IKeyValueBuilder<K> secondaryBuilder){
+        DataMapDaoBuilder<K, V> builder = new DataMapDaoBuilder<>(aClass, secondaryBuilder);
+        builder.setDaoManager(this);
+        return builder;
+    }
+
+    <V extends IData<Long>> DataValueDaoBuilder<V> newValueDaoBuilder(Class<V> aClass){
+        DataValueDaoBuilder<V> builder = new DataValueDaoBuilder<>(aClass);
+        builder.setDaoManager(this);
+        return builder;
+    }
+
     ICacheExecutor getExecutor() {
         return executor;
     }
 
-    ICacheDBInteract getCacheDBInteract(CacheUniqueKey cacheUniqueKey, ICacheLifeInteract lifeInteract){
-        return name2DBInteracts.computeIfAbsent(cacheUniqueKey.getName(), key -> new CacheDBInteract(lifeInteract, this::handleCacheInteract));
+    ICacheDBInteract getCacheDBInteract(CacheUniqueId cacheUniqueId, ICacheLifeInteract lifeInteract){
+        return name2DBInteracts.computeIfAbsent(cacheUniqueId.getName(), key -> new CacheDBInteract(lifeInteract, this::handleCacheInteract, cacheDaoMap::keySet));
     }
 
-    ICacheRedisInteract getCacheRedisInteract(CacheUniqueKey cacheUniqueKey, ICacheLifeInteract lifeInteract){
-        return name2RedisInteracts.computeIfAbsent(cacheUniqueKey.getName(), key -> new CacheRedisInteract(lifeInteract, this::handleCacheInteract));
+    ICacheRedisInteract getCacheRedisInteract(CacheUniqueId cacheUniqueId, ICacheLifeInteract lifeInteract){
+        return name2RedisInteracts.computeIfAbsent(cacheUniqueId.getName(), key -> new CacheRedisInteract(lifeInteract, this::handleCacheInteract, cacheDaoMap::keySet));
     }
 
     /**
@@ -134,7 +128,7 @@ public class DataDaoManager {
      * @param primaryKey
      * @param cacheDaoUnique
      */
-    private void handleCacheInteract(long primaryKey, ICacheUniqueKey cacheDaoUnique){
+    private void handleCacheInteract(long primaryKey, ICacheUniqueId cacheDaoUnique){
         IDataCacheMapDao cacheMapDao = getDataCacheMapDao(cacheDaoUnique);
         if (cacheMapDao == null){
             IDataCacheValueDao cacheValueDao = getDataCacheValueDao(cacheDaoUnique);
@@ -147,31 +141,29 @@ public class DataDaoManager {
         }
     }
 
-    private IDataCacheMapDao getDataCacheMapDao(ICacheUniqueKey cacheDaoUnique){
-        return (IDataCacheMapDao)mapDaoMap.get(cacheDaoUnique);
+    private IDataCacheMapDao getDataCacheMapDao(ICacheUniqueId cacheDaoUnique){
+        return mapDaoMap.get(cacheDaoUnique);
     }
 
-    private IDataCacheValueDao getDataCacheValueDao(ICacheUniqueKey cacheDaoUnique){
-        return (IDataCacheValueDao)valueDaoMap.get(cacheDaoUnique);
+    private IDataCacheValueDao getDataCacheValueDao(ICacheUniqueId cacheDaoUnique){
+        return valueDaoMap.get(cacheDaoUnique);
     }
 
     @SuppressWarnings("unchecked")
-    <V extends IData<Long>> IDataValueDao<V> addValueDao(ICacheUniqueKey daoUnique, IDataValueDao<V> dataValueDao){
-        valueDaoMap.putIfAbsent(daoUnique, dataValueDao);
-        IDataValueDao<V> onlyOneDao = (IDataValueDao<V>) valueDaoMap.get(daoUnique);
-        if (onlyOneDao instanceof IDataCacheDao) {
-            cacheDaoMap.putIfAbsent(daoUnique, ((IDataCacheDao) onlyOneDao));
-        }
+    <V extends IData<Long>> IDataCacheValueDao<V> addCacheValueDao(IDataCacheValueDao<V> dataValueDao){
+        ICacheUniqueId cacheUniqueId = dataValueDao.getCacheUniqueId();
+        valueDaoMap.putIfAbsent(cacheUniqueId, dataValueDao);
+        IDataCacheValueDao<V> onlyOneDao = valueDaoMap.get(cacheUniqueId);
+        cacheDaoMap.putIfAbsent(cacheUniqueId, onlyOneDao);
         return onlyOneDao;
     }
 
     @SuppressWarnings("unchecked")
-    <K, V extends IData<K>> IDataMapDao<K, V> addMapDao(ICacheUniqueKey daoUnique, IDataMapDao<K, V> dataMapDao){
-        mapDaoMap.putIfAbsent(daoUnique, dataMapDao);
-        IDataMapDao<K, V> onlyOneDao = mapDaoMap.get(daoUnique);
-        if (onlyOneDao instanceof IDataCacheDao) {
-            cacheDaoMap.putIfAbsent(daoUnique, ((IDataCacheDao) onlyOneDao));
-        }
+    <K, V extends IData<K>> IDataCacheMapDao<K, V> addCacheMapDao(IDataCacheMapDao<K, V> dataMapDao){
+        ICacheUniqueId cacheUniqueId = dataMapDao.getCacheUniqueId();
+        mapDaoMap.putIfAbsent(cacheUniqueId, dataMapDao);
+        IDataCacheMapDao<K, V> onlyOneDao = mapDaoMap.get(cacheUniqueId);
+        cacheDaoMap.putIfAbsent(cacheUniqueId, onlyOneDao);
         return onlyOneDao;
     }
 

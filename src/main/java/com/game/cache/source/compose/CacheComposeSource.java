@@ -2,11 +2,11 @@ package com.game.cache.source.compose;
 
 import com.game.cache.CacheInformation;
 import com.game.cache.CacheType;
-import com.game.cache.ICacheUniqueKey;
+import com.game.cache.ICacheUniqueId;
 import com.game.cache.data.DataBitIndex;
 import com.game.cache.data.DataCollection;
+import com.game.cache.data.DataPrivilegeUtil;
 import com.game.cache.data.IData;
-import com.game.cache.mapper.ClassInformation;
 import com.game.cache.mapper.IClassConverter;
 import com.game.cache.source.ICacheDelaySource;
 import com.game.cache.source.ICacheKeyValueBuilder;
@@ -53,8 +53,13 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
         }
         this.executor = executor;
         this.cacheInformationMap = new ConcurrentHashMap<>();
-        CacheRunnable cacheRunnable = new CacheRunnable(dbSource.getCacheUniqueKey().getName(), this::onScheduleAll);
+        CacheRunnable cacheRunnable = new CacheRunnable(dbSource.getCacheUniqueId().getName(), this::onScheduleAll);
         executor.scheduleAtFixedRate(cacheRunnable, 60, 60, TimeUnit.SECONDS);
+    }
+
+    @Override
+    public CacheType getCacheType() {
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -130,13 +135,8 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
 
 
     @Override
-    public ICacheUniqueKey getCacheUniqueKey() {
-        return redisSource.getCacheUniqueKey();
-    }
-
-    @Override
-    public CacheType getCacheType() {
-       throw new UnsupportedOperationException();
+    public ICacheUniqueId getCacheUniqueId() {
+        return redisSource.getCacheUniqueId();
     }
 
     @Override
@@ -210,7 +210,6 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
      * @param primaryDelayCache
      */
     private void onPrimaryDBCacheSuccess(PrimaryDelayCache<K, V> primaryDelayCache){
-        ClassInformation information = getConverter().getInformation();
         List<V> dataList = primaryDelayCache.getAll().stream().map(KeyDataValue::getDataValue).collect(Collectors.toList());
         onReplaceBatchDBSuccess(primaryDelayCache.getPrimaryKey(), dataList, null);
     }
@@ -236,8 +235,7 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
         if (values.isEmpty()){
             return;
         }
-        ClassInformation information = getConverter().getInformation();
-        values.forEach(value -> information.invokeSetBitIndex(value, DataBitIndex.RedisChanged));
+        values.forEach(value -> DataPrivilegeUtil.invokeSetBitIndex(value, DataBitIndex.RedisChanged));
     }
 
     /**
@@ -268,8 +266,7 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
      * @return
      */
     private boolean onReplaceBatchDBSuccess(long primaryKey, Collection<V> values, CacheInformation cacheInformation){
-        ClassInformation classInformation = getConverter().getInformation();
-        values.forEach(value -> classInformation.invokeClearBitIndex(value, DataBitIndex.RedisChanged));
+        values.forEach(value -> DataPrivilegeUtil.invokeClearBitIndex(value, DataBitIndex.RedisChanged));
         return redisSource.replaceBatch(primaryKey, values, cacheInformation);
     }
 }

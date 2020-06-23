@@ -1,6 +1,6 @@
 package com.game.cache.source;
 
-import com.game.cache.ICacheUniqueKey;
+import com.game.cache.ICacheUniqueId;
 import com.game.cache.data.DataCollection;
 import com.game.cache.data.IData;
 import com.game.cache.exception.CacheException;
@@ -108,8 +108,8 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
     }
 
     @Override
-    public ICacheUniqueKey getCacheUniqueKey() {
-        return cacheSource.getCacheUniqueKey();
+    public ICacheUniqueId getCacheUniqueId() {
+        return cacheSource.getCacheUniqueId();
     }
 
     @Override
@@ -158,7 +158,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
                 logger.error("mkdir error:{}", string);
             }
         }
-        ICacheUniqueKey cacheDaoUnique = getCacheUniqueKey();
+        ICacheUniqueId cacheDaoUnique = getCacheUniqueId();
         ICacheKeyValueBuilder<K> keyValueBuilder = getKeyValueBuilder();
         Collection<PrimaryDelayCache<K, V>> primaryDelayCaches = primaryCacheMap.values();
         for (PrimaryDelayCache<K, V> delayCache : primaryDelayCaches) {
@@ -189,7 +189,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
         }
         for (Map.Entry<Long, PrimaryDelayCache<K, V>> entry : primaryCacheMap.entrySet()) {
             String keyString = String.valueOf(entry.getKey());
-            logger.error("{} primaryKey:{} flushAll error.", getAClass().getName(), getCacheUniqueKey().getName(), keyString);
+            logger.error("{} primaryKey:{} flushAll error.", getAClass().getName(), getCacheUniqueId().getName(), keyString);
         }
         return true;
     }
@@ -240,7 +240,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
     }
 
     protected String getScheduleName() {
-        return getCacheUniqueKey().getName();
+        return getCacheUniqueId().getName();
     }
 
     @Override

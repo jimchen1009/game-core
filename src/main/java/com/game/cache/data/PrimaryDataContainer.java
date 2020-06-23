@@ -9,10 +9,10 @@ import com.game.common.log.LogUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryDataContainer<K, V>{
 
@@ -96,14 +96,16 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
     public V removeOne(K secondaryKey) {
         Args.Two<Boolean, V> resultValue = LockUtil.syncLock(dataSource.getLockKey(primaryKey), "deleteOne", () -> {
             boolean success = true;
-            V oldValue = null;
-            if (currentMap().containsKey(secondaryKey)) {
-                success = dataSource.deleteOne(primaryKey, secondaryKey);
+            ConcurrentHashMap<K, V> currentMap = currentMap();
+            V data = currentMap.get(secondaryKey);
+            if (data != null) {
+                data.delete(System.currentTimeMillis());
+                success = dataSource.replaceOne(primaryKey, data);
                 if (success){
-                    oldValue = currentMap().remove(secondaryKey);
+                    currentMap.remove(secondaryKey);
                 }
             }
-            return Args.create(success, oldValue);
+            return Args.create(success, data);
         });
         if (resultValue != null && resultValue.arg0){
             return resultValue.arg1;
@@ -117,13 +119,22 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
     public void removeBatch(Collection<K> secondaryKeys) {
         Boolean isSuccess = LockUtil.syncLock(dataSource.getLockKey(primaryKey), "deleteBatch", () -> {
             boolean success = true;
+            long currentTime = System.currentTimeMillis();
             ConcurrentHashMap<K, V> currentMap = currentMap();
-            List<K> removeSecondaryKeys = secondaryKeys.stream().filter(currentMap::containsKey).collect(Collectors.toList());
-            if (!removeSecondaryKeys.isEmpty()){
-                success = dataSource.deleteBatch(primaryKey, secondaryKeys);
-                if (success){
-                    for (K secondaryKey : removeSecondaryKeys) {
-                        currentMap.remove(secondaryKey);
+            List<V> dataList = new ArrayList<>();
+            for (K secondaryKey : secondaryKeys) {
+                V data = currentMap.get(secondaryKey);
+                if (data == null){
+                    continue;
+                }
+                data.delete(currentTime);
+                dataList.add(data);
+            }
+            if (!dataList.isEmpty()){
+                success = dataSource.replaceBatch(primaryKey, dataList);
+                if (success) {
+                    for (V data : dataList) {
+                        currentMap.remove(data.secondaryKey());
                     }
                 }
             }
@@ -167,6 +178,9 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
                 information = collection.getInformation();
                 List<V> valueList = collection.getDataList();
                 for (V value : valueList) {
+                    if (value.isDeleted()){
+                        continue;
+                    }
                     secondary2Values.put(value.secondaryKey(), value);
                 }
             }

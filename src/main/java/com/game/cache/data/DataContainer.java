@@ -26,6 +26,7 @@ public class DataContainer<K, V extends IData<K>> implements IDataContainer<K, V
         this.primaryDataMap = new ConcurrentHashMap<>();
     }
 
+
     @Override
     public boolean existCache(long primaryKey) {
         return primaryDataMap.containsKey(primaryKey);

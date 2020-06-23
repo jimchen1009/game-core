@@ -26,15 +26,15 @@ public abstract class Data<K> implements IData<K> {
 
     @Override
     public boolean hasBitIndex(DataBitIndex bitIndex) {
-        return (this.dataBitIndexBits & (1L << bitIndex.getUniqueId())) != 0;
+        return (this.dataBitIndexBits & (1L << bitIndex.getId())) != 0;
     }
 
     private void clearBitIndex(DataBitIndex bitIndex){
-        dataBitIndexBits = this.dataBitIndexBits ^ (1L << bitIndex.getUniqueId());
+        dataBitIndexBits = this.dataBitIndexBits ^ (1L << bitIndex.getId());
     }
 
     private void setBitIndex(DataBitIndex bitIndex) {
-        this.dataBitIndexBits = this.dataBitIndexBits | (1L << bitIndex.getUniqueId());
+        this.dataBitIndexBits = this.dataBitIndexBits | (1L << bitIndex.getId());
     }
 
     @Override

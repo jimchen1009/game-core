@@ -17,20 +17,20 @@ public class DataBitIndex {
 
     private static final Map<Integer, DataBitIndex> uniqueIdBitIndex = new ConcurrentHashMap<>();
     static {
-        uniqueIdBitIndex.put(RedisChanged.getUniqueId(), RedisChanged);
+        uniqueIdBitIndex.put(RedisChanged.getId(), RedisChanged);
     }
 
-    private final int uniqueId;
+    private final int id;
 
-    private DataBitIndex(int uniqueId) {
-        if (uniqueId > 63){
-            throw new IllegalArgumentException(String.valueOf(uniqueId));
+    private DataBitIndex(int id) {
+        if (id > 63){
+            throw new IllegalArgumentException(String.valueOf(id));
         }
-        this.uniqueId = uniqueId;
+        this.id = id;
     }
 
-    public int getUniqueId() {
-        return uniqueId;
+    public int getId() {
+        return id;
     }
 
     public static DataBitIndex getBitIndex(int uniqueId){

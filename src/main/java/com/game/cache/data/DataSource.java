@@ -1,5 +1,6 @@
 package com.game.cache.data;
 
+import com.game.cache.ICacheUniqueId;
 import com.game.cache.mapper.IClassConverter;
 import com.game.cache.source.executor.ICacheSource;
 import com.game.common.lock.LockKey;
@@ -18,6 +19,11 @@ class DataSource<K, V extends IData<K>> implements IDataSource<K, V>{
 
     DataSource(ICacheSource<K, V> cacheSource) {
         this.cacheSource = cacheSource;
+    }
+
+    @Override
+    public ICacheUniqueId getCacheUniqueId() {
+        return cacheSource.getCacheUniqueId();
     }
 
     @Override

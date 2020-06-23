@@ -51,10 +51,6 @@ public class CacheDelayMongoDBSource<K, V extends IData<K>> extends CacheDelaySo
         return (CacheMongoDBSource<K, V>)super.getCacheSource();
     }
 
-    @Override
-    public CacheType getCacheType() {
-        return getMongoDBSource().getCacheType();
-    }
 
     @Override
     protected Map<Long, PrimaryDelayCache<K, V>> executeWritePrimaryCache(Map<Long, PrimaryDelayCache<K, V>> pkPrimaryCacheMap) {
@@ -66,7 +62,7 @@ public class CacheDelayMongoDBSource<K, V extends IData<K>> extends CacheDelaySo
         List<Args.Two<Long, KeyDataValue<K, V>>> updateKeyCacheValueList = new ArrayList<>();
 
 
-        int primarySharedId = getCacheUniqueKey().getPrimarySharedId();
+        int primarySharedId = getCacheUniqueId().getPrimarySharedId();
         ICacheKeyValueBuilder<K> keyValueBuilder = getKeyValueBuilder();
         for (Map.Entry<Long, PrimaryDelayCache<K, V>> entry : pkPrimaryCacheMap.entrySet()) {
             for (KeyDataValue<K, V> keyDataValue : entry.getValue().getAll()) {
@@ -125,5 +121,10 @@ public class CacheDelayMongoDBSource<K, V extends IData<K>> extends CacheDelaySo
             logger.error("class:{} updateCount:{} != modelCount:{}", getAClass().getName(), modifiedCount, modelList.size());
             return false;
         }
+    }
+
+    @Override
+    public CacheType getCacheType() {
+        return getCacheSource().getCacheType();
     }
 }

@@ -1,8 +1,12 @@
 package com.game.cache.dao;
 
+import com.game.cache.ICacheUniqueId;
+
 import java.util.function.Consumer;
 
 public interface IDataCacheDao{
+
+    ICacheUniqueId getCacheUniqueId();
 
     boolean existCache(long primaryKey);
 

@@ -1,9 +1,7 @@
 package com.game.cache.source;
 
-import com.game.cache.CacheUniqueKey;
 import com.game.cache.CacheInformation;
-import com.game.cache.ICacheUniqueKey;
-import com.game.cache.config.ClassConfig;
+import com.game.cache.ICacheUniqueId;
 import com.game.cache.data.DataCollection;
 import com.game.cache.data.IData;
 import com.game.cache.exception.CacheException;
@@ -12,16 +10,20 @@ import com.game.cache.source.interact.CacheDBCollection;
 import com.game.cache.source.interact.ICacheDBInteract;
 import com.game.common.log.LogUtil;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public abstract class CacheDbSource<K, V extends IData<K>> extends CacheSource<K, V> implements ICacheDbSource<K, V> {
 
     protected final ICacheDBInteract sourceInteract;
 
-    public CacheDbSource(CacheUniqueKey cacheUniqueKey, IKeyValueBuilder<K> secondaryBuilder, ICacheDBInteract sourceInteract) {
-        super(cacheUniqueKey, secondaryBuilder);
+    public CacheDbSource(ICacheUniqueId cacheUniqueId, IKeyValueBuilder<K> secondaryBuilder, ICacheDBInteract sourceInteract) {
+        super(cacheUniqueId, secondaryBuilder);
         this.sourceInteract = sourceInteract;
     }
 
@@ -34,7 +36,7 @@ public abstract class CacheDbSource<K, V extends IData<K>> extends CacheSource<K
     }
 
     public final CacheDBCollection getCacheCollection(long primaryKey) {
-        ICacheUniqueKey cacheDaoUnique = getCacheUniqueKey();
+        ICacheUniqueId cacheDaoUnique = getCacheUniqueId();
         int primarySharedId = cacheDaoUnique.getPrimarySharedId();
         if (primarySharedId == 0){
             return getPrimaryCollection(primaryKey);
@@ -46,17 +48,23 @@ public abstract class CacheDbSource<K, V extends IData<K>> extends CacheSource<K
         }
         boolean loginSharedLoad = sourceInteract.getAndSetSharedLoad(primaryKey, cacheDaoUnique);
         if (loginSharedLoad){
-            List<Integer> primarySharedIds = ClassConfig.getPrimarySharedIdList(name);
-            if (primarySharedIds.isEmpty()){
+            Map<Integer, ICacheUniqueId> cacheUniqueIdMap = sourceInteract.getSharedCacheUniqueIdList(primaryKey, cacheDaoUnique).stream()
+                    .collect(Collectors.toMap(ICacheUniqueId::getPrimarySharedId, cacheUniqueId -> cacheUniqueId));
+            if (cacheUniqueIdMap.isEmpty()){
                 throw new CacheException("%s, %s", LogUtil.toObjectString(primaryKey), getAClass().getSimpleName());
             }
+            List<Integer> primarySharedIds = new ArrayList<>(cacheUniqueIdMap.keySet());
             if (primarySharedIds.size() == 1 && primarySharedIds.get(0) == primarySharedId){
                 return getPrimaryCollection(primaryKey);
             }
             else {
                 Map<Integer, CacheDBCollection> sharedId2Collections = getSharedCollections(primaryKey, primarySharedIds);
                 CacheDBCollection collection = sharedId2Collections.remove(primarySharedId);
-                sourceInteract.addCollections(primaryKey, cacheDaoUnique, sharedId2Collections);
+                Map<ICacheUniqueId, CacheDBCollection> uniqueId2Collections = new HashMap<>();
+                for (Map.Entry<Integer, CacheDBCollection> entry : sharedId2Collections.entrySet()) {
+                    uniqueId2Collections.put(cacheUniqueIdMap.get(entry.getKey()), entry.getValue());
+                }
+                sourceInteract.addCollections(primaryKey, cacheDaoUnique, uniqueId2Collections);
                 return collection;
             }
         }
