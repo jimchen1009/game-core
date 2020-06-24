@@ -7,26 +7,22 @@ import java.util.List;
 public class DataCollection<K, V extends IData<K>> {
 
     private final List<V> dataList;
-    private final CacheInformation information;
+    private final CacheInformation cacheInformation;
 
-    public DataCollection(List<V> dataList, CacheInformation information) {
+    public DataCollection(List<V> dataList, CacheInformation cacheInformation) {
         this.dataList = dataList;
-        this.information = information;
+        this.cacheInformation = cacheInformation;
     }
 
     public List<V> getDataList() {
         return dataList;
     }
 
-    public CacheInformation getInformation() {
-        return information;
-    }
-
-    public boolean isEmpty(){
-        return information.isEmpty() && dataList.isEmpty();
+    public CacheInformation getCacheInformation() {
+        return cacheInformation;
     }
 
     public boolean isExpired(long currentTime){
-        return information.isExpired(currentTime);
+        return cacheInformation.isExpired(currentTime);
     }
 }

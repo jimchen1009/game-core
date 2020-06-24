@@ -17,7 +17,7 @@ public class DataValueDaoBuilder <V extends IData<Long>>  extends DataDaoBuilder
 	@SuppressWarnings("unchecked")
 	public IDataCacheValueDao<V> createIfAbsent(DataValueDaoBuilder<V> builder){
 		IDataSource<Long, V> dataSource = DataSourceUtil.createDataSource(createCacheSource());
-		DataValueContainer<V> container = new DataValueContainer<>(dataSource, lifePredicate);
+		DataValueContainer<V> container = new DataValueContainer<>(dataSource, lifePredicate, daoManager.getExecutor());
 
 		ClassConfig classConfig = this.classConfig.cloneConfig().setDelayUpdate(false);
 		IDataSource<Long, V> dataSource0 = DataSourceUtil.createDataSource(createCacheSource(classConfig));

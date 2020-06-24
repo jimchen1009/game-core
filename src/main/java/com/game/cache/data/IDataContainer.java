@@ -7,25 +7,25 @@ import java.util.function.Consumer;
 
 public interface IDataContainer<K, V extends IData<K>> {
 
-    boolean existCache(long id);
+    boolean existCache(long primaryKey);
 
-    int count(long id);
+    int count(long primaryKey);
 
-    V get(long id, K secondaryKey);
+    V get(long primaryKey, K secondaryKey);
 
-    Holder<V> getNoCache(long id, K secondaryKey);
+    Holder<V> getNoCache(long primaryKey, K secondaryKey);
 
-    Collection<V> getAll(long id);
+    Collection<V> getAll(long primaryKey);
 
-    Collection<V> getAllNoCache(long id);
+    Collection<V> getAllNoCache(long primaryKey);
 
-    V replaceOne(long id, V value);
+    V replaceOne(long primaryKey, V value);
 
-    void replaceBatch(long id, Collection<V> values);
+    void replaceBatch(long primaryKey, Collection<V> values);
 
-    V removeOne(long id, K secondaryKeys);
+    V removeOne(long primaryKey, K secondaryKeys);
 
-    void removeBatch(long id, Collection<K> secondaryKeys);
+    void removeBatch(long primaryKey, Collection<K> secondaryKeys);
 
     boolean flushAll(long currentTime);
 

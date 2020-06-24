@@ -4,12 +4,13 @@ import com.game.cache.data.DataContainer;
 import com.game.cache.data.IData;
 import com.game.cache.data.IDataLifePredicate;
 import com.game.cache.data.IDataSource;
+import com.game.cache.source.executor.ICacheExecutor;
 import com.game.common.util.Holder;
 
 public class DataValueContainer<V extends IData<Long>> extends DataContainer<Long, V> implements IDataValueContainer<V> {
 
-    public DataValueContainer(IDataSource<Long, V> dataSource, IDataLifePredicate loadPredicate) {
-        super(dataSource, loadPredicate);
+    public DataValueContainer(IDataSource<Long, V> dataSource, IDataLifePredicate loadPredicate, ICacheExecutor executor) {
+        super(dataSource, loadPredicate, executor);
     }
 
     @Override

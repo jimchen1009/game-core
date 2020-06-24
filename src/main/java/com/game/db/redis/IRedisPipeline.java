@@ -6,6 +6,8 @@ public interface IRedisPipeline {
 
     void hgetAll(String key);
 
+    void hset(String key, String field, String value);
+
     void hset(final String key, final Map<String, String> hash);
 
     void ttl(String key);

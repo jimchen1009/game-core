@@ -8,6 +8,7 @@ import com.game.cache.CacheName;
 import com.game.cache.CacheType;
 import com.game.cache.ICacheUniqueId;
 import com.game.cache.data.DataCollection;
+import com.game.cache.data.DataPrivilegeUtil;
 import com.game.cache.data.IData;
 import com.game.cache.key.IKeyValueBuilder;
 import com.game.cache.mapper.JsonValueConverter;
@@ -16,7 +17,6 @@ import com.game.cache.source.ICacheDelaySource;
 import com.game.cache.source.executor.ICacheExecutor;
 import com.game.cache.source.interact.CacheRedisCollection;
 import com.game.cache.source.interact.ICacheRedisInteract;
-import com.game.db.redis.IRedisPipeline;
 import jodd.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +39,8 @@ import java.util.stream.Collectors;
 public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> implements ICacheRedisSource<K, V> {
 
     private static final Logger logger = LoggerFactory.getLogger(CacheRedisSource.class);
+
+    private static final String ExpiredName = "ttl.ex";
 
     private static final SerializerFeature[] mySerializerFeatures = new SerializerFeature[] {
             SerializerFeature.WriteMapNullValue,
@@ -79,33 +81,35 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
     @Override
     public DataCollection<K, V> getCollection(long primaryKey) {
         ICacheUniqueId currentDaoUniqueId = getCacheUniqueId();
-        CacheRedisCollection redisCollection = cacheRedisInteract.removeCollection(primaryKey, currentDaoUniqueId);
-        if (redisCollection != null){
-            return readDataCollection(redisCollection.getRedisKeyValueList());
+        CacheRedisCollection removeCollection = cacheRedisInteract.removeCollection(primaryKey, currentDaoUniqueId);
+        if (removeCollection != null){
+            return readDataCollection(removeCollection);
         }
-        boolean redisSharedLoad = cacheRedisInteract.getAndSetSharedLoad(primaryKey, currentDaoUniqueId);
-        List<ICacheUniqueId> cacheDaoUniqueIdList;
-        if (redisSharedLoad){
-            cacheDaoUniqueIdList = cacheRedisInteract.getSharedCacheUniqueIdList(primaryKey, currentDaoUniqueId);
-        }
-        else {
-            cacheDaoUniqueIdList = Collections.singletonList(currentDaoUniqueId);
+        List<ICacheUniqueId> cacheDaoUniqueIdList = new ArrayList<>();
+        cacheDaoUniqueIdList.add(currentDaoUniqueId);
+        if (cacheRedisInteract.getAndSetSharedLoad(primaryKey, currentDaoUniqueId)){
+
+            cacheDaoUniqueIdList.addAll(cacheRedisInteract.getSharedCacheUniqueIdList(primaryKey, currentDaoUniqueId));
         }
         List<Map.Entry<String, Object>> entryList = RedisClientUtil.getRedisClient().executeBatch(redisPipeline -> {
             for (ICacheUniqueId cacheDaoUnique : cacheDaoUniqueIdList) {
-                executeCommand(primaryKey, redisPipeline, cacheDaoUnique);
+                CacheRedisCollection.executeCommand(primaryKey, redisPipeline, cacheDaoUnique);
             }
         });
+        long currentTime = System.currentTimeMillis();
         Map<ICacheUniqueId, CacheRedisCollection> redisCollectionMap = new HashMap<>(cacheDaoUniqueIdList.size());
         int batchCount = entryList.size() / cacheDaoUniqueIdList.size();
         for (int i = 0; i < entryList.size(); i += batchCount) {
+            CacheRedisCollection redisCollection = CacheRedisCollection.readCollection(entryList.subList(i, i + batchCount));
+            if (redisCollection.isEmpty() || redisCollection.isExpired(currentTime)) {
+                continue;
+            }
             ICacheUniqueId cacheDaoUnique = cacheDaoUniqueIdList.get(i / batchCount);
-            List<Map.Entry<String, Object>> entrySubList = entryList.subList(0, batchCount);
-            redisCollectionMap.put(cacheDaoUnique, new CacheRedisCollection(entrySubList));
+            redisCollectionMap.put(cacheDaoUnique, redisCollection);
         }
-        redisCollection = redisCollectionMap.remove(currentDaoUniqueId);
+        removeCollection = redisCollectionMap.remove(currentDaoUniqueId);
         cacheRedisInteract.addCollections(primaryKey, currentDaoUniqueId, redisCollectionMap);
-        return readDataCollection(redisCollection.getRedisKeyValueList());
+        return removeCollection == null ? null : readDataCollection(removeCollection);
     }
 
     @Override
@@ -119,7 +123,10 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
 
     @Override
     public boolean replaceBatch(long primaryKey, Collection<V> values) {
-        return replaceBatch(primaryKey, values, null);
+        String keyString = getPrimaryRedisKey(primaryKey);
+        Map<String, String> redisKeyValueMap = values.stream().collect(Collectors.toMap(value -> keyValueBuilder.toSecondaryKeyString(value.secondaryKey()), this::toJSONString));
+        RedisClientUtil.getRedisClient().hset(keyString, redisKeyValueMap);
+        return true;
     }
 
     @Override
@@ -149,24 +156,29 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
     }
 
     @Override
+    public boolean updateCacheInformation(long primaryKey, CacheInformation cacheInformation) {
+        String keyString = getPrimaryRedisKey(primaryKey);
+        RedisClientUtil.getRedisClient().executeBatch(redisPipeline -> {
+            long expiredTime = cacheInformation.getExpiredTime();
+            redisPipeline.hset(keyString, CacheRedisCollection.ExpiredName, String.valueOf(expiredTime));
+            redisPipeline.pexpireAt(keyString, cacheInformation.getExpiredTime());
+        });
+        return true;
+    }
+
+    @Override
     public boolean replaceBatch(long primaryKey, Collection<V> values, CacheInformation information) {
-        if (values.isEmpty() && (information == null || information.isEmpty())){
+        if (values.isEmpty() && information == CacheInformation.DEFAULT){
             return true;
         }
-        Map<String, String> redisKeyValueMap = values.stream().collect(Collectors.toMap(value -> keyValueBuilder.toSecondaryKeyString(value.secondaryKey()), this::toJSONString));
-        long expiredTime = 0;
-        if (information != null) {
-            for (Map.Entry<String, Object> entry : information.entrySet()) {
-                redisKeyValueMap.put(entry.getKey(), JsonValueConverter.toJSONString(entry.getValue()));
-            }
-            expiredTime = information.getExpiredTime();
-        }
         String keyString = getPrimaryRedisKey(primaryKey);
+        Map<String, String> redisKeyValueMap = values.stream().collect(Collectors.toMap(value -> keyValueBuilder.toSecondaryKeyString(value.secondaryKey()), this::toJSONString));
+        long expiredTime = information.getExpiredTime();
         if (expiredTime > 0) {
-            long finalExpiredTime = expiredTime;
+            redisKeyValueMap.put(ExpiredName, String.valueOf(expiredTime));
             RedisClientUtil.getRedisClient().executeBatch(redisPipeline -> {
                 redisPipeline.hset(keyString, redisKeyValueMap);
-                redisPipeline.pexpireAt(keyString, finalExpiredTime);
+                redisPipeline.pexpireAt(keyString, expiredTime);
             });
         }
         else {
@@ -176,40 +188,17 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
     }
 
     /**
-     * 执行对应的命令获取数据
-     * @param primaryKey
-     * @param redisPipeline
-     * @param daoUnique
-     */
-    private void executeCommand(long primaryKey, IRedisPipeline redisPipeline, ICacheUniqueId daoUnique){
-        String redisKeyString = daoUnique.getRedisKeyString(primaryKey);
-        redisPipeline.hgetAll(redisKeyString);
-        redisPipeline.pttl(redisKeyString);
-    }
-
-    /**
      * 序列化成 DataCollection
-     * @param entryList
+     * @param redisCollection
      * @return
      */
     @SuppressWarnings("unchecked")
-    private DataCollection<K, V> readDataCollection(List<Map.Entry<String, Object>> entryList){
-        String redisKeyString = entryList.get(0).getKey();
-        Map<String, String> redisKeyValues = (Map<String, String>)entryList.get(0).getValue();
-        List<String> valueStringList = new ArrayList<>();
-        Map<String, Object> informationValueMap = new HashMap<>();
-        for (Map.Entry<String, String> entry : redisKeyValues.entrySet()) {
-            if (CacheName.Names.contains(entry.getKey())) {
-                Object object = JsonValueConverter.parse(entry.getValue());
-                informationValueMap.put(entry.getKey(), object);
-            }
-            else {
-                valueStringList.add(entry.getValue());
-            }
+    private DataCollection<K, V> readDataCollection(CacheRedisCollection redisCollection){
+        if (redisCollection.isEmpty()){
+            return null;
         }
-        List<V> dataList = convert2VDataValue(valueStringList);
-        CacheInformation information = new CacheInformation(informationValueMap);
-        return new DataCollection<>(dataList, information);
+        List<V> dataList = convert2VDataValue(redisCollection.getRedisValues());
+        return new DataCollection<>(dataList, redisCollection.getCacheInformation());
     }
 
     /**
@@ -228,7 +217,7 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
      */
     private String toJSONString(V data){
         Map<String, Object> cacheValue = getConverter().convert2Cache(data);
-        cacheValue.put(CacheName.DataIndexBit.getKeyName(), JsonValueConverter.toJSONString(data.getBitIndexBits()));
+        cacheValue.put(CacheName.DataIndexBit.getKeyName(), data.getBitIndexBits());
         return JSON.toJSONString(cacheValue, mySerializerFeatures);
     }
 
@@ -242,7 +231,10 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
             return null;
         }
         JSONObject cacheValue = JSON.parseObject(string);
-        return getConverter().convert2Value(cacheValue);
+        long longValue = cacheValue.getLong(CacheName.DataIndexBit.getKeyName());
+        V value = getConverter().convert2Value(cacheValue);
+        DataPrivilegeUtil.invokeSetDataBitIndexBits(value, longValue);
+        return value;
     }
 
     /**

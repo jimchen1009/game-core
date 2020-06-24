@@ -130,6 +130,11 @@ public class MyShardedJedisPool extends MyJedisClientPool<ShardedJedis> {
         }
 
         @Override
+        public void hset(String key, String field, String value) {
+            responseList.add(new AbstractMap.SimpleEntry<>(key, pipeline.hset(key, field, value)));
+        }
+
+        @Override
         public void hset(String key, Map<String, String> hash) {
             responseList.add(new AbstractMap.SimpleEntry<>(key, pipeline.hset(key, hash)));
         }

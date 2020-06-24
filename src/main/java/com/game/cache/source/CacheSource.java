@@ -1,5 +1,6 @@
 package com.game.cache.source;
 
+import com.game.cache.CacheInformation;
 import com.game.cache.ICacheUniqueId;
 import com.game.cache.data.IData;
 import com.game.cache.key.IKeyValueBuilder;
@@ -72,5 +73,10 @@ public abstract class CacheSource<K, V extends IData<K>> implements ICacheSource
     @Override
     public void flushOne(long primaryKey, long currentTime, Consumer<Boolean> consumer) {
         consumer.accept(true);
+    }
+
+    @Override
+    public boolean updateCacheInformation(long primaryKey, CacheInformation cacheInformation) {
+        return true;
     }
 }

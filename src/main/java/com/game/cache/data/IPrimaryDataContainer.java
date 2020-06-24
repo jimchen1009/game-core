@@ -20,7 +20,5 @@ public interface IPrimaryDataContainer<K, V extends IData<K>> {
 
     void removeBatch(Collection<K> secondaryKeys);
 
-    long getLatestUpdateTime();
-
-    void updateLatestUpdateTime();
+    void onSchedule(long currentTime);
 }

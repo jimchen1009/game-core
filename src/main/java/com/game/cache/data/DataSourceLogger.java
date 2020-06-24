@@ -1,5 +1,6 @@
 package com.game.cache.data;
 
+import com.game.cache.CacheInformation;
 import com.game.common.log.LogUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

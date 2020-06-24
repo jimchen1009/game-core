@@ -18,7 +18,7 @@ public class DataMapDaoBuilder<K, V extends IData<K>>  extends DataDaoBuilder{
 	@SuppressWarnings("unchecked")
 	public IDataCacheMapDao<K, V> createIfAbsent(){
 		IDataSource<K, V> dataSource = DataSourceUtil.createDataSource(createCacheSource());
-		DataMapContainer<K, V> container = new DataMapContainer<>(dataSource, lifePredicate);
+		DataMapContainer<K, V> container = new DataMapContainer<>(dataSource, lifePredicate, daoManager.getExecutor());
 		ClassConfig classConfig = this.classConfig.cloneConfig().setDelayUpdate(false);
 		IDataSource<K, V> dataSource0 = DataSourceUtil.createDataSource(createCacheSource(classConfig));
 		DataCacheMapDao<K, V> cacheMapDao = new DataCacheMapDao<>(dataSource0, container);

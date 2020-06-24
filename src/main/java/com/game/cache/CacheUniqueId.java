@@ -27,7 +27,7 @@ public class CacheUniqueId implements ICacheUniqueId {
 
 
 	protected final ClassConfig classConfig;
-	protected final String primaryAddKeyParams;
+	protected final String primaryFixKeyParams;
 	protected final List<Map.Entry<String, Object>> primaryUniqueKeys;
 	private final ClassAnnotation information;
 	protected final String sourceUniqueId;
@@ -35,18 +35,20 @@ public class CacheUniqueId implements ICacheUniqueId {
 
 	/***
 	 * @param classConfig
-	 * @param primaryAddKeyParams key:value#key:value
+	 * @param primaryFixKeyParams key:value#key:value
 	 */
-	public CacheUniqueId(ClassConfig classConfig, String primaryAddKeyParams) {
+	public CacheUniqueId(ClassConfig classConfig, String primaryFixKeyParams) {
 		this.classConfig = classConfig;
 		this.information = ClassAnnotation.create(classConfig.getAClass());
-		this.primaryAddKeyParams = primaryAddKeyParams;
-		if (StringUtil.isEmpty(primaryAddKeyParams)){
+		this.primaryFixKeyParams = primaryFixKeyParams;
+		String formatUniqueId = String.format("%s_%s_%s", classConfig.getName(), classConfig.getPrimarySharedId(), StringUtil.join(information.getCombineUniqueKeyList(), ","));
+		if (StringUtil.isEmpty(primaryFixKeyParams)){
 			this.primaryUniqueKeys = new ArrayList<>(1);
 			primaryUniqueKeys.add(new AbstractMap.SimpleEntry<>(information.getPrimaryKey(), null));
+			sourceUniqueId = formatUniqueId;
 		}
 		else {
-			String[] stringList = primaryAddKeyParams.split("#");
+			String[] stringList = primaryFixKeyParams.split("#");
 			this.primaryUniqueKeys = new ArrayList<>(stringList.length);
 			for (String string : stringList) {
 				String[] strings = string.split("#");
@@ -54,15 +56,13 @@ public class CacheUniqueId implements ICacheUniqueId {
 			}
 			int indexOf = information.getPrimaryKeyList().indexOf(information.getPrimaryKey());
 			primaryUniqueKeys.add(new AbstractMap.SimpleEntry<>(information.getPrimaryKey(), null));
+			sourceUniqueId = formatUniqueId + "_" + primaryFixKeyParams;
 		}
 		this.redisKeyFormatString = createRedisKeyFormatString();
-		this.sourceUniqueId = String.format("%s_%s_%s_%s", classConfig.getName(), classConfig.getPrimarySharedId(), StringUtil.join(information.getCombineUniqueKeyList(), ","), primaryAddKeyParams);
+
 	}
 
-	public ClassAnnotation getInformation() {
-		return information;
-	}
-
+	@Override
 	public List<Map.Entry<String, Object>> createPrimaryUniqueKeys(long primaryKey) {
 		List<Map.Entry<String, Object>> entryList = new ArrayList<>(primaryUniqueKeys.size());
 		for (Map.Entry<String, Object> entry : primaryUniqueKeys) {

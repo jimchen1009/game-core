@@ -1,5 +1,6 @@
 package com.game.cache.source;
 
+import com.game.cache.CacheInformation;
 import com.game.cache.ICacheUniqueId;
 import com.game.cache.data.DataCollection;
 import com.game.cache.data.IData;
@@ -81,7 +82,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
     public DataCollection<K, V> getCollection(long primaryKey) {
         DataCollection<K, V> collection = cacheSource.getCollection(primaryKey);
         List<V> valueList = replaceAllDataValueList(primaryKey, collection.getDataList());
-        return new DataCollection<>(valueList, collection.getInformation());
+        return new DataCollection<>(valueList, collection.getCacheInformation());
     }
 
     @Override
@@ -210,6 +211,11 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
             return isSuccess;
         }, consumer);
         executor.submit(callable);
+    }
+
+    @Override
+    public boolean updateCacheInformation(long primaryKey, CacheInformation cacheInformation) {
+        return true;
     }
 
     @Override

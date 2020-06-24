@@ -1,12 +1,16 @@
 package com.game.cache.data;
 
 import com.game.cache.CacheInformation;
+import com.game.cache.source.executor.CacheRunnable;
+import com.game.cache.source.executor.ICacheExecutor;
 import com.game.common.util.Holder;
+import org.apache.commons.lang3.RandomUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -20,10 +24,14 @@ public class DataContainer<K, V extends IData<K>> implements IDataContainer<K, V
     private final IDataLifePredicate loadPredicate;
     private ConcurrentHashMap<Long, IPrimaryDataContainer<K, V>> primaryDataMap;
 
-    public DataContainer(IDataSource<K, V> dataSource, IDataLifePredicate loadPredicate) {
+    public DataContainer(IDataSource<K, V> dataSource, IDataLifePredicate loadPredicate, ICacheExecutor executor) {
         this.dataSource = dataSource;
         this.loadPredicate = loadPredicate;
         this.primaryDataMap = new ConcurrentHashMap<>();
+        //初始化~
+        String name = "dataContainer." + dataSource.getCacheUniqueId().getName();
+        long initialDelay = RandomUtils.nextLong(1000, 2000) / 50;
+        executor.scheduleAtFixedRate(new CacheRunnable(name, this::onScheduleAll), initialDelay, 1000L, TimeUnit.MILLISECONDS);
     }
 
 
@@ -101,5 +109,17 @@ public class DataContainer<K, V extends IData<K>> implements IDataContainer<K, V
 
     private IPrimaryDataContainer<K, V> primaryDataContainer(long primaryKey){
         return primaryDataMap.computeIfAbsent(primaryKey, key -> new PrimaryDataContainer<>(key, dataSource, loadPredicate));
+    }
+
+    private void onScheduleAll(){
+        long currentTime = System.currentTimeMillis();
+        for (IPrimaryDataContainer<K, V> container : primaryDataMap.values()) {
+            try {
+                container.onSchedule(currentTime);
+            }
+            catch (Throwable t){
+                logger.error("primaryKey:{} onSchedule error.", container.primaryKey());
+            }
+        }
     }
 }

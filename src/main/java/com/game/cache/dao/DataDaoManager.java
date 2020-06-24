@@ -1,6 +1,5 @@
 package com.game.cache.dao;
 
-import com.game.cache.CacheUniqueId;
 import com.game.cache.ICacheUniqueId;
 import com.game.cache.data.IData;
 import com.game.cache.key.IKeyValueBuilder;
@@ -8,9 +7,6 @@ import com.game.cache.source.executor.CacheExecutor;
 import com.game.cache.source.executor.ICacheExecutor;
 import com.game.cache.source.interact.CacheDBInteract;
 import com.game.cache.source.interact.CacheRedisInteract;
-import com.game.cache.source.interact.ICacheDBInteract;
-import com.game.cache.source.interact.ICacheLifeInteract;
-import com.game.cache.source.interact.ICacheRedisInteract;
 import com.game.common.config.Configs;
 import com.game.common.config.IConfig;
 import org.slf4j.Logger;
@@ -40,8 +36,8 @@ public class DataDaoManager {
     private final Map<ICacheUniqueId, IDataCacheValueDao> valueDaoMap;
     private final Map<ICacheUniqueId, IDataCacheDao> cacheDaoMap;
 
-    private final Map<String, ICacheDBInteract> name2DBInteracts;
-    private final Map<String, ICacheRedisInteract> name2RedisInteracts;
+    private final CacheDBInteract cacheDBInteract;
+    private final CacheRedisInteract cacheRedisInteract;
 
 
     private DataDaoManager() {
@@ -50,8 +46,8 @@ public class DataDaoManager {
         this.mapDaoMap = new ConcurrentHashMap<>();
         this.valueDaoMap = new ConcurrentHashMap<>();
         this.cacheDaoMap = new ConcurrentHashMap<>();
-        this.name2DBInteracts = new ConcurrentHashMap<>();
-        this.name2RedisInteracts = new ConcurrentHashMap<>();
+        this.cacheDBInteract = new CacheDBInteract(this::handleCacheInteract, cacheDaoMap::keySet);
+        this.cacheRedisInteract = new CacheRedisInteract(this::handleCacheInteract, cacheDaoMap::keySet);
     }
 
     public void flushAll(){
@@ -115,12 +111,12 @@ public class DataDaoManager {
         return executor;
     }
 
-    ICacheDBInteract getCacheDBInteract(CacheUniqueId cacheUniqueId, ICacheLifeInteract lifeInteract){
-        return name2DBInteracts.computeIfAbsent(cacheUniqueId.getName(), key -> new CacheDBInteract(lifeInteract, this::handleCacheInteract, cacheDaoMap::keySet));
+    CacheDBInteract getCacheDBInteract() {
+        return cacheDBInteract;
     }
 
-    ICacheRedisInteract getCacheRedisInteract(CacheUniqueId cacheUniqueId, ICacheLifeInteract lifeInteract){
-        return name2RedisInteracts.computeIfAbsent(cacheUniqueId.getName(), key -> new CacheRedisInteract(lifeInteract, this::handleCacheInteract, cacheDaoMap::keySet));
+    CacheRedisInteract getCacheRedisInteract() {
+        return cacheRedisInteract;
     }
 
     /**
@@ -129,9 +125,9 @@ public class DataDaoManager {
      * @param cacheDaoUnique
      */
     private void handleCacheInteract(long primaryKey, ICacheUniqueId cacheDaoUnique){
-        IDataCacheMapDao cacheMapDao = getDataCacheMapDao(cacheDaoUnique);
+        IDataCacheMapDao cacheMapDao = mapDaoMap.get(cacheDaoUnique);
         if (cacheMapDao == null){
-            IDataCacheValueDao cacheValueDao = getDataCacheValueDao(cacheDaoUnique);
+            IDataCacheValueDao cacheValueDao = valueDaoMap.get(cacheDaoUnique);
             if (cacheValueDao != null){
                 cacheValueDao.get(primaryKey);
             }
@@ -139,14 +135,6 @@ public class DataDaoManager {
         else {
             cacheMapDao.getAll(primaryKey);
         }
-    }
-
-    private IDataCacheMapDao getDataCacheMapDao(ICacheUniqueId cacheDaoUnique){
-        return mapDaoMap.get(cacheDaoUnique);
-    }
-
-    private IDataCacheValueDao getDataCacheValueDao(ICacheUniqueId cacheDaoUnique){
-        return valueDaoMap.get(cacheDaoUnique);
     }
 
     @SuppressWarnings("unchecked")

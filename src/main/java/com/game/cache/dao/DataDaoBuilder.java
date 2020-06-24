@@ -84,12 +84,12 @@ public class DataDaoBuilder <K, V extends IData<K>> {
 	}
 
 	private CacheRedisSource<K, V> createCacheRedisSource(CacheUniqueId cacheUniqueId){
-		ICacheRedisInteract cacheRedisInteract = daoManager.getCacheRedisInteract(cacheUniqueId, cacheLifeInteract);
+		ICacheRedisInteract cacheRedisInteract = daoManager.getCacheRedisInteract();
 		return new CacheRedisSource<>(cacheUniqueId, secondaryBuilder, cacheRedisInteract);
 	}
 
 	private CacheMongoDBSource<K, V> createCacheMongoDBSource(CacheUniqueId cacheUniqueId){
-		ICacheDBInteract cacheDBInteract = daoManager.getCacheDBInteract(cacheUniqueId, cacheLifeInteract);
+		ICacheDBInteract cacheDBInteract = daoManager.getCacheDBInteract();
 		return new CacheMongoDBSource<>(cacheUniqueId, secondaryBuilder, cacheDBInteract);
 	}
 

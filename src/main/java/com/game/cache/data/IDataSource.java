@@ -1,5 +1,6 @@
 package com.game.cache.data;
 
+import com.game.cache.CacheInformation;
 import com.game.cache.ICacheUniqueId;
 import com.game.cache.mapper.IClassConverter;
 import com.game.common.lock.LockKey;
@@ -35,4 +36,6 @@ public interface IDataSource<K, V extends IData<K>> {
     boolean flushAll(long currentTime);
 
     void flushOne(long primaryKey, long currentTime, Consumer<Boolean> consumer);
+
+    boolean updateCacheInformation(long primaryKey, CacheInformation cacheInformation);
 }

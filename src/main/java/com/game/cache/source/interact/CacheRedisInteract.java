@@ -11,8 +11,8 @@ import java.util.stream.Collectors;
 
 public class CacheRedisInteract extends CacheInteract<CacheRedisCollection> implements ICacheRedisInteract {
 
-    public CacheRedisInteract(ICacheLifeInteract cacheLifeInteract, BiConsumer<Long, ICacheUniqueId> consumer, Supplier<Collection<ICacheUniqueId>> supplier) {
-        super(cacheLifeInteract, consumer, supplier);
+    public CacheRedisInteract(BiConsumer<Long, ICacheUniqueId> consumer, Supplier<Collection<ICacheUniqueId>> supplier) {
+        super(consumer, supplier);
     }
 
     @Override

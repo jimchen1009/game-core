@@ -104,18 +104,19 @@ public class CacheRunner {
 
             userDaoAllList.add(new UserDaoAll(userId, itemDao, currencyDao));
         }
+        userDaoAllList.get(0).execute();
 
-        for (int i = 0; i < 2; i++) {
-            executorService.scheduleAtFixedRate(()-> {
-                int index = RandomUtils.nextInt(0, userDaoAllList.size());
-                try {
-                    userDaoAllList.get(index).execute();
-                }
-                catch (Throwable t){
-//                    logger.error("", t);
-                }
-            }, 10, 500, TimeUnit.MILLISECONDS);
-        }
+//        for (int i = 0; i < 2; i++) {
+//            executorService.scheduleAtFixedRate(()-> {
+//                int index = RandomUtils.nextInt(0, userDaoAllList.size());
+//                try {
+//                    userDaoAllList.get(index).execute();
+//                }
+//                catch (Throwable t){
+////                    logger.error("", t);
+//                }
+//            }, 10, 500, TimeUnit.MILLISECONDS);
+//        }
 
         ThreadUtil.sleep(TimeUnit.SECONDS.toMillis(5));
 

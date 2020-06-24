@@ -10,12 +10,12 @@ import java.util.stream.Collectors;
 
 public class CacheDBInteract extends CacheInteract<CacheDBCollection> implements ICacheDBInteract {
 
-    public CacheDBInteract(ICacheLifeInteract cacheLifeInteract, BiConsumer<Long, ICacheUniqueId> consumer, Supplier<Collection<ICacheUniqueId>> supplier) {
-        super(cacheLifeInteract, consumer, supplier);
+    public CacheDBInteract(BiConsumer<Long, ICacheUniqueId> consumer, Supplier<Collection<ICacheUniqueId>> supplier) {
+        super(consumer, supplier);
     }
 
     @Override
-    protected List<ICacheUniqueId> getSharedCacheUniqueIdList(long primaryKey, ICacheUniqueId cacheDaoUnique, Collection<ICacheUniqueId> cacheUniqueIds) {
-        return cacheUniqueIds.stream().filter( cacheUniqueId0 -> cacheUniqueId0.getCacheType().isDBType() && cacheUniqueId0.getName().equals(cacheDaoUnique.getName())).collect(Collectors.toList());
+    protected List<ICacheUniqueId> getSharedCacheUniqueIdList(long primaryKey, ICacheUniqueId iCacheUniqueId, Collection<ICacheUniqueId> cacheUniqueIds) {
+        return cacheUniqueIds.stream().filter( cacheUniqueId0 -> cacheUniqueId0.getCacheType().isDBType() && cacheUniqueId0.getName().equals(iCacheUniqueId.getName())).collect(Collectors.toList());
     }
 }

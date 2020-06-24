@@ -41,7 +41,6 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
 
     private final ICacheRedisSource<K, V> redisSource;
     private final ICacheSource<K, V> dbSource;
-    private final ICacheExecutor executor;
 
     private final Map<Long, CacheInformation> cacheInformationMap;
 
@@ -51,10 +50,9 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
         if (dbSource instanceof ICacheDelaySource){
             ((ICacheDelaySource<K, V>)dbSource).addFlushCallback(this::onPrimaryDBCacheSuccess);
         }
-        this.executor = executor;
         this.cacheInformationMap = new ConcurrentHashMap<>();
-        CacheRunnable cacheRunnable = new CacheRunnable(dbSource.getCacheUniqueId().getName(), this::onScheduleAll);
-        executor.scheduleAtFixedRate(cacheRunnable, 60, 60, TimeUnit.SECONDS);
+        String name = "cacheCompose." + dbSource.getCacheUniqueId().getName();
+        executor.scheduleAtFixedRate(new CacheRunnable(name, this::onScheduleAll), 60, 60, TimeUnit.SECONDS);
     }
 
     @Override
@@ -96,15 +94,15 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
         else {
             //第一次加载数据
             dataCollection = redisSource.getCollection(primaryKey);
-            if (dataCollection == null || dataCollection.isEmpty() || dataCollection.isExpired(currentTime)){
+            if (dataCollection == null || dataCollection.isExpired(currentTime)){
                 dataCollection = getDBCollection(primaryKey, currentTime);
             }
             else {
                 List<V> changeDataList = dataCollection.getDataList().stream().filter(data -> data.hasBitIndex(DataBitIndex.RedisChanged)).collect(Collectors.toList());
-                onReplaceBatchRedisSuccess(primaryKey, changeDataList);
+                onReplaceRedisBatchSuccess(primaryKey, changeDataList);
             }
         }
-        cacheInformationMap.put(primaryKey, dataCollection.getInformation());
+        cacheInformationMap.put(primaryKey, dataCollection.getCacheInformation());
         return dataCollection;
     }
 
@@ -113,7 +111,7 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
         beforeReplaceBatch(Collections.singleton(value));
         boolean isSuccess = redisSource.replaceOne(primaryKey, value);
         if (isSuccess){
-            isSuccess = onReplaceBatchRedisSuccess(primaryKey, Collections.singleton(value));
+            isSuccess = onReplaceRedisBatchSuccess(primaryKey, Collections.singleton(value));
         }
         return isSuccess;
     }
@@ -123,7 +121,7 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
         beforeReplaceBatch(values);
         boolean isSuccess = redisSource.replaceBatch(primaryKey, values);
         if (isSuccess){
-            isSuccess = onReplaceBatchRedisSuccess(primaryKey, values);
+            isSuccess = onReplaceRedisBatchSuccess(primaryKey, values);
         }
         return isSuccess;
     }
@@ -179,6 +177,11 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
     }
 
     @Override
+    public boolean updateCacheInformation(long primaryKey, CacheInformation cacheInformation) {
+        return redisSource.updateCacheInformation(primaryKey, cacheInformation);
+    }
+
+    @Override
     public ICacheKeyValueBuilder<K> getKeyValueBuilder() {
         return redisSource.getKeyValueBuilder();
     }
@@ -211,7 +214,7 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
      */
     private void onPrimaryDBCacheSuccess(PrimaryDelayCache<K, V> primaryDelayCache){
         List<V> dataList = primaryDelayCache.getAll().stream().map(KeyDataValue::getDataValue).collect(Collectors.toList());
-        onReplaceBatchDBSuccess(primaryDelayCache.getPrimaryKey(), dataList, null);
+        onReplaceDbBatchSuccess(primaryDelayCache.getPrimaryKey(), dataList, CacheInformation.DEFAULT);
     }
 
 
@@ -221,9 +224,9 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
     private DataCollection<K, V> getDBCollection(long primaryKey, long currentTime){
         DataCollection<K, V> dataCollection = dbSource.getCollection(primaryKey);
         List<V> dataList = dataCollection.getDataList();
-        CacheInformation cacheInformation = new CacheInformation();
-        cacheInformation.updateExpiredTime(currentTime);
-        onReplaceBatchDBSuccess(primaryKey, dataList, cacheInformation);
+        CacheInformation cacheInformation = dataCollection.getCacheInformation();
+        cacheInformation.updateCurrentTime(currentTime);
+        onReplaceDbBatchSuccess(primaryKey, dataList, cacheInformation);
         return dataCollection;
     }
 
@@ -244,7 +247,7 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
      * @param values
      * @return
      */
-    private boolean onReplaceBatchRedisSuccess(long primaryKey, Collection<V> values){
+    private boolean onReplaceRedisBatchSuccess(long primaryKey, Collection<V> values){
         if (values.isEmpty()){
             return true;
         }
@@ -253,7 +256,7 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
             return true;    //留给回调的时候调用
         }
         else if (success){
-            success = onReplaceBatchDBSuccess(primaryKey, values, null);
+            success = onReplaceDbBatchSuccess(primaryKey, values, CacheInformation.DEFAULT);
         }
         return success;
     }
@@ -265,7 +268,7 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
      * @param cacheInformation
      * @return
      */
-    private boolean onReplaceBatchDBSuccess(long primaryKey, Collection<V> values, CacheInformation cacheInformation){
+    private boolean onReplaceDbBatchSuccess(long primaryKey, Collection<V> values, CacheInformation cacheInformation){
         values.forEach(value -> DataPrivilegeUtil.invokeClearBitIndex(value, DataBitIndex.RedisChanged));
         return redisSource.replaceBatch(primaryKey, values, cacheInformation);
     }

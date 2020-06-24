@@ -37,6 +37,10 @@ public abstract class Data<K> implements IData<K> {
         this.dataBitIndexBits = this.dataBitIndexBits | (1L << bitIndex.getId());
     }
 
+    private void setDataBitIndexBits(long dataBitIndexBits) {
+        this.dataBitIndexBits = dataBitIndexBits;
+    }
+
     @Override
     public long getBitIndexBits() {
         return dataBitIndexBits;

@@ -8,6 +8,14 @@ import java.util.Map;
 public interface ICacheInteract<T> extends ICacheLifeInteract {
 
 
+    void removePrimary(long primaryKey);
+
+    /**
+     * 获取除了自己之外，其他的~
+     * @param primaryKey
+     * @param cacheDaoUnique
+     * @return
+     */
     List<ICacheUniqueId> getSharedCacheUniqueIdList(long primaryKey, ICacheUniqueId cacheDaoUnique);
 
     /**

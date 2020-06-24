@@ -1,6 +1,5 @@
 package com.game.cache.data;
 
-import com.game.cache.CacheContext;
 import com.game.cache.CacheInformation;
 import com.game.cache.exception.CacheException;
 import com.game.common.arg.Args;
@@ -20,18 +19,16 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
 
     private final long primaryKey;
     private ConcurrentHashMap<K, V> secondary2Values;
-    private CacheInformation information;
+    private CacheInformation cacheInformation;
     private final IDataSource<K, V> dataSource;
     private final IDataLifePredicate loadPredicate;
-    private volatile long latestUpdateTime;
 
     public PrimaryDataContainer(long primaryKey, IDataSource<K, V> dataSource, IDataLifePredicate loadPredicate) {
         this.primaryKey = primaryKey;
         this.secondary2Values = new ConcurrentHashMap<>();
-        this.information = null;
+        this.cacheInformation = null;
         this.dataSource = dataSource;
         this.loadPredicate = loadPredicate;
-        this.latestUpdateTime = CacheContext.getCurrentTime();
     }
 
     @Override
@@ -148,13 +145,24 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
     }
 
     @Override
-    public long getLatestUpdateTime() {
-        return latestUpdateTime;
-    }
-
-    @Override
-    public void updateLatestUpdateTime() {
-        latestUpdateTime = CacheContext.getCurrentTime();
+    public void onSchedule(long currentTime) {
+        if (cacheInformation == null){
+            return;
+        }
+        if (!cacheInformation.needUpdateExpired(currentTime)){
+            return;
+        }
+        LockUtil.syncLock(dataSource.getLockKey(primaryKey), "onSchedule", () -> {
+            CacheInformation cacheInformation = PrimaryDataContainer.this.cacheInformation.cloneInformation();
+            cacheInformation.updateCurrentTime(currentTime);
+            boolean updateSuccess = dataSource.updateCacheInformation(primaryKey, cacheInformation);
+            if (updateSuccess){
+                PrimaryDataContainer.this.cacheInformation = cacheInformation;
+            }
+            else {
+                logger.error("primaryKey:{} updateCacheInformation error.", primaryKey);
+            }
+        });
     }
 
     private ConcurrentHashMap<K, V> lockCurrentMap(){
@@ -167,15 +175,14 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
 
     private ConcurrentHashMap<K, V> currentMap(){
         long currentTime = System.currentTimeMillis();
-        if (information == null || information.isExpired(currentTime)){
+        if (cacheInformation == null || cacheInformation.isExpired(currentTime)){
             if (loadPredicate.isNewLife(primaryKey)){
-                information = new CacheInformation();
-                information.updateExpiredTime(currentTime);
+                cacheInformation = new CacheInformation();
                 loadPredicate.setOldLife(primaryKey);
+                cacheInformation.updateCurrentTime(currentTime);
             }
             else {
                 DataCollection<K, V> collection = dataSource.getCollection(primaryKey);
-                information = collection.getInformation();
                 List<V> valueList = collection.getDataList();
                 for (V value : valueList) {
                     if (value.isDeleted()){
@@ -183,6 +190,7 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
                     }
                     secondary2Values.put(value.secondaryKey(), value);
                 }
+                cacheInformation = collection.getCacheInformation();
             }
         }
         return secondary2Values;

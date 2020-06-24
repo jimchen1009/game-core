@@ -1,5 +1,6 @@
 package com.game.cache.data;
 
+import com.game.cache.CacheInformation;
 import com.game.cache.ICacheUniqueId;
 import com.game.cache.mapper.IClassConverter;
 import com.game.cache.source.executor.ICacheSource;
@@ -95,5 +96,10 @@ class DataSource<K, V extends IData<K>> implements IDataSource<K, V>{
     @Override
     public void flushOne(long primaryKey, long currentTime, Consumer<Boolean> consumer) {
         cacheSource.flushOne(primaryKey, currentTime, consumer);
+    }
+
+    @Override
+    public boolean updateCacheInformation(long primaryKey, CacheInformation cacheInformation) {
+        return cacheSource.updateCacheInformation(primaryKey, cacheInformation);
     }
 }
