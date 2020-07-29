@@ -1,6 +1,6 @@
 package com.game.common.lock;
 
-import com.game.cache.exception.CacheException;
+import com.game.core.cache.exception.CacheException;
 
 import java.util.Objects;
 

@@ -3,7 +3,6 @@ package com.game.common.property;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * 系统默认的实现：
