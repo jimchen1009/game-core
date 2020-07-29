@@ -10,8 +10,6 @@ public interface IData<K> extends Cloneable {
 
     long getBitIndexBits();
 
-    boolean existCacheBitIndex();
-
     void clearCacheBitIndex();
 
     Object clone(Supplier<Object> supplier);

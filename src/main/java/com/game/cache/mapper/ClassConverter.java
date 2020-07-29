@@ -62,15 +62,8 @@ public class ClassConverter<K,V extends IData<K>> implements IClassConverter<K, 
     public Map<String, Object> convert2Cache(V dataValue){
         try {
             Map<String, Object> cacheValue = new HashMap<>();
-            for (FieldAnnotation description : classAnnotation.getPrimaryFieldAnnotationList()) {
+            for (FieldAnnotation description : classAnnotation.getFiledAnnotationList()) {
                 encodeValue(dataValue, cacheValue, description, true);
-            }
-            boolean cacheBitIndex = !dataValue.existCacheBitIndex();
-            for (FieldAnnotation description : classAnnotation.getNormalFieldAnnotationList()) {
-                encodeValue(dataValue, cacheValue, description, true);
-                if (cacheBitIndex || cacheType.isFullCache() || dataValue.hasBitIndex(description.getBitIndex())){
-                    encodeValue(dataValue, cacheValue, description, false);
-                }
             }
             return cacheValue;
         }

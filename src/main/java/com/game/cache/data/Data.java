@@ -46,10 +46,6 @@ public abstract class Data<K> implements IData<K> {
         return dataBitIndexBits;
     }
 
-    @Override
-    public boolean existCacheBitIndex() {
-        return (dataBitIndexBits & VALUE_ERASER) > 0;
-    }
 
     @Override
     public void clearCacheBitIndex() {
