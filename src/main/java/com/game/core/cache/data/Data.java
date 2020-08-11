@@ -20,7 +20,7 @@ public abstract class Data<K> implements IData<K> {
     }
 
     @CacheFiled(index = DataBitIndex.MaximumIndex)
-    private int deleteTime = 0;
+    private long deleteTime = 0;
 
     private long dataBitIndexBits = 0;
 
@@ -80,6 +80,6 @@ public abstract class Data<K> implements IData<K> {
         if (currentTime <= 0){
             throw new CacheException("currentTime==%s", currentTime);
         }
-        deleteTime = (int)(currentTime / 1000);
+        deleteTime = currentTime;
     }
 }

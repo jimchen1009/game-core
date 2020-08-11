@@ -72,7 +72,7 @@ public class LockKey {
         return new LockKey(SYSTEM_PREFIX + name);
     }
 
-    public static LockKey extLockKey(String name){
+    public static LockKey customLockKey(String name){
         if (name.indexOf(SYSTEM_PREFIX) == 0){
             throw new CacheException("don't support name:%s", name);
         }
