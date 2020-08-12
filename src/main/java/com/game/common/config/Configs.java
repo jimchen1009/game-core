@@ -9,12 +9,6 @@ import java.util.stream.Collectors;
 
 public class Configs implements IConfig {
 
-    private static IConfig appConfig = ConfigUtil.loadConfig(System.getProperty("application.config.path", "application.conf"));
-
-    public static IConfig getInstance() {
-        return appConfig;
-    }
-
     private final com.typesafe.config.Config config;
 
     Configs(com.typesafe.config.Config config) {

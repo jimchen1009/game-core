@@ -1,8 +1,8 @@
 package com.game.core.cache.source;
 
+import com.game.common.config.CoreConfigs;
 import com.game.core.cache.data.IData;
 import com.game.core.cache.exception.CacheException;
-import com.game.common.config.Configs;
 
 import java.util.Collection;
 import java.util.Map;
@@ -18,7 +18,7 @@ public class PrimaryDelayCache<K, V extends IData<K>>{
     public PrimaryDelayCache(long primaryKey, long duration) {
         this.primaryKey = primaryKey;
         if (duration == 0){
-            duration = Configs.getInstance().getDuration("cache.flush.expiredDuration", TimeUnit.MILLISECONDS);
+            duration = CoreConfigs.getDuration("cache.flush.expiredDuration", TimeUnit.MILLISECONDS);
         }
         this.expiredTime = System.currentTimeMillis() + duration;
         this.keyDataValuesMap = new ConcurrentHashMap<>();

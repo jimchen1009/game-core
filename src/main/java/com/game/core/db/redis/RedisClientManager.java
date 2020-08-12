@@ -1,6 +1,6 @@
 package com.game.core.db.redis;
 
-import com.game.common.config.Configs;
+import com.game.common.config.CoreConfigs;
 import com.game.common.config.IConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +17,7 @@ public class RedisClientManager {
     private static final Map<String, RedisClientManager> managers = new HashMap<>();
 
     public static void init(){
-        List<IConfig> configList = Configs.getInstance().getConfigList("db.redis");
+        List<IConfig> configList = CoreConfigs.getConfigList("db.redis");
         for (IConfig iConfig : configList) {
             RedisClientManager manager = new RedisClientManager(iConfig);
             for (String s : manager.names) {

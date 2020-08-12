@@ -1,5 +1,7 @@
 package com.game.core.cache.dao;
 
+import com.game.common.config.CoreConfigs;
+import com.game.common.config.IConfig;
 import com.game.core.cache.ICacheUniqueId;
 import com.game.core.cache.data.IData;
 import com.game.core.cache.key.IKeyValueBuilder;
@@ -7,8 +9,6 @@ import com.game.core.cache.source.executor.CacheExecutor;
 import com.game.core.cache.source.executor.ICacheExecutor;
 import com.game.core.cache.source.interact.CacheDBInteract;
 import com.game.core.cache.source.interact.CacheRedisInteract;
-import com.game.common.config.Configs;
-import com.game.common.config.IConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +41,7 @@ public class DataDaoManager {
 
 
     private DataDaoManager() {
-        IConfig executorConfig = Configs.getInstance().getConfig("cache.executor");
+        IConfig executorConfig = CoreConfigs.getConfig("cache.executor");
         this.executor = new CacheExecutor(executorConfig.getInt("threadCount"));
         this.mapDaoMap = new ConcurrentHashMap<>();
         this.valueDaoMap = new ConcurrentHashMap<>();

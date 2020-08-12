@@ -1,6 +1,6 @@
 package com.game.core.db.mongodb;
 
-import com.game.common.config.Configs;
+import com.game.common.config.CoreConfigs;
 import com.game.common.config.IConfig;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.ReadPreference;
@@ -42,7 +42,7 @@ public class MongoDbManager {
 
 
     public static void init(){
-        List<IConfig> configList = Configs.getInstance().getConfigList("db.mongodb");
+        List<IConfig> configList = CoreConfigs.getConfigList("db.mongodb");
         for (IConfig iConfig : configList) {
             MongoDbManager manager = new MongoDbManager(Objects.requireNonNull(iConfig));
             for (String s : manager.names) {
