@@ -1,6 +1,6 @@
 package com.game.core.db.redis;
 
-import com.game.common.config.IConfig;
+import com.game.common.config.IEvnConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import redis.clients.jedis.JedisPoolConfig;
@@ -29,7 +29,7 @@ public abstract class MyJedisClientPool<T extends JedisCommands> extends MyRedis
         }
     }
 
-    protected JedisPoolConfig getPoolConfig(IConfig redisConfig){
+    protected JedisPoolConfig getPoolConfig(IEvnConfig redisConfig){
         JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
         int maxConnection = redisConfig.getInt("maxConnection");
         jedisPoolConfig.setMaxIdle(maxConnection);

@@ -1,7 +1,7 @@
 package com.game.core.cache.data;
 
-import com.game.common.config.CoreConfigs;
-import com.game.common.config.IConfig;
+import com.game.common.config.EvnCoreConfigs;
+import com.game.common.config.IEvnConfig;
 import com.game.core.cache.source.executor.ICacheSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +16,7 @@ public class DataSourceUtil {
 
     public static <K, V extends IData<K>> IDataSource<K, V> createDataSource(ICacheSource<K, V> cacheSource){
         IDataSource<K, V> dataSource = new DataSource<>(cacheSource);
-        IConfig dataConfig = CoreConfigs.getConfig("cache.data");
+        IEvnConfig dataConfig = EvnCoreConfigs.getConfig("cache.data");
         List<String> decorators = dataConfig.getList("decorators");
         for (String decorator : decorators) {
             String className = DataSource.class.getName() + decorator.toUpperCase().charAt(0) + decorator.toLowerCase().substring(1);

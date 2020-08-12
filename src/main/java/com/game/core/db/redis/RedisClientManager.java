@@ -1,7 +1,7 @@
 package com.game.core.db.redis;
 
-import com.game.common.config.CoreConfigs;
-import com.game.common.config.IConfig;
+import com.game.common.config.EvnCoreConfigs;
+import com.game.common.config.IEvnConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,9 +17,9 @@ public class RedisClientManager {
     private static final Map<String, RedisClientManager> managers = new HashMap<>();
 
     public static void init(){
-        List<IConfig> configList = CoreConfigs.getConfigList("db.redis");
-        for (IConfig iConfig : configList) {
-            RedisClientManager manager = new RedisClientManager(iConfig);
+        List<IEvnConfig> configList = EvnCoreConfigs.getConfigList("db.redis");
+        for (IEvnConfig iEvnConfig : configList) {
+            RedisClientManager manager = new RedisClientManager(iEvnConfig);
             for (String s : manager.names) {
                 managers.put(s, manager);
             }
@@ -39,7 +39,7 @@ public class RedisClientManager {
     private final IRedisClient client;
     private final List<String> names;
 
-    private RedisClientManager(IConfig redisConfig) {
+    private RedisClientManager(IEvnConfig redisConfig) {
         this.names = Collections.unmodifiableList(redisConfig.getList("names"));
         this.client = new MyShardedJedisPool(redisConfig);
     }

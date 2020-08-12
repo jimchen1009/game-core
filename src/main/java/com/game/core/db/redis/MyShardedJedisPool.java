@@ -1,7 +1,7 @@
 package com.game.core.db.redis;
 
 import com.game.core.cache.exception.CacheException;
-import com.game.common.config.IConfig;
+import com.game.common.config.IEvnConfig;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.JedisShardInfo;
@@ -23,13 +23,13 @@ public class MyShardedJedisPool extends MyJedisClientPool<ShardedJedis> {
 
     private ShardedJedisPool pool;
 
-    public MyShardedJedisPool(IConfig redisConfig) {
+    public MyShardedJedisPool(IEvnConfig redisConfig) {
         reload(redisConfig);
     }
 
     @Override
-    public synchronized void reload(IConfig redisConfig) {
-        List<IConfig> addressConfigList = redisConfig.getConfigList("sharding");
+    public synchronized void reload(IEvnConfig redisConfig) {
+        List<IEvnConfig> addressConfigList = redisConfig.getConfigList("sharding");
         List<JedisShardInfo> shardInfoList = addressConfigList.stream().map( config -> {
             JedisShardInfo jedisShardInfo = new JedisShardInfo(config.getString("host"), config.getInt("port"));
             if (config.hasPath("password")) {

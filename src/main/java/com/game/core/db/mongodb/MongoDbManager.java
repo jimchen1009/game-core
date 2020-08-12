@@ -1,7 +1,7 @@
 package com.game.core.db.mongodb;
 
-import com.game.common.config.CoreConfigs;
-import com.game.common.config.IConfig;
+import com.game.common.config.EvnCoreConfigs;
+import com.game.common.config.IEvnConfig;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
@@ -42,9 +42,9 @@ public class MongoDbManager {
 
 
     public static void init(){
-        List<IConfig> configList = CoreConfigs.getConfigList("db.mongodb");
-        for (IConfig iConfig : configList) {
-            MongoDbManager manager = new MongoDbManager(Objects.requireNonNull(iConfig));
+        List<IEvnConfig> configList = EvnCoreConfigs.getConfigList("db.mongodb");
+        for (IEvnConfig iEvnConfig : configList) {
+            MongoDbManager manager = new MongoDbManager(Objects.requireNonNull(iEvnConfig));
             for (String s : manager.names) {
                 managers.put(s, manager);
             }
@@ -64,13 +64,13 @@ public class MongoDbManager {
     private  MongoClient client;
     private final List<String> names;
 
-    private MongoDbManager(IConfig mongodbConfig) {
+    private MongoDbManager(IEvnConfig mongodbConfig) {
         this.names = Collections.unmodifiableList(mongodbConfig.getList("names"));
         reload(mongodbConfig);
     }
 
-    private synchronized void reload(IConfig mongodbConfig){
-        List<IConfig> addressConfigList = mongodbConfig.getConfigList("sharding");
+    private synchronized void reload(IEvnConfig mongodbConfig){
+        List<IEvnConfig> addressConfigList = mongodbConfig.getConfigList("sharding");
         List<ServerAddress> addressList = addressConfigList.stream().map(configs -> new ServerAddress(configs.getString("host"), configs.getInt("port"))).collect(Collectors.toList());
         String application = mongodbConfig.getString("application");
         int connectTimeout = (int)mongodbConfig.getDuration("connectTimeout", TimeUnit.MILLISECONDS);

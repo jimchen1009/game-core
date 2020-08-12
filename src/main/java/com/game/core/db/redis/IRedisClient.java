@@ -1,6 +1,6 @@
 package com.game.core.db.redis;
 
-import com.game.common.config.IConfig;
+import com.game.common.config.IEvnConfig;
 import redis.clients.jedis.params.SetParams;
 
 import java.util.List;
@@ -10,7 +10,7 @@ import java.util.function.Consumer;
 
 public interface IRedisClient {
 
-    void reload(IConfig config);
+    void reload(IEvnConfig config);
 
     void destroy();
 

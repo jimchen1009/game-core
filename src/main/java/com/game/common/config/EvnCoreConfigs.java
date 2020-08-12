@@ -3,15 +3,15 @@ package com.game.common.config;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public class CoreConfigs {
+public class EvnCoreConfigs {
 
-	private static IConfig coreConfig = ConfigUtil.loadConfig(System.getProperty("application.config.path", "core_config.conf"));
+	private static IEvnConfig coreConfig = EvnConfigUtil.loadConfig(System.getProperty("game.core.config.path", "core_config.conf"));
 
 	public static boolean hasPath(String path) {
 		return coreConfig.hasPath(path);
 	}
 
-	public static IConfig getConfig(String path){
+	public static IEvnConfig getConfig(String path){
 		return coreConfig.getConfig(path);
 	}
 
@@ -31,7 +31,7 @@ public class CoreConfigs {
 		return coreConfig.getBoolean(path);
 	}
 
-	public static List<IConfig> getConfigList(String path){
+	public static List<IEvnConfig> getConfigList(String path){
 		return coreConfig.getConfigList(path);
 	}
 

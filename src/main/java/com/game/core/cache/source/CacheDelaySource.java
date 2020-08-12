@@ -1,6 +1,6 @@
 package com.game.core.cache.source;
 
-import com.game.common.config.CoreConfigs;
+import com.game.common.config.EvnCoreConfigs;
 import com.game.core.cache.CacheInformation;
 import com.game.core.cache.ICacheUniqueId;
 import com.game.core.cache.data.DataCollection;
@@ -12,7 +12,6 @@ import com.game.core.cache.source.executor.CacheRunnable;
 import com.game.core.cache.source.executor.ICacheExecutor;
 import com.game.core.cache.source.executor.ICacheFuture;
 import com.game.core.cache.source.executor.ICacheSource;
-import com.game.common.config.Configs;
 import com.game.common.lock.LockKey;
 import com.game.common.lock.LockUtil;
 import com.mongodb.Function;
@@ -152,7 +151,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
 
     @Override
     public boolean flushAll(long currentTime) {
-        String string = CoreConfigs.getString("cache.flush.logPath");
+        String string = EvnCoreConfigs.getString("cache.flush.logPath");
         File parent = new File(string + "_" + currentTime);
         if (!parent.exists()){
             boolean success = parent.mkdir();
@@ -185,7 +184,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
                 logger.error("{}", builder.toString(), e);
             }
         }
-        int tryCount = Math.max(2, CoreConfigs.getInt("cache.flush.tryAllCount"));
+        int tryCount = Math.max(2, EvnCoreConfigs.getInt("cache.flush.tryAllCount"));
         while (tryCount-- > 0 && !primaryCacheMap.isEmpty()){
             lockAndFlushPrimaryCache(primaryCacheMap.keySet(), "flushAll");
         }
@@ -200,7 +199,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
     public void flushOne(long primaryKey, long currentTime, Consumer<Boolean> consumer) {
         CacheCallable<Boolean> callable = new CacheCallable<>(getScheduleName(), () -> {
             boolean isSuccess = false;
-            int tryCount = CoreConfigs.getInt("cache.flush.tryOneCount");
+            int tryCount = EvnCoreConfigs.getInt("cache.flush.tryOneCount");
             for (int count = 0; count < tryCount; count++) {
                 isSuccess = lockAndFlushPrimaryCache(Collections.singletonList(primaryKey), "flushOne.0");
                 if (isSuccess) {
@@ -223,8 +222,8 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
     public boolean flushOne(long primaryKey) {
         CacheCallable<Boolean> callable = new CacheCallable<>(getScheduleName(), () -> lockAndFlushPrimaryCache(Collections.singletonList(primaryKey), "flushOne.1"), null);
         boolean isSuccess = false;
-        int tryCount = CoreConfigs.getInt("cache.flush.tryOneCount");
-        long flushTimeOut = CoreConfigs.getDuration("cache.flush.timeOut", TimeUnit.MILLISECONDS);
+        int tryCount = EvnCoreConfigs.getInt("cache.flush.tryOneCount");
+        long flushTimeOut = EvnCoreConfigs.getDuration("cache.flush.timeOut", TimeUnit.MILLISECONDS);
         Throwable throwable = null;
         for (int count = 0; count < tryCount; count++) {
             try {
@@ -267,7 +266,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
             return;
         }
         long currentTime = System.currentTimeMillis();
-        int maximumCount = Math.min(50, CoreConfigs.getInt("cache.flush.maximumCount"));
+        int maximumCount = Math.min(50, EvnCoreConfigs.getInt("cache.flush.maximumCount"));
         List<Long> removePrimaryKeyList = new ArrayList<>();
         for (Map.Entry<Long, PrimaryDelayCache<K, V>> entry : primaryCacheMap.entrySet()) {
             if (entry.getValue().isEmpty()) {
@@ -373,7 +372,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
             return Collections.emptyList();
         }
         List<V> failureCacheList = new ArrayList<>();
-        int batchCount = CoreConfigs.getInt("cache.flush.batchCount");
+        int batchCount = EvnCoreConfigs.getInt("cache.flush.batchCount");
         while (modelList.size() > 0) {
             int count = modelList.size() / batchCount;
             int index = count * batchCount;

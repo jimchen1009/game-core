@@ -1,6 +1,6 @@
 package com.game.core.cache;
 
-import com.game.common.config.CoreConfigs;
+import com.game.common.config.EvnCoreConfigs;
 
 import java.util.concurrent.TimeUnit;
 
@@ -11,9 +11,9 @@ public class CacheInformation {
 
     public static CacheInformation DEFAULT = new CacheInformation();
 
-    private final static long LifeDuration = CoreConfigs.getDuration("cache.redis.db.lifeDuration", TimeUnit.MILLISECONDS);
+    private final static long LifeDuration = EvnCoreConfigs.getDuration("cache.redis.db.lifeDuration", TimeUnit.MILLISECONDS);
 
-    private final static long OffsetDuration = CoreConfigs.getDuration("cache.redis.db.offsetDuration", TimeUnit.MILLISECONDS);
+    private final static long OffsetDuration = EvnCoreConfigs.getDuration("cache.redis.db.offsetDuration", TimeUnit.MILLISECONDS);
 
 
     private volatile long expiredTime;

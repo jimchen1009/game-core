@@ -1,7 +1,7 @@
 package com.game.core.cache.source.mongodb;
 
-import com.game.common.config.CoreConfigs;
-import com.game.common.config.IConfig;
+import com.game.common.config.EvnCoreConfigs;
+import com.game.common.config.IEvnConfig;
 import com.game.core.db.mongodb.MongoDbManager;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
@@ -48,7 +48,7 @@ public class MongoDBQueryUtil {
     }
 
     public static MongoDatabase getDbDatabase(){
-        IConfig config = CoreConfigs.getConfig("cache.mongodb");
+        IEvnConfig config = EvnCoreConfigs.getConfig("cache.mongodb");
         String name = config.getString("name");
         String dbName = config.getString("db");
         MongoDbManager dbManager = MongoDbManager.get(name);

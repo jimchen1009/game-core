@@ -3,12 +3,11 @@ package com.game.common.config;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public interface IConfig {
-
+public interface IEvnConfig {
 
     boolean hasPath(String path);
 
-    IConfig getConfig(String path);
+    IEvnConfig getConfig(String path);
 
     int getInt(String path);
 
@@ -18,7 +17,7 @@ public interface IConfig {
 
     boolean getBoolean(String path);
 
-    List<IConfig> getConfigList(String path);
+    List<IEvnConfig> getConfigList(String path);
 
     <T> List<T> getList(String path);
 

@@ -7,11 +7,11 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class Configs implements IConfig {
+public class EvnConfigs implements IEvnConfig {
 
     private final com.typesafe.config.Config config;
 
-    Configs(com.typesafe.config.Config config) {
+    EvnConfigs(com.typesafe.config.Config config) {
         this.config = config;
     }
 
@@ -21,8 +21,8 @@ public class Configs implements IConfig {
     }
 
     @Override
-    public IConfig getConfig(String path){
-        return new Configs(Objects.requireNonNull(config.getConfig(path)));
+    public IEvnConfig getConfig(String path){
+        return new EvnConfigs(Objects.requireNonNull(config.getConfig(path)));
     }
 
     @Override
@@ -46,9 +46,9 @@ public class Configs implements IConfig {
     }
 
     @Override
-    public List<IConfig> getConfigList(String path){
+    public List<IEvnConfig> getConfigList(String path){
         List<? extends com.typesafe.config.Config> configList = config.getConfigList(path);
-        return configList.stream().map(Configs::new).collect(Collectors.toList());
+        return configList.stream().map(EvnConfigs::new).collect(Collectors.toList());
     }
 
     @Override

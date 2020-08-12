@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public class CommonUtil {
 
@@ -39,7 +40,7 @@ public class CommonUtil {
         return  null;
     }
 
-    public static <K,V,C extends Collection<V>> Map<K, C> groupByKey(Map<K, C> map, Collection<V> collection, Supplier<C> supplier, Function<V, K> function){
+    public static <K,V,C extends Collection<V>> Map<K, C> group2Collection(Map<K, C> map, Collection<V> collection, Supplier<C> supplier, Function<V, K> function){
         for (V data : collection) {
             K key = function.apply(data);
             if (key == null){
@@ -49,5 +50,9 @@ public class CommonUtil {
             container.add(data);
         }
         return map;
+    }
+
+    public static <K,V> Map<K, V> stream2Map( Collection<V> collection, Function<V, K> function){
+        return collection.stream().collect(Collectors.toMap(function, data-> data));
     }
 }

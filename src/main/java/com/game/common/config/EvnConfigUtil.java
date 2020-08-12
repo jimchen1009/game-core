@@ -8,25 +8,25 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ConfigUtil {
+public class EvnConfigUtil {
 
-	public static IConfig loadConfig(String resourceName){
+	public static IEvnConfig loadConfig(String resourceName){
 		File file = new File(resourceName);
 		return loadConfig(file);
 	}
 
-	public static IConfig loadConfig(File file){
+	public static IEvnConfig loadConfig(File file){
 		Config loadConfig = ConfigFactory.parseFile(file);
-		return new Configs(loadConfig);
+		return new EvnConfigs(loadConfig);
 	}
 
-	public static Map<String, IConfig> loadConfigs(String resourceDirectory){
+	public static Map<String, IEvnConfig> loadConfigs(String resourceDirectory){
 		File directory = new File(resourceDirectory);
 		File[] files = directory.listFiles();
 		if (files == null){
 			return Collections.emptyMap();
 		}
-		Map<String, IConfig> configMap = new HashMap<>(files.length);
+		Map<String, IEvnConfig> configMap = new HashMap<>(files.length);
 		for (File file : files) {
 			configMap.put(file.getName(), loadConfig(file));
 		}

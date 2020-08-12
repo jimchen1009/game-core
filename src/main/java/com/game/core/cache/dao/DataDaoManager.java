@@ -1,7 +1,7 @@
 package com.game.core.cache.dao;
 
-import com.game.common.config.CoreConfigs;
-import com.game.common.config.IConfig;
+import com.game.common.config.EvnCoreConfigs;
+import com.game.common.config.IEvnConfig;
 import com.game.core.cache.ICacheUniqueId;
 import com.game.core.cache.data.IData;
 import com.game.core.cache.key.IKeyValueBuilder;
@@ -41,7 +41,7 @@ public class DataDaoManager {
 
 
     private DataDaoManager() {
-        IConfig executorConfig = CoreConfigs.getConfig("cache.executor");
+        IEvnConfig executorConfig = EvnCoreConfigs.getConfig("cache.executor");
         this.executor = new CacheExecutor(executorConfig.getInt("threadCount"));
         this.mapDaoMap = new ConcurrentHashMap<>();
         this.valueDaoMap = new ConcurrentHashMap<>();

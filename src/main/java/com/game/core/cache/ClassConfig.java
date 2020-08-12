@@ -1,6 +1,6 @@
 package com.game.core.cache;
 
-import com.game.common.config.CoreConfigs;
+import com.game.common.config.EvnCoreConfigs;
 
 import java.util.Objects;
 
@@ -19,7 +19,7 @@ public class ClassConfig implements IClassConfig {
 
     public ClassConfig(Class<?> aClass) {
         this.aClass = aClass;
-        this.cacheType = CacheType.valueOf(CoreConfigs.getString("cache.type"));
+        this.cacheType = CacheType.valueOf(EvnCoreConfigs.getString("cache.type"));
         this.accountCache = true;
         this.cacheLoadAdvance = false;
         this.redisSupport = false;
