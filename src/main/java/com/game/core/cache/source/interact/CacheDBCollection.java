@@ -28,7 +28,7 @@ public class CacheDBCollection {
     }
 
     public static Map<Integer, List<Map<String, Object>>> groupPrimarySharedId(Collection<Map<String, Object>> cacheValueList){
-        return CommonUtil.group2Collection(new HashMap<>(), cacheValueList,
+        return CommonUtil.splitUp1Into1Group(new HashMap<>(), cacheValueList,
                 ArrayList::new, cacheValue -> (Integer) cacheValue.get(CacheName.PrimaryId.getKeyName()));
     }
 }

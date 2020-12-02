@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 public class CommonUtil {
 
-    public static <T> T findOneIf(Collection<T> collection, Predicate<T> predicate){
+    public static <T> T findOneUtilOkay(Collection<T> collection, Predicate<T> predicate){
         for (T data : collection) {
             if (predicate.test(data)) {
                 return data;
@@ -19,7 +19,16 @@ public class CommonUtil {
         return  null;
     }
 
-    public static <T> T removeOneIf(List<T> dataList, Predicate<T> predicate){
+    public static <T> int findIndexUtilOkay(List<T> list, Predicate<T> predicate){
+        for (int index = 0; index < list.size(); index++) {
+            if (predicate.test(list.get(index))) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    public static <T> T removeOneUntilOkay(List<T> dataList, Predicate<T> predicate){
         for (int i = 0; i < dataList.size(); i++) {
             T data = dataList.get(i);
             if (predicate.test(data)) {
@@ -30,7 +39,7 @@ public class CommonUtil {
         return  null;
     }
 
-    public static <T, V> V applyOneIf(Collection<T> collection, Function<T, V> function){
+    public static <T, V> V applyOneUtilOkay(Collection<T> collection, Function<T, V> function){
         for (T data : collection) {
             V apply = function.apply(data);
             if (apply != null){
@@ -40,7 +49,18 @@ public class CommonUtil {
         return  null;
     }
 
-    public static <K,V,C extends Collection<V>> Map<K, C> group2Collection(Map<K, C> map, Collection<V> collection, Supplier<C> supplier, Function<V, K> function){
+    /**
+     * splitUp1Into1Group
+     * @param map
+     * @param collection
+     * @param supplier
+     * @param function
+     * @param <K>
+     * @param <V>
+     * @param <C>
+     * @return
+     */
+    public static <K,V,C extends Collection<V>> Map<K, C> splitUp1Into1Group(Map<K, C> map, Collection<V> collection, Supplier<C> supplier, Function<V, K> function){
         for (V data : collection) {
             K key = function.apply(data);
             if (key == null){
@@ -48,6 +68,24 @@ public class CommonUtil {
             }
             C container = map.computeIfAbsent(key, key0-> supplier.get());
             container.add(data);
+        }
+        return map;
+    }
+
+    public static <K,V,C extends Collection<V>> Map<K, C> splitUpIntoNGroup(Map<K, C> map, Collection<V> collection, Supplier<C> supplier, Function<V, Collection<K>> function){
+        for (V data : collection) {
+            Collection<K> keys = function.apply(data);
+            if (keys == null || keys.isEmpty()){
+                continue;
+            }
+            for (K key : keys) {
+                C container = map.get(key);
+                if (container == null) {
+                    container = supplier.get();
+                    map.put(key, container);
+                }
+                container.add(data);
+            }
         }
         return map;
     }
