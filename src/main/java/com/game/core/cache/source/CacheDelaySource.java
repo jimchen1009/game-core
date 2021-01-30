@@ -1,6 +1,9 @@
 package com.game.core.cache.source;
 
 import com.game.common.config.EvnCoreConfigs;
+import com.game.common.lock.LockKey;
+import com.game.common.lock.LockUtil;
+import com.game.common.util.RandomUtil;
 import com.game.core.cache.CacheInformation;
 import com.game.core.cache.ICacheUniqueId;
 import com.game.core.cache.data.DataCollection;
@@ -12,11 +15,8 @@ import com.game.core.cache.source.executor.CacheRunnable;
 import com.game.core.cache.source.executor.ICacheExecutor;
 import com.game.core.cache.source.executor.ICacheFuture;
 import com.game.core.cache.source.executor.ICacheSource;
-import com.game.common.lock.LockKey;
-import com.game.common.lock.LockUtil;
 import com.mongodb.Function;
 import jodd.util.ThreadUtil;
-import org.apache.commons.lang3.RandomUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +52,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
         this.flushCallbacks = new ArrayList<>();
         //初始化~
         CacheRunnable cacheRunnable = new CacheRunnable(getScheduleName(), this::onScheduleAll);
-        long randomValue = RandomUtils.nextLong(1000, 2000);
+        long randomValue = RandomUtil.nextLong(1000, 2000);
         long initialDelay = randomValue * 50 / 50;    //取100ms的整数倍
         executor.scheduleAtFixedRate(cacheRunnable, initialDelay, 500L, TimeUnit.MILLISECONDS);
     }
@@ -305,7 +305,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
 
     private boolean flushPrimaryCacheInLock(Map<Long, PrimaryDelayCache<K, V>> primaryCacheMap) {
         Map<Long, PrimaryDelayCache<K, V>> failurePrimaryCacheMap = executeWritePrimaryCache(primaryCacheMap);
-        long duration = RandomUtils.nextLong(1000, 5000);
+        long duration = RandomUtil.nextLong(1000, 5000);
         for (Map.Entry<Long, PrimaryDelayCache<K, V>> entry : failurePrimaryCacheMap.entrySet()) {
             long primaryKey = entry.getValue().getPrimaryKey();
             PrimaryDelayCache<K, V> newPrimaryCache = this.primaryCacheMap.computeIfAbsent(primaryKey, key -> new PrimaryDelayCache<>(key, duration));

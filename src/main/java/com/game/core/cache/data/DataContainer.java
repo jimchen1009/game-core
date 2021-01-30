@@ -1,5 +1,6 @@
 package com.game.core.cache.data;
 
+import com.game.common.util.RandomUtil;
 import com.game.core.cache.CacheInformation;
 import com.game.core.cache.source.executor.CacheRunnable;
 import com.game.core.cache.source.executor.ICacheExecutor;
@@ -30,7 +31,7 @@ public class DataContainer<K, V extends IData<K>> implements IDataContainer<K, V
         this.primaryDataMap = new ConcurrentHashMap<>();
         //初始化~
         String name = "dataContainer." + dataSource.getCacheUniqueId().getName();
-        long initialDelay = RandomUtils.nextLong(1000, 2000) / 50;
+        long initialDelay = RandomUtil.nextLong(1000, 2000) / 50;
         executor.scheduleAtFixedRate(new CacheRunnable(name, this::onScheduleAll), initialDelay, 1000L, TimeUnit.MILLISECONDS);
     }
 

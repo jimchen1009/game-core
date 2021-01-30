@@ -107,7 +107,7 @@ public class CacheRunner {
 
 //        for (int i = 0; i < 2; i++) {
 //            executorService.scheduleAtFixedRate(()-> {
-//                int index = RandomUtils.nextInt(0, userDaoAllList.size());
+//                int index = RandomUtils.select(0, userDaoAllList.size());
 //                try {
 //                    userDaoAllList.get(index).execute();
 //                }

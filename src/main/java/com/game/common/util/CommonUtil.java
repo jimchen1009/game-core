@@ -10,6 +10,10 @@ import java.util.stream.Collectors;
 
 public class CommonUtil {
 
+    public static <T> boolean findOneUtilOkayBool(Collection<T> collection, Predicate<T> predicate){
+        return findOneUtilOkay(collection, predicate) != null;
+    }
+
     public static <T> T findOneUtilOkay(Collection<T> collection, Predicate<T> predicate){
         for (T data : collection) {
             if (predicate.test(data)) {

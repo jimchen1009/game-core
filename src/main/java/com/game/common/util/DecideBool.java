@@ -9,6 +9,14 @@ public class DecideBool {
 		this.aBoolean = defaultValue;
 	}
 
+	public boolean getCurrentValue(){
+		return aBoolean;
+	}
+
+	public boolean hasDecidedValue() {
+		return hasDecided;
+	}
+
 	public boolean expectedValue(boolean expectedValue) {
 		if (hasDecided) {
 			return false;
@@ -24,7 +32,6 @@ public class DecideBool {
 		this.aBoolean = decideValue;
 		this.hasDecided = true;
 		return true;
-
 	}
 
 	public boolean decideCurrent() {
@@ -38,5 +45,14 @@ public class DecideBool {
 	public boolean finalDecideAndGet() {
 		decideCurrent();
 		return aBoolean;
+	}
+
+	public static void combineDecideBool(DecideBool sourceBool, DecideBool fromBool, boolean expectValue){
+		if (fromBool.getCurrentValue() == expectValue) {
+			sourceBool.decideValue(expectValue);
+		}
+		else {
+			sourceBool.expectedValue(!expectValue);
+		}
 	}
 }
