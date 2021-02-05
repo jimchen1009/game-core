@@ -15,5 +15,9 @@ public class ExpressionRunner {
 		expression = ExprManager.getInstance().createExpression("2*a+10");
 		ExprParams exprParams = new ExprParams(Collections.singletonMap("a", 100));
 		System.out.println(expression.getExpression() + " = " + expression.calculateInt(exprParams));
+
+		expression = ExprManager.getInstance().createExpression("2*a.b+10");
+		exprParams = new ExprParams(Collections.singletonMap("a", Collections.singletonMap("b", 100)));
+		System.out.println(expression.getExpression() + " = " + expression.calculateInt(exprParams));
 	}
 }

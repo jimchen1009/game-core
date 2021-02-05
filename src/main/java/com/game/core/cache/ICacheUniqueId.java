@@ -11,7 +11,5 @@ public interface ICacheUniqueId extends IClassConfig, IClassAnnotation {
 
 	String getRedisKeyString(long primaryKey);
 
-	List<ICacheUniqueId> sharedCacheDaoUniqueList();
-
 	List<Map.Entry<String, Object>> createPrimaryUniqueKeys(long primaryKey);
 }

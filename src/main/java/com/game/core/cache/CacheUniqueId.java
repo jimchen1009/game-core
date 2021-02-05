@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +53,6 @@ public class CacheUniqueId implements ICacheUniqueId {
 				String[] strings = string.split("#");
 				this.primaryUniqueKeys.add(new AbstractMap.SimpleEntry<>(strings[0], strings[1]));
 			}
-			int indexOf = information.getPrimaryKeyList().indexOf(information.getPrimaryKey());
 			primaryUniqueKeys.add(new AbstractMap.SimpleEntry<>(information.getPrimaryKey(), null));
 			sourceUniqueId = formatUniqueId + "_" + primaryFixKeyParams;
 		}
@@ -134,11 +132,6 @@ public class CacheUniqueId implements ICacheUniqueId {
 	@Override
 	public String getRedisKeyString(long primaryKey) {
 		return String.format(redisKeyFormatString, primaryKey);
-	}
-
-	@Override
-	public List<ICacheUniqueId> sharedCacheDaoUniqueList(){
-		return Collections.singletonList(this);
 	}
 
 	@Override
