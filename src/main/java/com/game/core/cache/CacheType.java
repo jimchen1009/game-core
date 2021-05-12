@@ -6,22 +6,16 @@ import com.game.core.cache.mapper.mongodb.MongoDBConvertMapper;
 import com.game.core.cache.mapper.redis.RedisConvertMapper;
 
 public enum CacheType {
-    MongoDb(true, true, new MongoDBConvertMapper()),
-    Redis(true, false, new RedisConvertMapper()),
+    MongoDb(true, new MongoDBConvertMapper()),
+    Redis(false, new RedisConvertMapper()),
     ;
 
-    private final boolean fullCache;
     private final boolean isDBType;
     private final ValueConvertMapper valueConvertMapper;
 
-    CacheType(boolean fullCache, boolean isDBType, ValueConvertMapper valueConvertMapper) {
-        this.fullCache = fullCache;
+    CacheType(boolean isDBType, ValueConvertMapper valueConvertMapper) {
         this.isDBType = isDBType;
         this.valueConvertMapper = valueConvertMapper;
-    }
-
-    public boolean isFullCache() {
-        return fullCache;
     }
 
     public boolean isDBType() {

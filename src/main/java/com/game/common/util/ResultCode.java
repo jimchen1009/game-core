@@ -19,8 +19,9 @@ public class ResultCode {
 	public static final ResultCode PARAM_ERROR = new ResultCode(2, "参数错误");
 	public static final ResultCode BATTLE_STAGE_ERROR = new ResultCode(101, "战斗阶段错误");
 	public static final ResultCode BATTLE_PARAM_SUPPORT = new ResultCode(102, "战斗不支持操作");
-	public static final ResultCode BATTLE_CONTROL_COMPLETE = new ResultCode(103, "战斗控制完成");
+	public static final ResultCode BATTLE_CONTROL_DELAY = new ResultCode(103, "战斗控制完成");
 	public static final ResultCode BATTLE_CONTROL_END = new ResultCode(104, "战斗控制循环结束");
 	public static final ResultCode BATTLE_CONTROL_TAG = new ResultCode(105, "战斗控制已经结束");
 	public static final ResultCode BATTLE_CONTROL_REQUEST = new ResultCode(106, "战斗控制重复请求");
+	public static final ResultCode BATTLE_CONTROL_NOT_SUPPORT = new ResultCode(107, "战斗不支持操作");
 }

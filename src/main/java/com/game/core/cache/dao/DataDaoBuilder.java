@@ -21,7 +21,6 @@ public class DataDaoBuilder <K, V extends IData<K>> {
 	protected final ClassConfig classConfig;
 	protected final IKeyValueBuilder<K> secondaryBuilder;
 
-	protected String primaryAddKeyParams = "";
 	protected IDataLifePredicate lifePredicate = IDataLifePredicate.DEFAULT;
 	protected ICacheLifeInteract cacheLifeInteract = ICacheDBLifeInteract.DEFAULT;
 
@@ -36,10 +35,6 @@ public class DataDaoBuilder <K, V extends IData<K>> {
 		this.daoManager = daoManager;
 	}
 
-
-	public void setPrimaryAddKeyParams(String primaryAddKeyParams) {
-		this.primaryAddKeyParams = primaryAddKeyParams;
-	}
 
 	public void setLifePredicate(IDataLifePredicate lifePredicate) {
 		this.lifePredicate = lifePredicate;
@@ -58,7 +53,7 @@ public class DataDaoBuilder <K, V extends IData<K>> {
 	}
 
 	protected ICacheSource<K, V> createCacheSource(ClassConfig classConfig){
-		CacheUniqueId cacheUniqueId = new CacheUniqueId(classConfig, primaryAddKeyParams.trim());
+		CacheUniqueId cacheUniqueId = new CacheUniqueId(classConfig);
 		try {
 			ICacheSource<K, V> cacheSource;
 			CacheType cacheType = cacheUniqueId.getCacheType();

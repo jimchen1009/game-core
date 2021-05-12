@@ -26,7 +26,6 @@ public class CacheUniqueId implements ICacheUniqueId {
 
 
 	protected final ClassConfig classConfig;
-	protected final String primaryFixKeyParams;
 	protected final List<Map.Entry<String, Object>> primaryUniqueKeys;
 	private final ClassAnnotation information;
 	protected final String sourceUniqueId;
@@ -34,28 +33,14 @@ public class CacheUniqueId implements ICacheUniqueId {
 
 	/***
 	 * @param classConfig
-	 * @param primaryFixKeyParams key:value#key:value
 	 */
-	public CacheUniqueId(ClassConfig classConfig, String primaryFixKeyParams) {
+	public CacheUniqueId(ClassConfig classConfig) {
 		this.classConfig = classConfig;
 		this.information = ClassAnnotation.create(classConfig.getAClass());
-		this.primaryFixKeyParams = primaryFixKeyParams;
 		String formatUniqueId = String.format("%s_%s_%s", classConfig.getName(), classConfig.getPrimarySharedId(), StringUtil.join(information.getCombineUniqueKeyList(), ","));
-		if (StringUtil.isEmpty(primaryFixKeyParams)){
-			this.primaryUniqueKeys = new ArrayList<>(1);
-			primaryUniqueKeys.add(new AbstractMap.SimpleEntry<>(information.getPrimaryKey(), null));
-			sourceUniqueId = formatUniqueId;
-		}
-		else {
-			String[] stringList = primaryFixKeyParams.split("#");
-			this.primaryUniqueKeys = new ArrayList<>(stringList.length);
-			for (String string : stringList) {
-				String[] strings = string.split("#");
-				this.primaryUniqueKeys.add(new AbstractMap.SimpleEntry<>(strings[0], strings[1]));
-			}
-			primaryUniqueKeys.add(new AbstractMap.SimpleEntry<>(information.getPrimaryKey(), null));
-			sourceUniqueId = formatUniqueId + "_" + primaryFixKeyParams;
-		}
+		this.primaryUniqueKeys = new ArrayList<>(1);
+		primaryUniqueKeys.add(new AbstractMap.SimpleEntry<>(information.getPrimaryKey(), null));
+		sourceUniqueId = formatUniqueId;
 		this.redisKeyFormatString = createRedisKeyFormatString();
 
 	}
