@@ -12,20 +12,21 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-public class QueueJobContainer {
+public class QueueJobContainer<K> {
 
 	private static final Logger logger = LoggerFactory.getLogger(QueueJobContainer.class);
 
-	private final long queueId;
+	private final K queueId;
 	private final AtomicLong atomicLong;
 	private final IQueueJoExecutor executor;
 	private final ConcurrentLinkedQueue<QueueInnerJob> innerJobQueue;
 	private volatile QueueInnerJob runningInnerJob;	//当前正在执行的JOB
 	private final AtomicBoolean runningLock;
 
-	public QueueJobContainer(long queueId, IQueueJoExecutor executor) {
+	public QueueJobContainer(K queueId, IQueueJoExecutor executor) {
 		this.queueId = queueId;
 		this.atomicLong = new AtomicLong(0);
 		this.executor = new QueueJobPlugExecutor(executor);
@@ -40,7 +41,7 @@ public class QueueJobContainer {
 		if (queueJob.getQueueId() != this.queueId){
 			throw new UnsupportedOperationException("");
 		}
-		innerJobQueue.add(new QueueInnerJob(queueJob));
+		innerJobQueue.add(new QueueInnerJob(atomicLong.incrementAndGet(), queueJob, this::finishQueueJob));
 		lockCheckRunningJobAndPollQueue(Objects::isNull, true);
 	}
 
@@ -102,17 +103,19 @@ public class QueueJobContainer {
 		}
 	}
 
-	private class QueueInnerJob extends FutureTask<Object>{
+	private static class QueueInnerJob extends FutureTask<Object>{
 
 		private final long innerUniqueId;
 		private final QueueJob queueJob;
+		private final Consumer<QueueInnerJob> consumer;
 		private volatile Stopwatch stopwatch;
 		private volatile Future<?> future;
 
-		public QueueInnerJob(QueueJob queueJob) {
+		public QueueInnerJob(long innerUniqueId, QueueJob<?> queueJob, Consumer<QueueInnerJob> consumer) {
 			super(Executors.callable(queueJob));
-			this.innerUniqueId = atomicLong.incrementAndGet();
+			this.innerUniqueId = innerUniqueId;
 			this.queueJob = queueJob;
+			this.consumer = consumer;
 		}
 
 		public long getInnerUniqueId() {
@@ -143,7 +146,7 @@ public class QueueJobContainer {
 		@Override
 		protected void done() {
 			super.done();
-			finishQueueJob(this);
+			consumer.accept(this);
 		}
 	}
 

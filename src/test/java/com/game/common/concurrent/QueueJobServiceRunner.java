@@ -16,7 +16,7 @@ public class QueueJobServiceRunner {
 
 	@Test
 	public void execute(){
-		QueueJobService service = new QueueJobService(5, new PoolThreadFactory("Job"));
+		QueueJobService<Long> service = new QueueJobService<>(5, new PoolThreadFactory("Job"));
 		for (int i = 0; i < 1000; i++) {
 			service.addQueueJob(new MyJob(0, i));
 			service.addQueueJob(new MyJob(1, i));
@@ -26,7 +26,7 @@ public class QueueJobServiceRunner {
 		service.shutdownGracefully();
 	}
 
-	private static class MyJob extends QueueJob{
+	private static class MyJob extends QueueJob<Long>{
 
 		private static final Map<Long, AtomicInteger> INTEGER_MAP = new ConcurrentHashMap<>();
 

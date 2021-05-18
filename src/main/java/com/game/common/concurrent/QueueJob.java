@@ -3,25 +3,25 @@ package com.game.common.concurrent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class QueueJob implements Runnable {
+public abstract class QueueJob<K> implements Runnable {
 
 	private static final Logger logger = LoggerFactory.getLogger(QueueJob.class);
 
-	private final long queueId;
+	private final K queueId;
 	private final String name;
 	private final long nanoTimeout;
 
-	public QueueJob(long queueId, String name) {
+	public QueueJob(K queueId, String name) {
 		this(queueId, name, 0);
 	}
 
-	public QueueJob(long queueId, String name, long nanoTimeout) {
+	public QueueJob(K queueId, String name, long nanoTimeout) {
 		this.queueId = queueId;
 		this.name = name;
 		this.nanoTimeout = nanoTimeout;
 	}
 
-	public long getQueueId() {
+	public K getQueueId() {
 		return queueId;
 	}
 
@@ -61,7 +61,7 @@ public abstract class QueueJob implements Runnable {
 		return toString(this);
 	}
 
-	private static String toString(QueueJob queueJob) {
+	private static String toString(QueueJob<?> queueJob) {
 		return "{" +
 				"queueId=" + queueJob.queueId +
 				", name='" + queueJob.name + '\'' +

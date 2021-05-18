@@ -10,11 +10,11 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class QueueJobService {
+public class QueueJobService<K> {
 
 	private static final Logger logger = LoggerFactory.getLogger(QueueJobService.class);
 
-	private final Map<Long, QueueJobContainer> containerMap;
+	private final Map<K, QueueJobContainer<K>> containerMap;
 	private final QueueJobCoreExecutor executor;
 	private final AtomicBoolean runningBool;
 
@@ -26,7 +26,7 @@ public class QueueJobService {
 		this.executor.scheduleWithFixedDelay(this::onScheduleAll, 1, 1, TimeUnit.SECONDS);
 	}
 
-	public void addQueueJob(QueueJob queueJob){
+	public void addQueueJob(QueueJob<K> queueJob){
 		if (runningBool.get()){
 			getJobContainer(queueJob).addQueueJob(queueJob);
 		}
@@ -44,8 +44,8 @@ public class QueueJobService {
 		executor.shutdown();
 	}
 
-	private QueueJobContainer getJobContainer(QueueJob queueJob){
-		return containerMap.computeIfAbsent(queueJob.getQueueId(), id-> new QueueJobContainer(id, executor));
+	private QueueJobContainer getJobContainer(QueueJob<K> queueJob){
+		return containerMap.computeIfAbsent(queueJob.getQueueId(), id-> new QueueJobContainer<>(id, executor));
 	}
 
 	private boolean existRunningJobContainer(){
@@ -53,7 +53,7 @@ public class QueueJobService {
 	}
 
 	private void onScheduleAll(){
-		for (Map.Entry<Long, QueueJobContainer> entry : containerMap.entrySet()) {
+		for (Map.Entry<K, QueueJobContainer<K>> entry : containerMap.entrySet()) {
 			entry.getValue().onScheduleAll();
 		}
 	}
