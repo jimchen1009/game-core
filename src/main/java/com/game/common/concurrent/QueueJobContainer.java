@@ -1,14 +1,17 @@
 package com.game.common.concurrent;
 
+import com.game.common.util.CommonUtil;
 import com.google.common.base.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -17,44 +20,64 @@ import java.util.function.Predicate;
 
 public class QueueJobContainer<K> {
 
+	private static final long SCHEDULE_TIME = TimeUnit.SECONDS.toMillis(1);
+
 	private static final Logger logger = LoggerFactory.getLogger(QueueJobContainer.class);
 
 	private final K queueId;
 	private final AtomicLong atomicLong;
-	private final IQueueJoExecutor executor;
+	private final IQueueJobExecutor executor;
+	private final IQueueJobCoordinate<K> coordinate;
 	private final ConcurrentLinkedQueue<QueueInnerJob> innerJobQueue;
+	private final AtomicBoolean runningBool;
 	private volatile QueueInnerJob runningInnerJob;	//当前正在执行的JOB
 	private final AtomicBoolean runningLock;
 
-	public QueueJobContainer(K queueId, IQueueJoExecutor executor) {
+	private final ScheduledFuture<?> scheduledFuture;
+
+	public QueueJobContainer(K queueId, IQueueJobExecutor executor, IQueueJobCoordinate<K> coordinate) {
 		this.queueId = queueId;
 		this.atomicLong = new AtomicLong(0);
 		this.executor = new QueueJobPlugExecutor(executor);
+		this.coordinate = coordinate;
+		this.runningBool = new AtomicBoolean(true);
 		this.innerJobQueue = new ConcurrentLinkedQueue<>();
 		this.runningInnerJob = null;
 		this.runningLock = new AtomicBoolean(false);
-
-		this.executor.scheduleWithFixedDelay(this::onScheduleAll, 1, 1, TimeUnit.SECONDS);
+		this.scheduledFuture = this.executor.scheduleWithFixedDelay(this::onScheduleAll, SCHEDULE_TIME, SCHEDULE_TIME, TimeUnit.MILLISECONDS);
 	}
 
-	public void addQueueJob(QueueJob queueJob){
+	public boolean addQueueJob(QueueJob queueJob){
 		if (queueJob.getQueueId() != this.queueId){
-			throw new UnsupportedOperationException("");
+			throw new UnsupportedOperationException(queueJob.messageJobLog());
+		}
+		if (!runningBool.get()) {
+			logger.error("shutdownAsync, queueJob: {}", queueJob.messageJobLog());
+			return false;
 		}
 		innerJobQueue.add(new QueueInnerJob(atomicLong.incrementAndGet(), queueJob, this::finishQueueJob));
-		lockCheckRunningJobAndPollQueue(Objects::isNull, true);
+		lockCheckRunningJobAndPollQueue(Objects::isNull);
+		return true;
 	}
 
-	public boolean queueIsEmpty(){
-		return innerJobQueue.isEmpty();
+	public void shutdownAsync(){
+		if (!runningBool.compareAndSet(true, false)) {
+			return;
+		}
+		CommonUtil.whileLoopUntilOkay(TimeUnit.SECONDS.toMillis(30), innerJobQueue::isEmpty);
+		CommonUtil.whileLoopUntilOkay(TimeUnit.SECONDS.toMillis(30), this::currentIsIdle);
+		scheduledFuture.cancel(true);
 	}
 
-	public void onScheduleAll(){
+	private void onScheduleAll(){
 		try {
-			LockCode lockCode = lockCheckRunningJobAndPollQueue(innerJob -> innerJob != null && innerJob.timeoutBool(), false);
-			if (lockCode.isSuccess()) {
-				lockCode.currentInnerJob.timeoutCancel();
-				logger.error("cancel timeout queueJob={}", lockCode.currentInnerJob.queueJob.messageJobLog());
+			LockCode timeoutCode = lockCheckRunningJobAndPollQueue(innerJob -> innerJob != null && innerJob.timeoutBool());
+			if (timeoutCode.isSuccess()) {
+				timeoutCode.currentInnerJob.timeoutCancel();
+				logger.error("cancel timeout queueJob: {}", timeoutCode.currentInnerJob.queueJob.messageJobLog());
+			}
+			if (currentIsIdle()) {
+				requestQueueJobs();
 			}
 		}
 		catch (Throwable throwable){
@@ -64,13 +87,9 @@ public class QueueJobContainer<K> {
 
 	/**
 	 * @param predicate
-	 * @param supportConcurrency 强制加锁并发
 	 * @return
 	 */
-	private LockCode lockCheckRunningJobAndPollQueue(Predicate<QueueInnerJob> predicate, boolean supportConcurrency){
-		if (!supportConcurrency && !predicate.test(runningInnerJob)){
-			return LockCode.failureCode();
-		}
+	private LockCode lockCheckRunningJobAndPollQueue(Predicate<QueueInnerJob> predicate){
 		LockCode lockCode = LockCode.failureCode();
 		synchronized (runningLock){
 			if (predicate.test(runningInnerJob)){
@@ -80,26 +99,61 @@ public class QueueJobContainer<K> {
 				lockCode = LockCode.successCode(nextQueueJob, currentInnerJob);
 			}
 		}
-		if (lockCode.isSuccess() && lockCode.nextQueueJob != null){
-			try {
-				Future<?> future = executor.submit(lockCode.nextQueueJob);
-				lockCode.nextQueueJob.submitJob(future);
+		if (lockCode.isSuccess() ){
+			if (lockCode.nextQueueJob != null){
+				try {
+					Future<?> future = executor.submit(lockCode.nextQueueJob);
+					lockCode.nextQueueJob.submitJob(future);
+				}
+				catch (Throwable throwable){
+					logger.error("{}", throwable);
+				}
 			}
-			catch (Throwable throwable){
-				logger.error("{}", throwable);
+			if (lockCode.currentInnerJob != null && lockCode.nextQueueJob == null){
+				requestQueueJobs();
 			}
 		}
 		return lockCode;
 	}
 
+	/**
+	 * 请求任务
+	 */
+	private void requestQueueJobs(){
+		if (!runningBool.get()) {
+			return;
+		}
+		Collection<? extends QueueJob> queueJobs = coordinate.requestQueueJobs(queueId, 5);
+		if (!queueJobs.isEmpty()) {
+			queueJobs.forEach( queueJob -> innerJobQueue.add(createInnerJob(queueJob)));
+			logger.debug("任务请求, 长度: {}", queueJobs.size());
+			lockCheckRunningJobAndPollQueue(Objects::isNull);
+		}
+	}
+
+	/**
+	 * 创建内部任务
+	 * @param queueJob
+	 * @return
+	 */
+	private QueueInnerJob createInnerJob(QueueJob queueJob){
+		return new QueueInnerJob(atomicLong.incrementAndGet(), queueJob, this::finishQueueJob);
+	}
+
+	/**
+	 * 现在是不是空闲状态
+	 * @return
+	 */
+	private boolean currentIsIdle(){
+		LockCode idleCode = lockCheckRunningJobAndPollQueue(Objects::isNull);
+		return idleCode.isSuccess() && idleCode.nextQueueJob == null;
+	}
+
 	private void finishQueueJob(QueueInnerJob queueInnerJob){
 		Objects.requireNonNull(queueInnerJob);
-		LockCode lockCode = lockCheckRunningJobAndPollQueue(innerJob -> innerJob != null && innerJob.getInnerUniqueId() == queueInnerJob.getInnerUniqueId(), true);
+		LockCode lockCode = lockCheckRunningJobAndPollQueue(innerJob -> innerJob != null && innerJob.getInnerUniqueId() == queueInnerJob.getInnerUniqueId());
 		if (lockCode.isSuccess()){
 			lockCode.currentInnerJob.completeInAdvance();
-		}
-		else {
-			logger.error("{}", queueInnerJob.queueJob.messageJobLog());
 		}
 	}
 
@@ -136,11 +190,11 @@ public class QueueJobContainer<K> {
 
 		public void timeoutCancel(){
 			future.cancel(true);
-//			logger.trace("取消任务: {}", queueJob.messageJobLog());
+			logger.debug("取消任务: {}", queueJob.messageJobLog());
 		}
 
 		public void completeInAdvance(){
-//			logger.trace("任务完成: {}", queueJob.messageJobLog());
+			logger.debug("任务完成: {}", queueJob.messageJobLog());
 		}
 
 		@Override

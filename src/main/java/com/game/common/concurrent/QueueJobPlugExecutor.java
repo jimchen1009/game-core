@@ -4,11 +4,11 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-public class QueueJobPlugExecutor implements IQueueJoExecutor{
+public class QueueJobPlugExecutor implements IQueueJobExecutor {
 
-	private final IQueueJoExecutor executor;
+	private final IQueueJobExecutor executor;
 
-	public QueueJobPlugExecutor(IQueueJoExecutor executor) {
+	public QueueJobPlugExecutor(IQueueJobExecutor executor) {
 		this.executor = executor;
 	}
 

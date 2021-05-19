@@ -39,7 +39,7 @@ public abstract class QueueJob<K> implements Runnable {
 			execute();
 		}
 		catch (Throwable throwable){
-			logger.error("QueueJob error, {}", messageJobLog());
+			logger.error("queueJob error, {}", messageJobLog());
 		}
 		finally {
 		}

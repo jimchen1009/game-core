@@ -6,8 +6,12 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class QueueJobServiceRunner {
@@ -16,37 +20,35 @@ public class QueueJobServiceRunner {
 
 	@Test
 	public void execute(){
-		QueueJobService<Long> service = new QueueJobService<>(5, new PoolThreadFactory("Job"));
-		for (int i = 0; i < 1000; i++) {
-			service.addQueueJob(new MyJob(0, i));
-			service.addQueueJob(new MyJob(1, i));
-			service.addQueueJob(new MyJob(2, i));
-			service.addQueueJob(new MyJob(3, i));
+		QueueJobService<Long> service = new QueueJobService<>(5, new PoolThreadFactory("Job"), new IQueueJobCoordinate<Long>() {
+			@Override
+			public Collection<? extends QueueJob> requestQueueJobs(Long queueId, int n) {
+				List<MyJob> myJobList = new ArrayList<>(n);
+				for (int i = 1; i <= n; i++) {
+					myJobList.add(new MyJob(queueId));
+				}
+				return myJobList;
+			}
+		});
+		for (int i = 0; i < 1; i++) {
+			service.addQueueJob(new MyJob(i));
 		}
-		service.shutdownGracefully();
+		ThreadUtil.sleep(TimeUnit.SECONDS.toMillis(50));
+		service.shutdownAsync();
 	}
 
 	private static class MyJob extends QueueJob<Long>{
 
-		private static final Map<Long, AtomicInteger> INTEGER_MAP = new ConcurrentHashMap<>();
+		private static final Map<Long, AtomicInteger> ID_MAP = new ConcurrentHashMap<>();
 
-		private final int id;
 
-		public MyJob(long queueId, int id) {
-			super(queueId, "MyJob" + id);
-			this.id = id;
+		public MyJob(long queueId) {
+			super(queueId, "MyJob" + ID_MAP.computeIfAbsent(queueId, key -> new AtomicInteger(0)).getAndIncrement());
 		}
 
 		@Override
 		protected void execute() {
-			AtomicInteger atomicInteger = INTEGER_MAP.computeIfAbsent(getQueueId(), key -> new AtomicInteger(0));
-			if (atomicInteger.getAndIncrement() == id) {
-				logger.debug("成功:{}, id:{}", getQueueId(), id);
-			}
-			else {
-				logger.error("失败:{}, id:{}", getQueueId(), id);
-			}
-			ThreadUtil.sleep(10);
+			ThreadUtil.sleep(500);
 		}
 	}
 }
