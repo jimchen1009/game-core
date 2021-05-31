@@ -9,9 +9,15 @@ import java.lang.annotation.Target;
 @Target({ElementType.TYPE})
 public @interface CacheIndexes {
 
-    PrimaryIndex primaryIndex();
+    /**
+     * 主键
+     * @return
+     */
+    String primaryKey();
 
-    SecondaryIndex secondaryIndex();
-
-    IndexOptions options();
+    /**
+     * 联合二级键
+     * @return
+     */
+    String[] secondaryKeys();
 }

@@ -1,6 +1,7 @@
 package com.game.core.db.mongodb;
 
 import com.game.common.config.EvnCoreConfigs;
+import com.game.common.config.EvnCoreType;
 import com.game.common.config.IEvnConfig;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.ReadPreference;
@@ -42,7 +43,7 @@ public class MongoDbManager {
 
 
     public static void init(){
-        List<IEvnConfig> configList = EvnCoreConfigs.getConfigList("db.mongodb");
+        List<IEvnConfig> configList = EvnCoreConfigs.getInstance(EvnCoreType.DB).getConfigList("mongodb");
         for (IEvnConfig iEvnConfig : configList) {
             MongoDbManager manager = new MongoDbManager(Objects.requireNonNull(iEvnConfig));
             for (String s : manager.names) {

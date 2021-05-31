@@ -10,15 +10,9 @@ public interface IClassAnnotation {
 
     String getPrimaryKey();
 
-    List<String> getPrimaryKeyList();
-
     List<String> getSecondaryKeyList();
 
     List<String> getCombineUniqueKeyList();
 
     List<FieldAnnotation> getFiledAnnotationList();
-
-    List<FieldAnnotation> getPrimaryFieldAnnotationList();
-
-    List<FieldAnnotation> getNormalFieldAnnotationList();
 }

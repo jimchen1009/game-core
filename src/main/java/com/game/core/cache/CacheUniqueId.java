@@ -3,33 +3,24 @@ package com.game.core.cache;
 import com.game.core.cache.mapper.ClassAnnotation;
 import com.game.core.cache.mapper.FieldAnnotation;
 import com.game.core.cache.mapper.annotation.CacheIndexes;
-import jodd.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class CacheUniqueId implements ICacheUniqueId {
 
 	private static final Logger logger = LoggerFactory.getLogger(CacheUniqueId.class);
 
-	private static final Map<String, List<CacheUniqueId>> name2UniqueKeyList = new ConcurrentHashMap<>();
-
-	private static final Set<CacheUniqueId> cacheUniqueIdSet = new HashSet<>();
-
-
 	protected final ClassConfig classConfig;
 	protected final List<Map.Entry<String, Object>> primaryUniqueKeys;
 	private final ClassAnnotation information;
 	protected final String sourceUniqueId;
-	protected final String redisKeyFormatString;
+	protected final String redisPrimaryKeyFormatString;
 
 	/***
 	 * @param classConfig
@@ -37,11 +28,10 @@ public class CacheUniqueId implements ICacheUniqueId {
 	public CacheUniqueId(ClassConfig classConfig) {
 		this.classConfig = classConfig;
 		this.information = ClassAnnotation.create(classConfig.getAClass());
-		String formatUniqueId = String.format("%s_%s_%s", classConfig.getName(), classConfig.getPrimarySharedId(), StringUtil.join(information.getCombineUniqueKeyList(), ","));
 		this.primaryUniqueKeys = new ArrayList<>(1);
 		primaryUniqueKeys.add(new AbstractMap.SimpleEntry<>(information.getPrimaryKey(), null));
-		sourceUniqueId = formatUniqueId;
-		this.redisKeyFormatString = createRedisKeyFormatString();
+		sourceUniqueId = String.format("%s_%s", classConfig.getName(), classConfig.getPrimarySharedId());;
+		this.redisPrimaryKeyFormatString = createRedisPrimaryKeyFormatString();
 
 	}
 
@@ -116,7 +106,7 @@ public class CacheUniqueId implements ICacheUniqueId {
 
 	@Override
 	public String getRedisKeyString(long primaryKey) {
-		return String.format(redisKeyFormatString, primaryKey);
+		return String.format(redisPrimaryKeyFormatString, primaryKey);
 	}
 
 	@Override
@@ -127,11 +117,6 @@ public class CacheUniqueId implements ICacheUniqueId {
 	@Override
 	public String getPrimaryKey() {
 		return information.getPrimaryKey();
-	}
-
-	@Override
-	public List<String> getPrimaryKeyList() {
-		return information.getPrimaryKeyList();
 	}
 
 	@Override
@@ -149,15 +134,6 @@ public class CacheUniqueId implements ICacheUniqueId {
 		return information.getFiledAnnotationList();
 	}
 
-	@Override
-	public List<FieldAnnotation> getPrimaryFieldAnnotationList() {
-		return information.getPrimaryFieldAnnotationList();
-	}
-
-	@Override
-	public List<FieldAnnotation> getNormalFieldAnnotationList() {
-		return information.getNormalFieldAnnotationList();
-	}
 
 	@Override
 	public boolean equals(Object o) {
@@ -172,19 +148,11 @@ public class CacheUniqueId implements ICacheUniqueId {
 		return Objects.hash(sourceUniqueId);
 	}
 
-	private String createRedisKeyFormatString(){
-		List<String> primaryAddUniqueKeys = new ArrayList<>(information.getPrimaryKeyList());
-		primaryAddUniqueKeys.remove(information.getPrimaryKey());
+	private String createRedisPrimaryKeyFormatString(){
 		String primarySharedId = "";
 		if (classConfig.getPrimarySharedId() > 0){
 			primarySharedId = "." + classConfig.getPrimarySharedId();
 		}
-		if (primaryAddUniqueKeys.isEmpty()) {
-			return "100:%s_" + String.format("%s%s.v%s", classConfig.getName() , primarySharedId, classConfig.getVersionId());
-		}
-		else {
-			String string = StringUtil.join(primaryAddUniqueKeys, ".");
-			return "100:%s." + String.format("%s_%s%s.v%s", string, classConfig.getName() , primarySharedId, classConfig.getVersionId());
-		}
+		return "100:%s_" + String.format("%s%s.v%s", classConfig.getName() , primarySharedId, classConfig.getVersionId());
 	}
 }

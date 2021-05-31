@@ -1,10 +1,13 @@
 package com.game.core.cache;
 
 import com.game.common.config.EvnCoreConfigs;
+import com.game.common.config.EvnCoreType;
 
 import java.util.Objects;
 
 public class ClassConfig implements IClassConfig {
+
+    private static final CacheType CACHE_TYPE = CacheType.valueOf(EvnCoreConfigs.getInstance(EvnCoreType.CACHE).getString("type"));
 
     private final Class<?> aClass;
     private CacheType cacheType;
@@ -19,7 +22,7 @@ public class ClassConfig implements IClassConfig {
 
     public ClassConfig(Class<?> aClass) {
         this.aClass = aClass;
-        this.cacheType = CacheType.valueOf(EvnCoreConfigs.getString("cache.type"));
+        this.cacheType = CACHE_TYPE;
         this.accountCache = true;
         this.cacheLoadAdvance = false;
         this.redisSupport = false;

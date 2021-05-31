@@ -6,9 +6,14 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DataBitIndex {
 
     /**
-     * 预留位置的最大值Index
+     * 预留位置的最大值Index, 不包括该值
      */
     public static final int MaximumIndex = 60;
+
+    /***
+     */
+    public static final int RedisChangeIndex = 61;
+
     /**
      * Redis的數據是否變化了
      */

@@ -1,6 +1,7 @@
 package com.game.core.db.redis;
 
 import com.game.common.config.EvnCoreConfigs;
+import com.game.common.config.EvnCoreType;
 import com.game.common.config.IEvnConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +18,7 @@ public class RedisClientManager {
     private static final Map<String, RedisClientManager> managers = new HashMap<>();
 
     public static void init(){
-        List<IEvnConfig> configList = EvnCoreConfigs.getConfigList("db.redis");
+        List<IEvnConfig> configList = EvnCoreConfigs.getInstance(EvnCoreType.DB).getConfigList("redis");
         for (IEvnConfig iEvnConfig : configList) {
             RedisClientManager manager = new RedisClientManager(iEvnConfig);
             for (String s : manager.names) {

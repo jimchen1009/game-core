@@ -232,7 +232,7 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
         JSONObject cacheValue = JSON.parseObject(string);
         long longValue = cacheValue.getLong(CacheName.DataIndexBit.getKeyName());
         V value = getConverter().convert2Value(cacheValue);
-        DataPrivilegeUtil.invokeSetDataBitIndexBits(value, longValue);
+        DataPrivilegeUtil.invokeSetBitValue(value, longValue);
         return value;
     }
 

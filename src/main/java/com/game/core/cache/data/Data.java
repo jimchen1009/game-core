@@ -25,8 +25,8 @@ public abstract class Data<K> implements IData<K> {
     private long dataBitIndexBits = 0;
 
     @Override
-    public boolean hasBitIndex(DataBitIndex bitIndex) {
-        return (this.dataBitIndexBits & (1L << bitIndex.getId())) != 0;
+    public boolean hasBitIndex(int index) {
+        return (this.dataBitIndexBits & (1L << index)) != 0;
     }
 
     private void clearBitIndex(DataBitIndex bitIndex){

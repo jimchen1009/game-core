@@ -4,7 +4,6 @@ import com.game.core.cache.CacheType;
 import com.game.core.cache.ICacheUniqueId;
 import com.game.core.cache.data.IData;
 import com.game.core.cache.key.IKeyValueBuilder;
-import com.game.core.cache.mapper.annotation.CacheIndexes;
 import com.game.core.cache.source.CacheDbSource;
 import com.game.core.cache.source.ICacheDelaySource;
 import com.game.core.cache.source.executor.ICacheExecutor;
@@ -35,9 +34,6 @@ public class CacheMongoDBSource<K, V extends IData<K>> extends CacheDbSource<K, 
 
     public CacheMongoDBSource(ICacheUniqueId cacheUniqueId, IKeyValueBuilder<K> secondaryBuilder, ICacheDBInteract cacheInteract) {
         super(cacheUniqueId, secondaryBuilder, cacheInteract);
-        MongoCollection<Document> collection = getCollection();
-        CacheIndexes cacheIndexes = cacheUniqueId.getCacheIndexes();
-        CacheMongoDBUtil.ensureIndexes(collection, getCacheUniqueId().getPrimarySharedId(), cacheIndexes);
     }
 
 

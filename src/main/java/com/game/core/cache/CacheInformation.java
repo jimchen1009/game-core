@@ -1,6 +1,7 @@
 package com.game.core.cache;
 
 import com.game.common.config.EvnCoreConfigs;
+import com.game.common.config.EvnCoreType;
 
 import java.util.concurrent.TimeUnit;
 
@@ -10,10 +11,6 @@ import java.util.concurrent.TimeUnit;
 public class CacheInformation {
 
     public static CacheInformation DEFAULT = new CacheInformation();
-
-    private final static long LifeDuration = EvnCoreConfigs.getDuration("cache.redis.db.lifeDuration", TimeUnit.MILLISECONDS);
-
-    private final static long OffsetDuration = EvnCoreConfigs.getDuration("cache.redis.db.offsetDuration", TimeUnit.MILLISECONDS);
 
 
     private volatile long expiredTime;
@@ -28,20 +25,16 @@ public class CacheInformation {
 
     public boolean isExpired(long currentTime){
         this.checkCurrentOrExpiredTime(currentTime);
-        return !isPermanent() && currentTime + OffsetDuration >= expiredTime;
+        return expiredTime != -1 && currentTime + getOffsetDuration() >= expiredTime;
     }
 
     public boolean needUpdateExpired(long currentTime){
         this.checkCurrentOrExpiredTime(currentTime);
-        return !isPermanent() && (expiredTime - OffsetDuration * 2) <= currentTime;
+        return expiredTime != -1 && (expiredTime - getOffsetDuration() * 2) <= currentTime;
     }
 
     public long getExpiredTime(){
         return expiredTime;
-    }
-
-    public boolean isPermanent(){
-        return expiredTime == -1;
     }
 
     public void updateExpiredTime(long expiredTime) {
@@ -52,7 +45,7 @@ public class CacheInformation {
     }
 
     public void updateCurrentTime(long currentTime){
-       expiredTime = currentTime + LifeDuration;
+       expiredTime = currentTime + EvnCoreConfigs.getInstance(EvnCoreType.CACHE).getDuration("redis.db.lifeDuration", TimeUnit.MILLISECONDS);
     }
 
     private void checkCurrentOrExpiredTime(long currentTime){
@@ -64,5 +57,9 @@ public class CacheInformation {
 
     public CacheInformation cloneInformation(){
         return new CacheInformation(expiredTime);
+    }
+
+    private long getOffsetDuration(){
+        return EvnCoreConfigs.getInstance(EvnCoreType.CACHE).getDuration("redis.db.offsetDuration", TimeUnit.MILLISECONDS);
     }
 }

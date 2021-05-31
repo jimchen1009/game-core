@@ -1,7 +1,7 @@
 package com.game.core.cache.data;
 
-import com.game.core.cache.exception.CacheException;
 import com.game.common.log.LogUtil;
+import com.game.core.cache.exception.CacheException;
 
 import java.lang.reflect.Method;
 
@@ -9,7 +9,7 @@ public class DataPrivilegeUtil {
 
 	private static final Method setBitIndex = lookupClassMethod("setBitIndex");
 	private static final Method clearBitIndex = lookupClassMethod("clearBitIndex");
-	private static final Method setDataBitIndexBits = lookupClassMethod("setDataBitIndexBits");
+	private static final Method setBitValue = lookupClassMethod("setBitValue");
 
 	private static Method lookupClassMethod(String name) {
 		Method[] methods = Data.class.getDeclaredMethods();
@@ -22,31 +22,26 @@ public class DataPrivilegeUtil {
 		throw new CacheException("not found method:%s", name);
 	}
 
-	public static void invokeSetBitIndex(IData dataValue, DataBitIndex bitIndex) {
-		try {
-			setBitIndex.invoke(dataValue, bitIndex);
-		}
-		catch (Throwable e) {
-			throw new CacheException("bitIndex:%s, %s", e, bitIndex.getId(), LogUtil.toJSONString(dataValue));
-		}
+	public static void invokeSetBitIndex(IData dataValue, int index) {
+		dataValueInvoke(dataValue, setBitIndex, index);
 	}
 
-	public static void invokeClearBitIndex(IData dataValue, DataBitIndex bitIndex) {
-		try {
-			clearBitIndex.invoke(dataValue, bitIndex);
-		}
-		catch (Throwable e) {
-			throw new CacheException("bitIndex:%s, %s", e, bitIndex.getId(), LogUtil.toJSONString(dataValue));
-		}
+	public static void invokeClearBitIndex(IData dataValue, int index) {
+		dataValueInvoke(dataValue, clearBitIndex, index);
 	}
 
 
-	public static void invokeSetDataBitIndexBits(IData dataValue, long dataBitIndexBits) {
+	public static void invokeSetBitValue(IData dataValue, long bitValue) {
+		dataValueInvoke(dataValue, setBitValue, bitValue);
+	}
+
+	private static void dataValueInvoke(IData dataValue, Method method, Object... args) {
 		try {
-			setDataBitIndexBits.invoke(dataValue, dataBitIndexBits);
+			method.invoke(dataValue, method);
 		}
 		catch (Throwable e) {
-			throw new CacheException("dataBitIndexBits:%s, %s", e, dataBitIndexBits, LogUtil.toJSONString(dataValue));
+			throw new CacheException("%s, %s", e, LogUtil.toJSONString(args), LogUtil.toJSONString(dataValue));
 		}
 	}
+
 }

@@ -1,5 +1,6 @@
 package com.game.core.cache.source.compose;
 
+import com.game.common.lock.LockKey;
 import com.game.core.cache.CacheInformation;
 import com.game.core.cache.CacheType;
 import com.game.core.cache.ICacheUniqueId;
@@ -16,7 +17,6 @@ import com.game.core.cache.source.executor.CacheRunnable;
 import com.game.core.cache.source.executor.ICacheExecutor;
 import com.game.core.cache.source.executor.ICacheSource;
 import com.game.core.cache.source.redis.ICacheRedisSource;
-import com.game.common.lock.LockKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,7 +98,7 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
                 dataCollection = getDBCollection(primaryKey, currentTime);
             }
             else {
-                List<V> changeDataList = dataCollection.getDataList().stream().filter(data -> data.hasBitIndex(DataBitIndex.RedisChanged)).collect(Collectors.toList());
+                List<V> changeDataList = dataCollection.getDataList().stream().filter(data -> data.hasBitIndex(DataBitIndex.RedisChangeIndex)).collect(Collectors.toList());
                 onReplaceRedisBatchSuccess(primaryKey, changeDataList);
             }
         }
@@ -238,7 +238,7 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
         if (values.isEmpty()){
             return;
         }
-        values.forEach(value -> DataPrivilegeUtil.invokeSetBitIndex(value, DataBitIndex.RedisChanged));
+        values.forEach(value -> DataPrivilegeUtil.invokeSetBitIndex(value, DataBitIndex.RedisChangeIndex));
     }
 
     /**
@@ -269,7 +269,7 @@ public class CacheComposeSource<K, V extends IData<K>> implements ICacheComposeS
      * @return
      */
     private boolean onReplaceDbBatchSuccess(long primaryKey, Collection<V> values, CacheInformation cacheInformation){
-        values.forEach(value -> DataPrivilegeUtil.invokeClearBitIndex(value, DataBitIndex.RedisChanged));
+        values.forEach(value -> DataPrivilegeUtil.invokeClearBitIndex(value, DataBitIndex.RedisChangeIndex));
         return redisSource.replaceBatch(primaryKey, values, cacheInformation);
     }
 }

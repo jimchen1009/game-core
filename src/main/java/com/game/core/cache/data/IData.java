@@ -6,7 +6,7 @@ public interface IData<K> extends Cloneable {
 
     K secondaryKey();
 
-    boolean hasBitIndex(DataBitIndex bitIndex);
+    boolean hasBitIndex(int index);
 
     long getBitIndexBits();
 

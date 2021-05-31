@@ -2,19 +2,11 @@ package com.game.core.cache.source;
 
 import com.game.core.cache.data.Data;
 import com.game.core.cache.mapper.annotation.CacheFiled;
-import com.game.core.cache.mapper.annotation.CacheIndex;
 import com.game.core.cache.mapper.annotation.CacheIndexes;
-import com.game.core.cache.mapper.annotation.IndexOptions;
-import com.game.core.cache.mapper.annotation.PrimaryIndex;
-import com.game.core.cache.mapper.annotation.SecondaryIndex;
 
 import java.util.Arrays;
 
-@CacheIndexes(
-        primaryIndex = @PrimaryIndex(primaryKey = "id", indexes = {@CacheIndex(name = "id")}),
-        secondaryIndex = @SecondaryIndex(indexes = {@CacheIndex(name = "currencyId")}),
-        options = @IndexOptions(unique = true)
-)
+@CacheIndexes(primaryKey = "id", secondaryKeys = {"currencyId"})
 public class ServerCurrency extends Data<Integer> {
 
     @CacheFiled(index = 0)
