@@ -37,40 +37,7 @@ public class CacheKeyValueBuilder<K> implements ICacheKeyValueBuilder<K> {
     }
 
     @Override
-    public List<Map.Entry<String, Object>> createCombineUniqueKeyValue(Map<String, Object> cacheValue){
-        List<Map.Entry<String, Object>> entryList = cacheUniqueId.createPrimaryUniqueKeys((long) cacheValue.get(cacheUniqueId.getPrimaryKey()));
-        for (String secondaryKey : cacheUniqueId.getSecondaryKeyList()) {
-            entryList.add(new AbstractMap.SimpleEntry<>(secondaryKey, cacheValue.get(secondaryKey)));
-        }
-        return entryList;
-    }
-
-    @Override
-    public K createSecondaryKey(Map<String, Object> cacheValue) {
-        return secondaryBuilder.createKey(addKeyValue(cacheUniqueId.getSecondaryKeyList(), cacheValue));
-    }
-
-    @Override
     public String toSecondaryKeyString(K secondaryKey) {
         return secondaryBuilder.toKeyString(secondaryKey);
-    }
-
-    @Override
-    public String toSecondaryKeyString(Map<String, Object> cacheValue) {
-        Object[] objectValue = addKeyValue(cacheUniqueId.getSecondaryKeyList(), cacheValue);
-        return secondaryBuilder.toKeyString(objectValue);
-    }
-
-    @Override
-    public K createSecondaryKey(String string) {
-        return secondaryBuilder.createKey(string);
-    }
-
-    private Object[] addKeyValue(List<String> keyNameList, Map<String, Object> cacheValue){
-        Object[] objectValues = new Object[keyNameList.size()];
-        for (int i = 0; i < keyNameList.size(); i++) {
-            objectValues[i] = cacheValue.get(keyNameList.get(i));
-        }
-        return objectValues;
     }
 }

@@ -7,8 +7,6 @@ import java.util.Map;
 
 public interface ICacheUniqueId extends IClassConfig, IClassAnnotation {
 
-	String getSourceUniqueId();
-
 	String getRedisKeyString(long primaryKey);
 
 	List<Map.Entry<String, Object>> createPrimaryUniqueKeys(long primaryKey);

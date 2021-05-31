@@ -7,7 +7,7 @@ import com.game.core.cache.dao.DataDaoUtil;
 import com.game.core.cache.dao.IDataCacheMapDao;
 import com.game.core.cache.dao.IDataMapDao;
 import com.game.core.cache.data.IDataLifePredicate;
-import com.game.core.cache.key.KeyValueHelper;
+import com.game.core.cache.key.KeyValueBuilder;
 import com.game.core.cache.source.interact.ICacheLifeInteract;
 import com.game.core.cache.source.redis.RedisClientUtil;
 import com.game.core.db.mongodb.MongoDbManager;
@@ -71,7 +71,7 @@ public class CacheRunner {
             }
         };
 
-        IDataCacheMapDao<Long, UserItem> itemDao = DataDaoUtil.newMapDaoBuilder(UserItem.class, KeyValueHelper.LongBuilder, builder -> {
+        IDataCacheMapDao<Long, UserItem> itemDao = DataDaoUtil.newMapDaoBuilder(UserItem.class, new KeyValueBuilder.ONE<>(), builder -> {
             builder.setCacheLoginPredicate(loginPredicate);
             builder.setLifePredicate(lifePredicate);
             ClassConfig classConfig = builder.getClassConfig();
@@ -84,7 +84,7 @@ public class CacheRunner {
         }).createIfAbsent();
 
 
-        IDataMapDao<Integer, UserCurrency> currencyDao = DataDaoUtil.newMapDaoBuilder(UserCurrency.class, KeyValueHelper.IntegerBuilder, builder -> {
+        IDataMapDao<Integer, UserCurrency> currencyDao = DataDaoUtil.newMapDaoBuilder(UserCurrency.class, new KeyValueBuilder.ONE<>(), builder -> {
             builder.setCacheLoginPredicate(loginPredicate);
             builder.setLifePredicate(lifePredicate);
             ClassConfig classConfig = builder.getClassConfig();

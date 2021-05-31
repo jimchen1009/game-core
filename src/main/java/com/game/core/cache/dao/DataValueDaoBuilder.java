@@ -5,12 +5,12 @@ import com.game.core.cache.data.DataSourceUtil;
 import com.game.core.cache.data.IData;
 import com.game.core.cache.data.IDataSource;
 import com.game.core.cache.data.value.DataValueContainer;
-import com.game.core.cache.key.KeyValueHelper;
+import com.game.core.cache.key.KeyValueBuilder;
 
 public class DataValueDaoBuilder <V extends IData<Long>>  extends DataDaoBuilder{
 
 	public DataValueDaoBuilder(Class<V> aClass) {
-		super(aClass, KeyValueHelper.LongBuilder);
+		super(aClass, new KeyValueBuilder.ONE<>());
 	}
 
 

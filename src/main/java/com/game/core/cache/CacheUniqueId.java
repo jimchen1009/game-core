@@ -100,11 +100,6 @@ public class CacheUniqueId implements ICacheUniqueId {
 	}
 
 	@Override
-	public String getSourceUniqueId() {
-		return sourceUniqueId;
-	}
-
-	@Override
 	public String getRedisKeyString(long primaryKey) {
 		return String.format(redisPrimaryKeyFormatString, primaryKey);
 	}
@@ -140,7 +135,7 @@ public class CacheUniqueId implements ICacheUniqueId {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		CacheUniqueId that = (CacheUniqueId) o;
-		return Objects.equals(getSourceUniqueId(), that.getSourceUniqueId());
+		return Objects.equals(sourceUniqueId, that.sourceUniqueId);
 	}
 
 	@Override

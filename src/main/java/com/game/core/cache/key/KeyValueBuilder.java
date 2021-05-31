@@ -9,6 +9,7 @@ import jodd.util.StringUtil;
  */
 public abstract class KeyValueBuilder<K> implements IKeyValueBuilder<K>{
 
+
     @Override
     public Object[] toKeyValue(K valueKey) {
         Object[] objects = createValue0(valueKey);
@@ -19,31 +20,9 @@ public abstract class KeyValueBuilder<K> implements IKeyValueBuilder<K>{
     protected abstract Object[] createValue0(K valueKey);
 
     @Override
-    public K createKey(Object[] objects) {
-        checkOnlyPrimitiveClass(objects);
-        return createKey0(objects);
-    }
-
-    protected abstract K createKey0(Object[] objects);
-
-
-    @Override
     public String toKeyString(K valueKey) {
         return StringUtil.join(toKeyValue(valueKey), ".");
     }
-
-    @Override
-    public String toKeyString(Object[] objects) {
-        return StringUtil.join(objects, ".");
-    }
-
-    @Override
-    public K createKey(String string) {
-        String[] strings = StringUtil.split(string, ".");
-        return createKey0(strings);
-    }
-
-    protected abstract K createKey0(String[] strings);
 
     private void checkOnlyPrimitiveClass(Object[] objects){
         for (Object object : objects) {
@@ -62,6 +41,15 @@ public abstract class KeyValueBuilder<K> implements IKeyValueBuilder<K>{
             else {
                 throw new CacheException("don't support %s", aClass.getName());
             }
+        }
+    }
+
+
+    public static final class ONE<K> extends KeyValueBuilder<K>{
+
+        @Override
+        protected Object[] createValue0(K valueKey) {
+            return new Object[]{valueKey};
         }
     }
 }
