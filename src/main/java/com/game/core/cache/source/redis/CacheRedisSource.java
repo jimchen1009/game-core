@@ -14,16 +14,13 @@ import com.game.core.cache.key.IKeyValueBuilder;
 import com.game.core.cache.source.CacheSource;
 import com.game.core.cache.source.ICacheDelaySource;
 import com.game.core.cache.source.executor.ICacheExecutor;
-import com.game.core.cache.source.interact.CacheRedisCollection;
-import com.game.core.cache.source.interact.ICacheRedisInteract;
+import com.game.core.db.redis.IRedisPipeline;
 import jodd.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -52,11 +49,8 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
 
     private final CacheInformation EMPTY_INFO = new CacheInformation();
 
-    private final ICacheRedisInteract cacheRedisInteract;
-
-    public CacheRedisSource(ICacheUniqueId cacheUniqueId, IKeyValueBuilder<K> secondaryBuilder, ICacheRedisInteract cacheRedisInteract) {
+    public CacheRedisSource(ICacheUniqueId cacheUniqueId, IKeyValueBuilder<K> secondaryBuilder) {
         super(cacheUniqueId, secondaryBuilder);
-        this.cacheRedisInteract = cacheRedisInteract;
     }
 
     @Override
@@ -79,36 +73,9 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
     @SuppressWarnings("unchecked")
     @Override
     public DataCollection<K, V> getCollection(long primaryKey) {
-        ICacheUniqueId currentDaoUniqueId = getCacheUniqueId();
-        CacheRedisCollection removeCollection = cacheRedisInteract.removeCollection(primaryKey, currentDaoUniqueId);
-        if (removeCollection != null){
-            return readDataCollection(removeCollection);
-        }
-        List<ICacheUniqueId> cacheDaoUniqueIdList = new ArrayList<>();
-        cacheDaoUniqueIdList.add(currentDaoUniqueId);
-        if (cacheRedisInteract.getAndSetSharedLoad(primaryKey, currentDaoUniqueId)){
-
-            cacheDaoUniqueIdList.addAll(cacheRedisInteract.getSharedCacheUniqueIdList(primaryKey, currentDaoUniqueId));
-        }
-        List<Map.Entry<String, Object>> entryList = RedisClientUtil.getRedisClient().executeBatch(redisPipeline -> {
-            for (ICacheUniqueId cacheDaoUnique : cacheDaoUniqueIdList) {
-                CacheRedisCollection.executeCommand(primaryKey, redisPipeline, cacheDaoUnique);
-            }
-        });
-        long currentTime = System.currentTimeMillis();
-        Map<ICacheUniqueId, CacheRedisCollection> redisCollectionMap = new HashMap<>(cacheDaoUniqueIdList.size());
-        int batchCount = entryList.size() / cacheDaoUniqueIdList.size();
-        for (int i = 0; i < entryList.size(); i += batchCount) {
-            CacheRedisCollection redisCollection = CacheRedisCollection.readCollection(entryList.subList(i, i + batchCount));
-            if (redisCollection.isEmpty() || redisCollection.isExpired(currentTime)) {
-                continue;
-            }
-            ICacheUniqueId cacheDaoUnique = cacheDaoUniqueIdList.get(i / batchCount);
-            redisCollectionMap.put(cacheDaoUnique, redisCollection);
-        }
-        removeCollection = redisCollectionMap.remove(currentDaoUniqueId);
-        cacheRedisInteract.addCollections(primaryKey, currentDaoUniqueId, redisCollectionMap);
-        return removeCollection == null ? null : readDataCollection(removeCollection);
+        List<Map.Entry<String, Object>> entryList = RedisClientUtil.getRedisClient().executeBatch(pipeline -> executeRedisCommand(primaryKey, pipeline, getCacheUniqueId()));
+        RedisCollection redisCollection = readRedisCollection(entryList);
+        return readDataCollection(redisCollection);
     }
 
     @Override
@@ -159,7 +126,7 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
         String keyString = getPrimaryRedisKey(primaryKey);
         RedisClientUtil.getRedisClient().executeBatch(redisPipeline -> {
             long expiredTime = cacheInformation.getExpiredTime();
-            redisPipeline.hset(keyString, CacheRedisCollection.ExpiredName, String.valueOf(expiredTime));
+            redisPipeline.hset(keyString, RedisCollection.ExpiredName, String.valueOf(expiredTime));
             redisPipeline.pexpireAt(keyString, cacheInformation.getExpiredTime());
         });
         return true;
@@ -192,7 +159,7 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
      * @return
      */
     @SuppressWarnings("unchecked")
-    private DataCollection<K, V> readDataCollection(CacheRedisCollection redisCollection){
+    private DataCollection<K, V> readDataCollection(RedisCollection redisCollection){
         if (redisCollection.isEmpty()){
             return null;
         }
@@ -246,5 +213,55 @@ public class CacheRedisSource<K, V extends IData<K>> extends CacheSource<K, V> i
             return Collections.emptyList();
         }
         return strings.stream().map(this::convert2VDataValue).collect(Collectors.toList());
+    }
+
+
+
+    private static class RedisCollection {
+        public static final String ExpiredName = "ttl.expired";
+
+        private final Map<String, String> redisKeyValueMap;
+        private final CacheInformation cacheInformation;
+
+        public RedisCollection(Map<String, String> redisKeyValueMap, CacheInformation cacheInformation) {
+            this.redisKeyValueMap = redisKeyValueMap;
+            this.cacheInformation = cacheInformation;
+        }
+
+        public boolean isEmpty(){
+            return redisKeyValueMap == null || redisKeyValueMap.isEmpty();
+        }
+
+        public Collection<String> getRedisValues(){
+            return redisKeyValueMap.values();
+        }
+
+        public CacheInformation getCacheInformation() {
+            return cacheInformation;
+        }
+    }
+
+
+    /**
+     * 执行对应的命令获取数据
+     * @param primaryKey
+     * @param redisPipeline
+     * @param cacheUniqueId
+     */
+    public static void executeRedisCommand(long primaryKey, IRedisPipeline redisPipeline, ICacheUniqueId cacheUniqueId){
+        String redisKeyString = cacheUniqueId.getRedisKeyString(primaryKey);
+        redisPipeline.hgetAll(redisKeyString);
+    }
+
+
+    @SuppressWarnings("unchecked")
+    public static RedisCollection readRedisCollection(List<Map.Entry<String, Object>> entryList){
+        Map<String, String> redisKeyValueMap = (Map<String, String>)entryList.get(0).getValue();
+        CacheInformation cacheInformation = new CacheInformation();
+        String expiredTime = redisKeyValueMap.remove(ExpiredName);
+        if (expiredTime != null){
+            cacheInformation.updateCurrentTime(Long.parseLong(expiredTime));
+        }
+        return new RedisCollection(redisKeyValueMap, cacheInformation);
     }
 }

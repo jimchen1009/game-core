@@ -3,6 +3,7 @@ package com.game.core.cache.source.mongodb;
 import com.game.common.config.EvnCoreConfigs;
 import com.game.common.config.EvnCoreType;
 import com.game.common.config.IEvnConfig;
+import com.game.core.cache.CacheKeyValue;
 import com.game.core.db.mongodb.MongoDbManager;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
@@ -24,18 +25,13 @@ public class MongoDBQueryUtil {
 
     public static final UpdateOptions UPDATE_OPTIONS = new UpdateOptions().upsert(true);
 
-    public static Map<String, Object> queryOne(MongoCollection<Document> collection, int primaryKeyId, List<Map.Entry<String, Object>> keyValue) {
-        Document queryDocument = CacheMongoDBUtil.getQueryDocument(primaryKeyId, keyValue);
+    public static Map<String, Object> queryOne(MongoCollection<Document> collection, List<CacheKeyValue> keyValue) {
+        Document queryDocument = CacheMongoDBUtil.getQueryDocument(keyValue);
         return collection.find(queryDocument).first();
     }
 
-    public static Collection<Map<String, Object>> queryAll(MongoCollection<Document> collection, int primarySharedId, List<Map.Entry<String, Object>> keyValue) {
-        Document queryDocument = CacheMongoDBUtil.getQueryDocument(primarySharedId, keyValue);
-        return queryAll(collection, queryDocument);
-    }
-
-    public static Collection<Map<String, Object>> queryAll(MongoCollection<Document> collection, List<Integer> primarySharedIds, List<Map.Entry<String, Object>> keyValue) {
-        Document queryDocument = CacheMongoDBUtil.getQueryDocument(primarySharedIds, keyValue);
+    public static Collection<Map<String, Object>> queryAll(MongoCollection<Document> collection, List<CacheKeyValue> keyValue) {
+        Document queryDocument = CacheMongoDBUtil.getQueryDocument(keyValue);
         return queryAll(collection, queryDocument);
     }
 

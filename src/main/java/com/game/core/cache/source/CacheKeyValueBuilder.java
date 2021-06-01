@@ -1,11 +1,10 @@
 package com.game.core.cache.source;
 
+import com.game.core.cache.CacheKeyValue;
 import com.game.core.cache.ICacheUniqueId;
 import com.game.core.cache.key.IKeyValueBuilder;
 
-import java.util.AbstractMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 public class CacheKeyValueBuilder<K> implements ICacheKeyValueBuilder<K> {
@@ -19,19 +18,19 @@ public class CacheKeyValueBuilder<K> implements ICacheKeyValueBuilder<K> {
     }
 
     @Override
-    public List<Map.Entry<String, Object>> createPrimaryKeyValue(long primaryKey) {
-        return cacheUniqueId.createPrimaryUniqueKeys(primaryKey);
+    public List<CacheKeyValue> createPrimaryKeyValue(long primaryKey) {
+        return cacheUniqueId.createPrimaryAndAdditionalKeys(primaryKey);
     }
 
     @Override
-    public List<Map.Entry<String, Object>> createCombineUniqueKeyValue(long primaryKey, K secondaryKey) {
-        List<Map.Entry<String, Object>> entryList = createPrimaryKeyValue(primaryKey);
+    public List<CacheKeyValue> createCombineUniqueKeyValue(long primaryKey, K secondaryKey) {
+        List<CacheKeyValue> entryList = createPrimaryKeyValue(primaryKey);
         return addKeyValue(entryList, cacheUniqueId.getSecondaryKeyList(), secondaryBuilder.toKeyValue(secondaryKey));
     }
 
-    private List<Map.Entry<String, Object>> addKeyValue(List<Map.Entry<String, Object>> keyValue, List<String> keyNames, Object[] objectValues){
+    private List<CacheKeyValue> addKeyValue(List<CacheKeyValue> keyValue, List<String> keyNames, Object[] objectValues){
         for (int i = 0; i < keyNames.size(); i++) {
-            keyValue.add(new AbstractMap.SimpleEntry<>(keyNames.get(i), objectValues[i]));
+            keyValue.add(new CacheKeyValue(keyNames.get(i), objectValues[i]));
         }
         return keyValue;
     }

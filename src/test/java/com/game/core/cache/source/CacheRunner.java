@@ -1,6 +1,5 @@
 package com.game.core.cache.source;
 
-import com.game.core.cache.ClassConfig;
 import com.game.core.cache.ICacheUniqueId;
 import com.game.core.cache.dao.DataDaoManager;
 import com.game.core.cache.dao.DataDaoUtil;
@@ -38,11 +37,12 @@ public class CacheRunner {
 
     @Test
     public void item() throws InterruptedException {
-        MongoDbManager.init();
-        RedisClientManager.init();
-        IRedisClient redisClient = RedisClientUtil.getRedisClient();
-        MongoDatabase database = MongoDbManager.get("cache").getDb("demo");
-        MongoCollection<Document> collection = database.getCollection("material");
+        System.setProperty("game.core.config.path", "D:/demo/game-core/src/main/resources");
+//        MongoDbManager.init();
+//        RedisClientManager.init();
+//        IRedisClient redisClient = RedisClientUtil.getRedisClient();
+//        MongoDatabase database = MongoDbManager.get("cache").getDb("demo");
+//        MongoCollection<Document> collection = database.getCollection("material");
 //        collection.drop();
 //        Document queryDocument = new Document("userId", new Document("$exists", false));
 //        Document document = new Document("$replace", new Document("item", Collections.emptyList()));
@@ -72,29 +72,23 @@ public class CacheRunner {
         };
 
         IDataCacheMapDao<Long, UserItem> itemDao = DataDaoUtil.newMapDaoBuilder(UserItem.class, new KeyValueBuilder.ONE<>(), builder -> {
-            builder.setCacheLoginPredicate(loginPredicate);
             builder.setLifePredicate(lifePredicate);
-            ClassConfig classConfig = builder.getClassConfig();
-            classConfig.setDelayUpdate(true)
+            builder.getClassConfig().setDelayUpdate(true)
                     .setName("material")
-                    .setPrimarySharedId(1)
                     .setRedisSupport(true)
                     .setCacheLoadAdvance(true)
                     .setAccountCache(true);
-        }).createIfAbsent();
+        }).getCacheInstance();
 
 
         IDataMapDao<Integer, UserCurrency> currencyDao = DataDaoUtil.newMapDaoBuilder(UserCurrency.class, new KeyValueBuilder.ONE<>(), builder -> {
-            builder.setCacheLoginPredicate(loginPredicate);
             builder.setLifePredicate(lifePredicate);
-            ClassConfig classConfig = builder.getClassConfig();
-            classConfig.setDelayUpdate(true)
+            builder.getClassConfig().setDelayUpdate(true)
                     .setName("material")
-                    .setPrimarySharedId(2)
                     .setRedisSupport(true)
                     .setCacheLoadAdvance(true)
                     .setAccountCache(true);
-        }).createIfAbsent();
+        }).getCacheInstance();
 
 
         List<UserDaoAll> userDaoAllList = new ArrayList<>();

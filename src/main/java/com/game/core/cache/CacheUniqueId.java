@@ -1,52 +1,44 @@
 package com.game.core.cache;
 
+import com.game.common.util.CommonUtil;
 import com.game.core.cache.mapper.ClassAnnotation;
 import com.game.core.cache.mapper.FieldAnnotation;
-import com.game.core.cache.mapper.annotation.CacheIndexes;
+import jodd.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class CacheUniqueId implements ICacheUniqueId {
 
 	private static final Logger logger = LoggerFactory.getLogger(CacheUniqueId.class);
 
 	protected final ClassConfig classConfig;
-	protected final List<Map.Entry<String, Object>> primaryUniqueKeys;
 	private final ClassAnnotation information;
-	protected final String sourceUniqueId;
-	protected final String redisPrimaryKeyFormatString;
+	private final List<CacheKeyValue> additionalKeyValueList;
+	protected String redisPrimaryKeyFormatString;
 
-	/***
-	 * @param classConfig
-	 */
-	public CacheUniqueId(ClassConfig classConfig) {
+	public CacheUniqueId(ClassConfig classConfig, List<CacheKeyValue> additionalKeyValueList) {
 		this.classConfig = classConfig;
 		this.information = ClassAnnotation.create(classConfig.getAClass());
-		this.primaryUniqueKeys = new ArrayList<>(1);
-		primaryUniqueKeys.add(new AbstractMap.SimpleEntry<>(information.getPrimaryKey(), null));
-		sourceUniqueId = String.format("%s_%s", classConfig.getName(), classConfig.getPrimarySharedId());;
+		List<String> additionalKeyList = information.getAdditionalKeyList();
+		this.additionalKeyValueList = new ArrayList<>(additionalKeyValueList.size());
+		for (String additionalKey : additionalKeyList) {
+			CacheKeyValue oneUtilOkay = CommonUtil.findOneUtilOkay(additionalKeyValueList, findOne -> findOne.getKey() == additionalKey);
+			this.additionalKeyValueList.add(Objects.requireNonNull(oneUtilOkay));
+		}
 		this.redisPrimaryKeyFormatString = createRedisPrimaryKeyFormatString();
-
 	}
 
 	@Override
-	public List<Map.Entry<String, Object>> createPrimaryUniqueKeys(long primaryKey) {
-		List<Map.Entry<String, Object>> entryList = new ArrayList<>(primaryUniqueKeys.size());
-		for (Map.Entry<String, Object> entry : primaryUniqueKeys) {
-			if (entry.getValue() == null){
-				entryList.add(new AbstractMap.SimpleEntry<>(entry.getKey(), primaryKey));
-			}
-			else {
-				entryList.add(entry);
-			}
-		}
-		return entryList;
+	public List<CacheKeyValue> createPrimaryAndAdditionalKeys(long primaryKey) {
+		List<CacheKeyValue> cacheKeyValueList = new ArrayList<>(additionalKeyValueList.size() + 1);
+		cacheKeyValueList.add(new CacheKeyValue(getPrimaryKey(), primaryKey));
+		cacheKeyValueList.addAll(additionalKeyValueList);
+		return cacheKeyValueList;
 	}
 
 	@Override
@@ -62,11 +54,6 @@ public class CacheUniqueId implements ICacheUniqueId {
 	@Override
 	public String getName() {
 		return classConfig.getName();
-	}
-
-	@Override
-	public int getPrimarySharedId() {
-		return classConfig.getPrimarySharedId();
 	}
 
 	@Override
@@ -105,13 +92,13 @@ public class CacheUniqueId implements ICacheUniqueId {
 	}
 
 	@Override
-	public CacheIndexes getCacheIndexes() {
-		return information.getCacheIndexes();
+	public String getPrimaryKey() {
+		return information.getPrimaryKey();
 	}
 
 	@Override
-	public String getPrimaryKey() {
-		return information.getPrimaryKey();
+	public List<String> getAdditionalKeyList() {
+		return information.getAdditionalKeyList();
 	}
 
 	@Override
@@ -129,25 +116,26 @@ public class CacheUniqueId implements ICacheUniqueId {
 		return information.getFiledAnnotationList();
 	}
 
-
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		CacheUniqueId that = (CacheUniqueId) o;
-		return Objects.equals(sourceUniqueId, that.sourceUniqueId);
+		return Objects.equals(additionalKeyValueList, that.additionalKeyValueList);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(sourceUniqueId);
+		return Objects.hash(getName());
 	}
 
 	private String createRedisPrimaryKeyFormatString(){
-		String primarySharedId = "";
-		if (classConfig.getPrimarySharedId() > 0){
-			primarySharedId = "." + classConfig.getPrimarySharedId();
+		if (additionalKeyValueList.isEmpty()){
+			String string = StringUtil.join(additionalKeyValueList.stream().map(CacheKeyValue::getValue).collect(Collectors.toList()), "_");
+			return "100:%s_" + String.format("%s.%s.v%s", classConfig.getName() , string, classConfig.getVersionId());
 		}
-		return "100:%s_" + String.format("%s%s.v%s", classConfig.getName() , primarySharedId, classConfig.getVersionId());
+		else {
+			return "100:%s_" + String.format("%s.v%s", classConfig.getName() , classConfig.getVersionId());
+		}
 	}
 }

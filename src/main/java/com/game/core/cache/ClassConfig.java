@@ -15,7 +15,6 @@ public class ClassConfig implements IClassConfig {
     private boolean accountCache;
     private boolean cacheLoadAdvance;
     private boolean redisSupport;
-    private int primarySharedId;
     private boolean delayUpdate;
     private int versionId;
 
@@ -26,7 +25,6 @@ public class ClassConfig implements IClassConfig {
         this.accountCache = true;
         this.cacheLoadAdvance = false;
         this.redisSupport = false;
-        this.primarySharedId = 0;
         this.versionId = 1;
         this.delayUpdate = false;
     }
@@ -78,21 +76,11 @@ public class ClassConfig implements IClassConfig {
 
     @Override
     public boolean isRedisSupport() {
-        return redisSupport || !cacheType.isDBType();
+        return redisSupport && cacheType.isDBType();
     }
 
     public ClassConfig setRedisSupport(boolean redisSupport) {
         this.redisSupport = redisSupport;
-        return this;
-    }
-
-    @Override
-    public int getPrimarySharedId() {
-        return primarySharedId;
-    }
-
-    public ClassConfig setPrimarySharedId(int primarySharedId) {
-        this.primarySharedId = primarySharedId;
         return this;
     }
 
@@ -124,7 +112,6 @@ public class ClassConfig implements IClassConfig {
         classConfig.accountCache = accountCache;
         classConfig.cacheLoadAdvance = cacheLoadAdvance;
         classConfig.redisSupport = redisSupport;
-        classConfig.primarySharedId = primarySharedId;
         classConfig.delayUpdate = delayUpdate;
         classConfig.versionId = versionId;
         return classConfig;
@@ -138,7 +125,6 @@ public class ClassConfig implements IClassConfig {
                 ", name='" + name + '\'' +
                 ", accountCache=" + accountCache +
                 ", redisSupport=" + redisSupport +
-                ", primarySharedId=" + primarySharedId +
                 ", delayUpdate=" + delayUpdate +
                 ", versionId=" + versionId +
                 '}';
@@ -151,7 +137,6 @@ public class ClassConfig implements IClassConfig {
         ClassConfig that = (ClassConfig) o;
         return accountCache == that.accountCache &&
                 redisSupport == that.redisSupport &&
-                primarySharedId == that.primarySharedId &&
                 delayUpdate == that.delayUpdate &&
                 versionId == that.versionId &&
                 Objects.equals(aClass, that.aClass) &&
@@ -161,6 +146,6 @@ public class ClassConfig implements IClassConfig {
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, accountCache, redisSupport, primarySharedId, delayUpdate, versionId);
+        return Objects.hash(name, accountCache, redisSupport, delayUpdate, versionId);
     }
 }

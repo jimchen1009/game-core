@@ -8,8 +8,6 @@ import com.game.core.cache.data.IData;
 import com.game.core.cache.key.IKeyValueBuilder;
 import com.game.core.cache.source.executor.CacheExecutor;
 import com.game.core.cache.source.executor.ICacheExecutor;
-import com.game.core.cache.source.interact.CacheDBInteract;
-import com.game.core.cache.source.interact.CacheRedisInteract;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,18 +35,12 @@ public class DataDaoManager {
     private final Map<ICacheUniqueId, IDataCacheValueDao> valueDaoMap;
     private final Map<ICacheUniqueId, IDataCacheDao> cacheDaoMap;
 
-    private final CacheDBInteract cacheDBInteract;
-    private final CacheRedisInteract cacheRedisInteract;
-
-
     private DataDaoManager() {
         IEvnConfig executorConfig = EvnCoreConfigs.getInstance(EvnCoreType.CACHE).getConfig("executor");
         this.executor = new CacheExecutor(executorConfig.getInt("threadCount"));
         this.mapDaoMap = new ConcurrentHashMap<>();
         this.valueDaoMap = new ConcurrentHashMap<>();
         this.cacheDaoMap = new ConcurrentHashMap<>();
-        this.cacheDBInteract = new CacheDBInteract(this::handleCacheInteract, cacheDaoMap::keySet);
-        this.cacheRedisInteract = new CacheRedisInteract(this::handleCacheInteract, cacheDaoMap::keySet);
     }
 
     public void flushAll(){
@@ -112,14 +104,6 @@ public class DataDaoManager {
         return executor;
     }
 
-    CacheDBInteract getCacheDBInteract() {
-        return cacheDBInteract;
-    }
-
-    CacheRedisInteract getCacheRedisInteract() {
-        return cacheRedisInteract;
-    }
-
     /**
      * 处理回调数据~
      * @param primaryKey
@@ -141,18 +125,26 @@ public class DataDaoManager {
     @SuppressWarnings("unchecked")
     <V extends IData<Long>> IDataCacheValueDao<V> addCacheValueDao(IDataCacheValueDao<V> dataValueDao){
         ICacheUniqueId cacheUniqueId = dataValueDao.getCacheUniqueId();
-        valueDaoMap.putIfAbsent(cacheUniqueId, dataValueDao);
+        if (valueDaoMap.putIfAbsent(cacheUniqueId, dataValueDao) == null) {
+            logger.error("");
+        }
         IDataCacheValueDao<V> onlyOneDao = valueDaoMap.get(cacheUniqueId);
-        cacheDaoMap.putIfAbsent(cacheUniqueId, onlyOneDao);
+        if (cacheDaoMap.putIfAbsent(cacheUniqueId, onlyOneDao) == null) {
+            logger.error("");
+        }
         return onlyOneDao;
     }
 
     @SuppressWarnings("unchecked")
     <K, V extends IData<K>> IDataCacheMapDao<K, V> addCacheMapDao(IDataCacheMapDao<K, V> dataMapDao){
         ICacheUniqueId cacheUniqueId = dataMapDao.getCacheUniqueId();
-        mapDaoMap.putIfAbsent(cacheUniqueId, dataMapDao);
+        if (mapDaoMap.putIfAbsent(cacheUniqueId, dataMapDao) != null) {
+            logger.error("");
+        }
         IDataCacheMapDao<K, V> onlyOneDao = mapDaoMap.get(cacheUniqueId);
-        cacheDaoMap.putIfAbsent(cacheUniqueId, onlyOneDao);
+        if (cacheDaoMap.putIfAbsent(cacheUniqueId, onlyOneDao) != null) {
+            logger.error("");
+        }
         return onlyOneDao;
     }
 

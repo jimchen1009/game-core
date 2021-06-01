@@ -10,13 +10,13 @@ import com.game.core.cache.source.executor.ICacheSource;
 
 public class DataMapDaoBuilder<K, V extends IData<K>>  extends DataDaoBuilder{
 
-	public DataMapDaoBuilder(Class<V> aClass, IKeyValueBuilder<K> secondaryBuilder) {
+	DataMapDaoBuilder(Class<V> aClass, IKeyValueBuilder<K> secondaryBuilder) {
 		super(aClass, secondaryBuilder);
 	}
 
 
 	@SuppressWarnings("unchecked")
-	public IDataCacheMapDao<K, V> createIfAbsent(){
+	public IDataCacheMapDao<K, V> getCacheInstance(){
 		IDataSource<K, V> dataSource = DataSourceUtil.createDataSource(createCacheSource());
 		DataMapContainer<K, V> container = new DataMapContainer<>(dataSource, lifePredicate, daoManager.getExecutor());
 		ClassConfig classConfig = this.classConfig.cloneConfig().setDelayUpdate(false);
@@ -26,7 +26,7 @@ public class DataMapDaoBuilder<K, V extends IData<K>>  extends DataDaoBuilder{
 	}
 
 	@SuppressWarnings("unchecked")
-	public IDataMapDao<K, V> createDirectDao(){
+	public IDataMapDao<K, V> createDirectInstance(){
 		ClassConfig classConfig = this.classConfig.cloneConfig().setDelayUpdate(false).setRedisSupport(false);
 		ICacheSource<K, V> cacheSource = createCacheSource(classConfig);
 		IDataSource<K, V> dataSource = DataSourceUtil.createDataSource(cacheSource);

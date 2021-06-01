@@ -1,5 +1,6 @@
 package com.game.core.cache.source.mongodb;
 
+import com.game.core.cache.CacheKeyValue;
 import com.game.core.cache.CacheName;
 import com.mongodb.client.model.DeleteOneModel;
 import com.mongodb.client.model.UpdateOneModel;
@@ -21,28 +22,25 @@ public class CacheMongoDBUtil {
     public static final UpdateOptions UPDATE_OPTIONS = new UpdateOptions().upsert(true);
     public static final String DB_NAME = "demo";
 
-    public static UpdateOneModel<Document> createUpdateOneModel(int primarySharedId, Collection<Map.Entry<String, Object>> keyValue, Collection<Map.Entry<String, Object>> cache2Values) {
-        Document queryDocument = getQueryDocument(primarySharedId, keyValue);
+    public static UpdateOneModel<Document> createUpdateOneModel(Collection<CacheKeyValue> keyValue, Collection<Map.Entry<String, Object>> cache2Values) {
+        Document queryDocument = getQueryDocument(keyValue);
         Document document = toDocument(cache2Values);
         return new UpdateOneModel<>(queryDocument, document, UPDATE_OPTIONS);
     }
 
-    public static DeleteOneModel<Document> createDeleteOneModel(int primarySharedId, List<Map.Entry<String, Object>> keyValue) {
-        Document document = getQueryDocument(primarySharedId, keyValue);
+    public static DeleteOneModel<Document> createDeleteOneModel(List<CacheKeyValue> keyValue) {
+        Document document = getQueryDocument(keyValue);
         return new DeleteOneModel<>(document);
     }
 
-    public static List<DeleteOneModel<Document>> createDeleteOneModelList(int primarySharedId, Collection<List<Map.Entry<String, Object>>> key2ValuesList) {
-        return key2ValuesList.stream().map(keyValue-> createDeleteOneModel(primarySharedId, keyValue)).collect(Collectors.toList());
+    public static List<DeleteOneModel<Document>> createDeleteOneModelList(Collection<List<CacheKeyValue>> key2ValuesList) {
+        return key2ValuesList.stream().map(CacheMongoDBUtil::createDeleteOneModel).collect(Collectors.toList());
     }
 
-    public static Document getQueryDocument(int primarySharedId, Collection<Map.Entry<String, Object>>  keyValue){
+    public static Document getQueryDocument(Collection<CacheKeyValue>  keyValue){
         Document document = new Document();
-        for (Map.Entry<String, Object> entry : keyValue) {
+        for (CacheKeyValue entry : keyValue) {
             document.append(entry.getKey(), entry.getValue());
-        }
-        if (primarySharedId > 0){
-            document.append(CacheName.PrimaryId.getKeyName(),primarySharedId);
         }
         return document;
     }

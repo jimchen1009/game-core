@@ -26,13 +26,13 @@ public class ClassAnnotation implements IClassAnnotation {
         return name2Descriptions.computeIfAbsent(aClass.getName(), key-> new ClassAnnotation(aClass));
     }
 
-    private final CacheIndexes cacheIndexes;
+    private String primaryKey;
     private List<String> secondaryKeyList;
+    private List<String> additionalKeyList;
     private List<String> combineUniqueKeyList;
     private List<FieldAnnotation> fieldAnnotationList;
 
     private ClassAnnotation(Class<?> aClass) {
-        this.cacheIndexes = aClass.getAnnotation(CacheIndexes.class);
         this.secondaryKeyList = new ArrayList<>();
         this.combineUniqueKeyList = new ArrayList<>();
         this.fieldAnnotationList = new ArrayList<>();
@@ -41,8 +41,14 @@ public class ClassAnnotation implements IClassAnnotation {
 
     @Override
     public String getPrimaryKey() {
-        return cacheIndexes.primaryKey();
+        return primaryKey;
     }
+
+    @Override
+    public List<String> getAdditionalKeyList() {
+        return additionalKeyList;
+    }
+
     @Override
     public List<String> getSecondaryKeyList() {
         return secondaryKeyList;
@@ -58,21 +64,18 @@ public class ClassAnnotation implements IClassAnnotation {
         return fieldAnnotationList;
     }
 
-    @Override
-    public CacheIndexes getCacheIndexes(){
-        return cacheIndexes;
-    }
-
     private void searchAnnotationFieldsAndInit(Class<?> aClass){
         //索引处理~
         CacheIndexes cacheIndexes = aClass.getAnnotation(CacheIndexes.class);
 
         //字段处理~
         searchAnnotationFields(aClass, fieldAnnotationList);
-
+        this.primaryKey = cacheIndexes.primaryKey();
+        this.additionalKeyList = Arrays.asList(cacheIndexes.additionalKeys());
         this.secondaryKeyList = Arrays.asList(cacheIndexes.secondaryKeys());
         List<String> combineUniqueKeys = new ArrayList<>();
         combineUniqueKeys.add(cacheIndexes.primaryKey());
+        combineUniqueKeys.addAll(additionalKeyList);
         combineUniqueKeys.addAll(secondaryKeyList);
         if (new HashSet<>(combineUniqueKeys).size() != combineUniqueKeys.size()){
             throw new CacheException("combineUniqueKeyList:%s, class:%s", combineUniqueKeys, aClass.getName());

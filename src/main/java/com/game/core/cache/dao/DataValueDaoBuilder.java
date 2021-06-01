@@ -9,13 +9,13 @@ import com.game.core.cache.key.KeyValueBuilder;
 
 public class DataValueDaoBuilder <V extends IData<Long>>  extends DataDaoBuilder{
 
-	public DataValueDaoBuilder(Class<V> aClass) {
+	DataValueDaoBuilder(Class<V> aClass) {
 		super(aClass, new KeyValueBuilder.ONE<>());
 	}
 
 
 	@SuppressWarnings("unchecked")
-	public IDataCacheValueDao<V> createIfAbsent(DataValueDaoBuilder<V> builder){
+	public IDataCacheValueDao<V> getCacheInstance(){
 		IDataSource<Long, V> dataSource = DataSourceUtil.createDataSource(createCacheSource());
 		DataValueContainer<V> container = new DataValueContainer<>(dataSource, lifePredicate, daoManager.getExecutor());
 
@@ -27,7 +27,7 @@ public class DataValueDaoBuilder <V extends IData<Long>>  extends DataDaoBuilder
 	}
 
 	@SuppressWarnings("unchecked")
-	public IDataValueDao<V> createDirectDao(){
+	public IDataValueDao<V> createDirectInstance(){
 		ClassConfig classConfig = this.classConfig.cloneConfig().setDelayUpdate(false).setRedisSupport(false);
 		IDataSource<Long, V> dataSource0 = DataSourceUtil.createDataSource(createCacheSource(classConfig));
 		return new DataValueDao<>(dataSource0);

@@ -1,5 +1,7 @@
 package com.game.core.cache.source.mongodb;
 
+import com.game.common.arg.Args;
+import com.game.core.cache.CacheKeyValue;
 import com.game.core.cache.CacheType;
 import com.game.core.cache.data.IData;
 import com.game.core.cache.source.CacheDelaySource;
@@ -7,7 +9,6 @@ import com.game.core.cache.source.ICacheKeyValueBuilder;
 import com.game.core.cache.source.KeyDataValue;
 import com.game.core.cache.source.PrimaryDelayCache;
 import com.game.core.cache.source.executor.ICacheExecutor;
-import com.game.common.arg.Args;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.DeleteOneModel;
@@ -30,11 +31,9 @@ public class CacheDelayMongoDBSource<K, V extends IData<K>> extends CacheDelaySo
 
     private static final Logger logger = LoggerFactory.getLogger(CacheDelayMongoDBSource.class);
 
-
     public CacheDelayMongoDBSource(CacheMongoDBSource<K, V> dbSource, ICacheExecutor executor) {
         super(dbSource, executor);
     }
-
 
     private void addFailureKeyDataValue(List<Args.Two<Long, KeyDataValue<K, V>>> keyCacheValueList, Map<Long, PrimaryDelayCache<K, V>> failureKeyCacheValuesMap){
         for (Args.Two<Long, KeyDataValue<K, V>> arg : keyCacheValueList) {
@@ -62,19 +61,18 @@ public class CacheDelayMongoDBSource<K, V extends IData<K>> extends CacheDelaySo
         List<Args.Two<Long, KeyDataValue<K, V>>> updateKeyCacheValueList = new ArrayList<>();
 
 
-        int primarySharedId = getCacheUniqueId().getPrimarySharedId();
         ICacheKeyValueBuilder<K> keyValueBuilder = getKeyValueBuilder();
         for (Map.Entry<Long, PrimaryDelayCache<K, V>> entry : pkPrimaryCacheMap.entrySet()) {
             for (KeyDataValue<K, V> keyDataValue : entry.getValue().getAll()) {
                 if (keyDataValue.isDeleted()) {
-                    List<Map.Entry<String, Object>> entryList = keyValueBuilder.createCombineUniqueKeyValue(entry.getKey(), keyDataValue.getKey());
-                    deleteOneModelList.add(CacheMongoDBUtil.createDeleteOneModel(primarySharedId, entryList));
+                    List<CacheKeyValue> entryList = keyValueBuilder.createCombineUniqueKeyValue(entry.getKey(), keyDataValue.getKey());
+                    deleteOneModelList.add(CacheMongoDBUtil.createDeleteOneModel(entryList));
                     deleteKeyCacheValueList.add(Args.create(entry.getKey(), keyDataValue));
                 }
                 else {
-                    List<Map.Entry<String, Object>> entryList = keyValueBuilder.createCombineUniqueKeyValue(entry.getKey(), keyDataValue.getDataValue().secondaryKey());
+                    List<CacheKeyValue> entryList = keyValueBuilder.createCombineUniqueKeyValue(entry.getKey(), keyDataValue.getDataValue().secondaryKey());
                     Map<String, Object> cacheValue = getConverter().convert2Cache(keyDataValue.getDataValue());
-                    updateOneModelList.add(CacheMongoDBUtil.createUpdateOneModel(primarySharedId, entryList, cacheValue.entrySet()));
+                    updateOneModelList.add(CacheMongoDBUtil.createUpdateOneModel(entryList, cacheValue.entrySet()));
                     updateKeyCacheValueList.add(Args.create(entry.getKey(), keyDataValue));
                 }
             }

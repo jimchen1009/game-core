@@ -185,7 +185,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
                 logger.error("{}", builder.toString(), e);
             }
         }
-        int tryCount = Math.max(2, EvnCoreConfigs.getInt("cache.flush.tryAllCount"));
+        int tryCount = Math.max(2, EvnCoreConfigs.getInstance(EvnCoreType.CACHE).getInt("flush.tryAllCount"));
         while (tryCount-- > 0 && !primaryCacheMap.isEmpty()){
             lockAndFlushPrimaryCache(primaryCacheMap.keySet(), "flushAll");
         }

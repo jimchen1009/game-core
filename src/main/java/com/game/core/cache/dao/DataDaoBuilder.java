@@ -1,51 +1,54 @@
 package com.game.core.cache.dao;
 
+import com.game.core.cache.CacheKeyValue;
 import com.game.core.cache.CacheType;
 import com.game.core.cache.CacheUniqueId;
 import com.game.core.cache.ClassConfig;
+import com.game.core.cache.ICacheUniqueId;
 import com.game.core.cache.data.IData;
 import com.game.core.cache.data.IDataLifePredicate;
 import com.game.core.cache.exception.CacheException;
 import com.game.core.cache.key.IKeyValueBuilder;
 import com.game.core.cache.source.compose.CacheComposeSource;
 import com.game.core.cache.source.executor.ICacheSource;
-import com.game.core.cache.source.interact.ICacheDBInteract;
-import com.game.core.cache.source.interact.ICacheDBLifeInteract;
-import com.game.core.cache.source.interact.ICacheLifeInteract;
-import com.game.core.cache.source.interact.ICacheRedisInteract;
-import com.game.core.cache.source.mongodb.CacheMongoDBSource;
-import com.game.core.cache.source.redis.CacheRedisSource;
+import com.game.core.cache.source.redis.ICacheRedisSource;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 public class DataDaoBuilder <K, V extends IData<K>> {
 
 	protected final ClassConfig classConfig;
 	protected final IKeyValueBuilder<K> secondaryBuilder;
+	private final List<CacheKeyValue> additionalKeValueList;
 
 	protected IDataLifePredicate lifePredicate = IDataLifePredicate.DEFAULT;
-	protected ICacheLifeInteract cacheLifeInteract = ICacheDBLifeInteract.DEFAULT;
 
 	protected DataDaoManager daoManager;
 
 	protected DataDaoBuilder(Class<V> aClass, IKeyValueBuilder<K> secondaryBuilder) {
 		this.classConfig = new ClassConfig(aClass);
 		this.secondaryBuilder = secondaryBuilder;
+		this.additionalKeValueList = new ArrayList<>();
 	}
 
 	void setDaoManager(DataDaoManager daoManager) {
 		this.daoManager = daoManager;
 	}
 
-
 	public void setLifePredicate(IDataLifePredicate lifePredicate) {
 		this.lifePredicate = lifePredicate;
 	}
 
-	public void setCacheLoginPredicate(ICacheLifeInteract cacheLifeInteract) {
-		this.cacheLifeInteract = cacheLifeInteract;
-	}
-
 	public ClassConfig getClassConfig() {
 		return classConfig;
+	}
+
+	public void addAdditionalKeyValue(CacheKeyValue cacheKeyValue){
+		additionalKeValueList.add(cacheKeyValue);
 	}
 
 	protected ICacheSource<K, V> createCacheSource(){
@@ -53,23 +56,13 @@ public class DataDaoBuilder <K, V extends IData<K>> {
 	}
 
 	protected ICacheSource<K, V> createCacheSource(ClassConfig classConfig){
-		CacheUniqueId cacheUniqueId = new CacheUniqueId(classConfig);
+		CacheUniqueId cacheUniqueId = new CacheUniqueId(classConfig, additionalKeValueList);
 		try {
 			ICacheSource<K, V> cacheSource;
-			CacheType cacheType = cacheUniqueId.getCacheType();
-			if (cacheType.equals(CacheType.Redis)){
-				cacheSource = changeIfDelayCacheSource(createCacheRedisSource(cacheUniqueId));
-			}
-			else {
-				if (cacheType.equals(CacheType.MongoDb)) {
-					cacheSource = changeIfDelayCacheSource(createCacheMongoDBSource(cacheUniqueId));
-				}
-				else {
-					throw new CacheException("unexpected cache type:%s", cacheType.name());
-				}
-				if (cacheUniqueId.isRedisSupport()){
-					cacheSource = new CacheComposeSource<>(createCacheRedisSource(cacheUniqueId), cacheSource, daoManager.getExecutor());
-				}
+			cacheSource = changeIfDelayCacheSource(createCacheSource(cacheUniqueId, cacheUniqueId.getCacheType()));
+			if (cacheUniqueId.isRedisSupport()){
+				ICacheRedisSource<K, V> redisSource = (ICacheRedisSource<K, V>)createCacheSource(cacheUniqueId, CacheType.Redis);
+				cacheSource = new CacheComposeSource<>(Objects.requireNonNull(redisSource), cacheSource, daoManager.getExecutor());
 			}
 			return cacheSource;
 		}
@@ -78,14 +71,12 @@ public class DataDaoBuilder <K, V extends IData<K>> {
 		}
 	}
 
-	private CacheRedisSource<K, V> createCacheRedisSource(CacheUniqueId cacheUniqueId){
-		ICacheRedisInteract cacheRedisInteract = daoManager.getCacheRedisInteract();
-		return new CacheRedisSource<>(cacheUniqueId, secondaryBuilder, cacheRedisInteract);
-	}
-
-	private CacheMongoDBSource<K, V> createCacheMongoDBSource(CacheUniqueId cacheUniqueId){
-		ICacheDBInteract cacheDBInteract = daoManager.getCacheDBInteract();
-		return new CacheMongoDBSource<>(cacheUniqueId, secondaryBuilder, cacheDBInteract);
+	@SuppressWarnings("unchecked")
+	private ICacheSource<K, V> createCacheSource(CacheUniqueId cacheUniqueId, CacheType cacheType) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
+		Class<? extends ICacheSource> cacheClass = cacheType.getCacheClass();
+		Constructor<? extends ICacheSource> constructor = cacheClass.getConstructor(ICacheUniqueId.class, IKeyValueBuilder.class);
+		ICacheSource<K, V> newInstance = (ICacheSource<K, V>) constructor.newInstance(cacheUniqueId, secondaryBuilder);
+		return Objects.requireNonNull(newInstance);
 	}
 
 	private ICacheSource<K, V> changeIfDelayCacheSource(ICacheSource<K, V> cacheSource){

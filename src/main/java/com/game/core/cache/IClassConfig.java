@@ -14,8 +14,6 @@ public interface IClassConfig {
 
 	boolean isRedisSupport();
 
-	int getPrimarySharedId();
-	
 	boolean isDelayUpdate();
 
 	int getVersionId();
