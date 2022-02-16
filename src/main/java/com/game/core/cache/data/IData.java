@@ -6,15 +6,9 @@ public interface IData<K> extends Cloneable {
 
     K secondaryKey();
 
-    boolean hasBitIndex(int index);
-
-    long getBitIndexBits();
-
-    void clearCacheBitIndex();
-
     Object clone(Supplier<Object> supplier);
 
-    boolean isDeleted();
+    default boolean isDeleted() { return false; }
 
-    void delete(long currentTime);
+    default boolean delete(long currentTime) { return false; }
 }

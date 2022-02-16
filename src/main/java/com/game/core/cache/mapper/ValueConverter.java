@@ -13,6 +13,7 @@ public abstract class ValueConverter<T> {
      * @param defaultDataValue 内存值的默认值
      * @param defaultCacheValue 缓存的默认值
      */
+    @SuppressWarnings("unchecked")
     public ValueConverter(T defaultDataValue, Object defaultCacheValue) {
         this.defaultDataValue = defaultDataValue;
         this.defaultCacheValue = defaultCacheValue;

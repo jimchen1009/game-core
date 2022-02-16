@@ -3,21 +3,19 @@ package com.game.core.cache.source;
 import com.game.common.config.EvnCoreConfigs;
 import com.game.common.config.EvnCoreType;
 import com.game.common.lock.LockKey;
-import com.game.common.lock.LockUtil;
+import com.game.common.util.CommonUtil;
 import com.game.common.util.RandomUtil;
-import com.game.core.cache.CacheInformation;
+import com.game.core.cache.CacheType;
 import com.game.core.cache.ICacheUniqueId;
 import com.game.core.cache.data.DataCollection;
+import com.game.core.cache.data.DataSourceUtil;
 import com.game.core.cache.data.IData;
-import com.game.core.cache.exception.CacheException;
 import com.game.core.cache.mapper.IClassConverter;
-import com.game.core.cache.source.executor.CacheCallable;
 import com.game.core.cache.source.executor.CacheRunnable;
+import com.game.core.cache.source.executor.CacheSourceUtil;
 import com.game.core.cache.source.executor.ICacheExecutor;
-import com.game.core.cache.source.executor.ICacheFuture;
 import com.game.core.cache.source.executor.ICacheSource;
 import com.mongodb.Function;
-import jodd.util.ThreadUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,11 +25,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -39,23 +39,21 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
 
     private static final Logger logger = LoggerFactory.getLogger(CacheDelaySource.class);
 
-    public static final Map<String, Object> EMPTY = Collections.emptyMap();
-
     private final CacheDbSource<K, V> cacheSource;
     private final Map<Long, PrimaryDelayCache<K, V>> primaryCacheMap;
-    private final ICacheExecutor executor;
-    private List<Consumer<PrimaryDelayCache<K, V>>> flushCallbacks;
+    private Consumer<PrimaryDelayCache<K, V>> writeBackSuccessCallBack;
+    private final AtomicLong versionIdGen;
 
-    public CacheDelaySource(CacheDbSource<K, V> cacheSource, ICacheExecutor executor) {
+    public CacheDelaySource(CacheDbSource<K, V> cacheSource) {
         this.cacheSource = cacheSource;
         this.primaryCacheMap = new ConcurrentHashMap<>();
-        this.executor = executor;
-        this.flushCallbacks = new ArrayList<>();
+        this.writeBackSuccessCallBack = null;
+        this.versionIdGen = new AtomicLong(0);
         //初始化~
-        CacheRunnable cacheRunnable = new CacheRunnable(getScheduleName(), this::onScheduleAll);
+        CacheRunnable cacheRunnable = new CacheRunnable(getJobName(), this::onScheduleAll);
         long randomValue = RandomUtil.nextLong(1000, 2000);
         long initialDelay = randomValue * 50 / 50;    //取100ms的整数倍
-        executor.scheduleAtFixedRate(cacheRunnable, initialDelay, 500L, TimeUnit.MILLISECONDS);
+        cacheSource.getExecutor().scheduleWithFixedDelay(cacheRunnable, initialDelay, 500L, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -68,38 +66,44 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
         PrimaryDelayCache<K, V> primaryCache = primaryCacheMap.get(primaryKey);
         if (primaryCache == null) {
             return cacheSource.get(primaryKey, secondaryKey);
-        } else {
+        }
+        else {
             return cacheSource.get(primaryKey, secondaryKey);
         }
     }
 
     @Override
     public List<V> getAll(long primaryKey) {
-        List<V> dataValueList = cacheSource.getAll(primaryKey);
-        return replaceAllDataValueList(primaryKey, dataValueList);
+        List<V> dataList = cacheSource.getAll(primaryKey);
+        return replaceWithDelayDataCommand(primaryKey, dataList);
     }
 
     @Override
     public DataCollection<K, V> getCollection(long primaryKey) {
         DataCollection<K, V> collection = cacheSource.getCollection(primaryKey);
-        List<V> valueList = replaceAllDataValueList(primaryKey, collection.getDataList());
-        return new DataCollection<>(valueList, collection.getCacheInformation());
+        List<V> dataList = replaceWithDelayDataCommand(primaryKey, collection.getDataList());
+        collection.updateDataList(dataList);
+        return collection;
     }
 
     @Override
-    public boolean replaceOne(long primaryKey, V value) {
-        V cloneValue = cloneValue(value);
-        PrimaryDelayCache<K, V> primaryCache = primaryCacheMap.computeIfAbsent(primaryKey, PrimaryDelayCache::new);
-        KeyDataValue<K, V> keyDataValue = KeyDataValue.createCache(cloneValue.secondaryKey(), cloneValue);
-        primaryCache.add(keyDataValue);	//直接替换还有BUG，因为里面的标记会被覆盖【暂时用全量覆盖掉】
+    public boolean replaceOne(long primaryKey, V data) {
+        V cloneValue = cloneValue(data);
+        PrimaryDelayCache<K, V> primaryCache = primaryCacheMap.computeIfAbsent(primaryKey, this::cretePrimaryDelayCache);
+        primaryCache.add(KeyDataCommand.upsertCommand(cloneValue, versionIdGen.incrementAndGet()));
         return true;
     }
 
     @Override
-    public boolean replaceBatch(long primaryKey, Collection<V> values) {
-        PrimaryDelayCache<K, V> primaryCache = primaryCacheMap.computeIfAbsent(primaryKey, PrimaryDelayCache::new);
-        for (V value : values) {
-            primaryCache.add(KeyDataValue.createCache(value.secondaryKey(), cloneValue(value)));
+    public boolean replaceBatch(long primaryKey, Collection<V> dataList) {
+        if (dataList.isEmpty()){
+            return true;
+        }
+        PrimaryDelayCache<K, V> primaryCache = primaryCacheMap.computeIfAbsent(primaryKey, this::cretePrimaryDelayCache);
+        long versionId = versionIdGen.incrementAndGet();
+        for (V value : dataList) {
+            V cloneValue = cloneValue(value);
+            primaryCache.add(KeyDataCommand.upsertCommand(cloneValue, versionId));
         }
         return true;
     }
@@ -116,23 +120,27 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
 
     @Override
     public boolean deleteOne(long primaryKey, K secondaryKey) {
-        PrimaryDelayCache<K, V> primaryCache = primaryCacheMap.computeIfAbsent(primaryKey, PrimaryDelayCache::new);
-        primaryCache.deleteCacheValue(secondaryKey);
+        PrimaryDelayCache<K, V> primaryCache = primaryCacheMap.computeIfAbsent(primaryKey, this::cretePrimaryDelayCache);
+        primaryCache.add(KeyDataCommand.deleteCommand(secondaryKey, versionIdGen.incrementAndGet()));
         return true;
     }
 
     @Override
     public boolean deleteBatch(long primaryKey, Collection<K> secondaryKeys) {
-        PrimaryDelayCache<K, V> primaryCache = primaryCacheMap.computeIfAbsent(primaryKey, PrimaryDelayCache::new);
+        if (secondaryKeys.isEmpty()) {
+            return true;
+        }
+        PrimaryDelayCache<K, V> primaryCache = primaryCacheMap.computeIfAbsent(primaryKey, this::cretePrimaryDelayCache);
+        long versionId = versionIdGen.incrementAndGet();
         for (K secondaryKey : secondaryKeys) {
-            primaryCache.deleteCacheValue(secondaryKey);
+            primaryCache.add(KeyDataCommand.deleteCommand(secondaryKey, versionId));
         }
         return true;
     }
 
     @Override
-    public V cloneValue(V value) {
-        return cacheSource.cloneValue(value);
+    public V cloneValue(V data) {
+        return cacheSource.cloneValue(data);
     }
 
     @Override
@@ -146,7 +154,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
     }
 
     @Override
-    public ICacheDelaySource<K, V> createDelayUpdateSource(ICacheExecutor executor) {
+    public ICacheDelaySource<K, V> createDelayUpdateSource() {
         return this;
     }
 
@@ -167,12 +175,10 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
             StringBuilder builder = new StringBuilder();
             long primaryKey = delayCache.getPrimaryKey();
             builder.append("primaryKey:").append(primaryKey).append("\n");
-            Collection<KeyDataValue<K, V>> dataValues = delayCache.getAll();
-            for (KeyDataValue<K, V> dataValue : dataValues) {
-                String secondaryKeyString = keyValueBuilder.toSecondaryKeyString(dataValue.getKey());
+            for (KeyDataCommand<K, V> dataCommand : delayCache.getAllDataCommands()) {
+                String secondaryKeyString = keyValueBuilder.toSecondaryKeyString(dataCommand.getKey());
                 builder.append("key:").append(secondaryKeyString).append("\t")
-                        .append("command:").append(dataValue.getCacheCommand().name()).append("\t")
-                        .append("data:").append(getConverter().convert2Cache(dataValue.getDataValue())).append("\n");
+                        .append("data:").append(getConverter().convert2Cache(dataCommand.getData())).append("\n");
             }
             try {
                 String filename = String.format("%s.cache", cacheDaoUnique.getRedisKeyString(primaryKey));
@@ -185,68 +191,35 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
                 logger.error("{}", builder.toString(), e);
             }
         }
-        int tryCount = Math.max(2, EvnCoreConfigs.getInstance(EvnCoreType.CACHE).getInt("flush.tryAllCount"));
-        while (tryCount-- > 0 && !primaryCacheMap.isEmpty()){
-            lockAndFlushPrimaryCache(primaryCacheMap.keySet(), "flushAll");
-        }
-        for (Map.Entry<Long, PrimaryDelayCache<K, V>> entry : primaryCacheMap.entrySet()) {
-            String keyString = String.valueOf(entry.getKey());
-            logger.error("{} primaryKey:{} flushAll error.", getAClass().getName(), getCacheUniqueId().getName(), keyString);
-        }
+        CacheSourceUtil.submitCallable(this,"flushAll", () -> {
+            int tryCount = Math.max(2, EvnCoreConfigs.getInstance(EvnCoreType.CACHE).getInt("flush.tryAllCount"));
+            while (tryCount-- > 0 && !primaryCacheMap.isEmpty()){
+                flushPrimaryCacheDirectly(primaryCacheMap.keySet());
+            }
+            for (Map.Entry<Long, PrimaryDelayCache<K, V>> entry : primaryCacheMap.entrySet()) {
+                String keyString = String.valueOf(entry.getKey());
+                logger.error("{} primaryKey:{} flushAll error.", getAClass().getName(), getCacheUniqueId().getName(), keyString);
+            }
+            return primaryCacheMap.isEmpty();
+        }, null);
         return true;
     }
 
     @Override
     public void flushOne(long primaryKey, long currentTime, Consumer<Boolean> consumer) {
-        CacheCallable<Boolean> callable = new CacheCallable<>(getScheduleName(), () -> {
-            boolean isSuccess = false;
-            int tryCount = EvnCoreConfigs.getInstance(EvnCoreType.CACHE).getInt("flush.tryOneCount");
-            for (int count = 0; count < tryCount; count++) {
-                isSuccess = lockAndFlushPrimaryCache(Collections.singletonList(primaryKey), "flushOne.0");
-                if (isSuccess) {
-                    break;
-                }
-                logger.error("{} primaryKey:{} flush count:{} flushOne.0 failure.", getAClass().getName(), primaryKey, count);
-                ThreadUtil.sleep(50);
+        CacheSourceUtil.submitCallable(this, "flushOne", () -> {
+            boolean isSuccess = flushPrimaryCacheDirectly(Collections.singletonList(primaryKey));
+            if (isSuccess) {
+                primaryCacheMap.remove(primaryKey);
+            }
+            else {
+                logger.error("{} primaryKey:{} flushOne failure.", getAClass().getName(), primaryKey);
             }
             return isSuccess;
         }, consumer);
-        executor.submit(callable);
     }
 
-    @Override
-    public boolean updateCacheInformation(long primaryKey, CacheInformation cacheInformation) {
-        return true;
-    }
-
-    @Override
-    public boolean flushOne(long primaryKey) {
-        CacheCallable<Boolean> callable = new CacheCallable<>(getScheduleName(), () -> lockAndFlushPrimaryCache(Collections.singletonList(primaryKey), "flushOne.1"), null);
-        boolean isSuccess = false;
-        int tryCount = EvnCoreConfigs.getInstance(EvnCoreType.CACHE).getInt("flush.tryOneCount");
-        long flushTimeOut = EvnCoreConfigs.getInstance(EvnCoreType.CACHE).getDuration("flush.timeOut", TimeUnit.MILLISECONDS);
-        Throwable throwable = null;
-        for (int count = 0; count < tryCount; count++) {
-            try {
-                ICacheFuture<Boolean> future = executor.submit(callable);
-                isSuccess = future.get(flushTimeOut, TimeUnit.MILLISECONDS);
-                if (isSuccess) {
-                    break;
-                }
-                logger.error("{} primaryKey:{} count:{} flushOne.1 failure.", getAClass().getName(), primaryKey, count);
-            }
-            catch (Throwable t) {
-                throwable = t;
-                logger.error("{} primaryKey:{} count:{} flushOne.1 error.", getAClass().getName(), primaryKey, count, t);
-            }
-        }
-        if (!isSuccess && throwable != null){
-            throw new CacheException("%s %s", primaryKey, getAClass().getName(), throwable);
-        }
-        return isSuccess;
-    }
-
-    protected String getScheduleName() {
+    protected String getJobName() {
         return getCacheUniqueId().getName();
     }
 
@@ -256,8 +229,18 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
     }
 
     @Override
-    public void addFlushCallback(Consumer<PrimaryDelayCache<K, V>> consumer) {
-        flushCallbacks.add(consumer);
+    public CacheType getCacheType() {
+        return cacheSource.getCacheType();
+    }
+
+    @Override
+    public ICacheExecutor getExecutor() {
+        return cacheSource.getExecutor();
+    }
+
+    @Override
+    public void setWriteBackCallback(Consumer<PrimaryDelayCache<K, V>> consumer) {
+        writeBackSuccessCallBack = consumer;
     }
 
     protected abstract Map<Long, PrimaryDelayCache<K, V>> executeWritePrimaryCache(Map<Long, PrimaryDelayCache<K, V>> primaryCacheMap);
@@ -266,94 +249,91 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
         if (primaryCacheMap.isEmpty()) {
             return;
         }
+        List<PrimaryDelayCache<K, V>> primaryDelayCacheList = primaryCacheMap.values().stream()
+                .sorted(Comparator.comparingLong(PrimaryDelayCache::getExpiredTime))
+                .collect(Collectors.toList());
         long currentTime = System.currentTimeMillis();
         int maximumCount = Math.min(50, EvnCoreConfigs.getInstance(EvnCoreType.CACHE).getInt("flush.maximumCount"));
-        List<Long> removePrimaryKeyList = new ArrayList<>();
-        for (Map.Entry<Long, PrimaryDelayCache<K, V>> entry : primaryCacheMap.entrySet()) {
-            if (entry.getValue().isEmpty()) {
-                continue;
-            }
-            if (removePrimaryKeyList.size() >= maximumCount){
+        List<Long> writeBackPrimaryKeyList = new ArrayList<>();
+        for (PrimaryDelayCache<K, V> primaryDelayCache : primaryDelayCacheList) {
+            if (writeBackPrimaryKeyList.size() >= maximumCount){
                 break;
             }
-            else {
-                removePrimaryKeyList.add(entry.getKey());
+            else if (primaryDelayCache.isExpired(currentTime)){
+                writeBackPrimaryKeyList.add(primaryDelayCache.getPrimaryKey());
             }
         }
-        lockAndFlushPrimaryCache(removePrimaryKeyList, "onScheduleAll");
+        CacheSourceUtil.submitCallable(this, "onScheduleAll", () -> {
+            boolean isSuccess = flushPrimaryCacheDirectly(writeBackPrimaryKeyList);
+            if (!isSuccess) {
+                logger.error("{} onScheduleAll failure.", getAClass().getName());
+            }
+            return isSuccess;
+        }, null);
     }
 
-    private boolean lockAndFlushPrimaryCache(Collection<Long> removePrimaryKeyList, String message){
+    private boolean flushPrimaryCacheDirectly(Collection<Long> removePrimaryKeyList){
         if (removePrimaryKeyList.isEmpty()) {
             return true;
         }
-        List<LockKey> lockKeyList = removePrimaryKeyList.stream().map(this::getLockKey).collect(Collectors.toList());
-        return LockUtil.syncLock(lockKeyList, getAClass().getName() + ":" + message, ()->{
-            Map<Long, PrimaryDelayCache<K, V>> primaryCacheMap0 = new HashMap<>();
-            for (long removePrimaryKey : removePrimaryKeyList) {
-                PrimaryDelayCache<K, V> primaryCache = primaryCacheMap.remove(removePrimaryKey);
-                if (primaryCache == null) {
-                    continue;
-                }
-                if (primaryCache.isEmpty()) {
-                    continue;
-                }
-                primaryCacheMap0.put(removePrimaryKey, primaryCache);
-            }
-            return flushPrimaryCacheInLock(primaryCacheMap0);
-        });
-    }
-
-    private boolean flushPrimaryCacheInLock(Map<Long, PrimaryDelayCache<K, V>> primaryCacheMap) {
-        Map<Long, PrimaryDelayCache<K, V>> failurePrimaryCacheMap = executeWritePrimaryCache(primaryCacheMap);
-        long duration = RandomUtil.nextLong(1000, 5000);
-        for (Map.Entry<Long, PrimaryDelayCache<K, V>> entry : failurePrimaryCacheMap.entrySet()) {
-            long primaryKey = entry.getValue().getPrimaryKey();
-            PrimaryDelayCache<K, V> newPrimaryCache = this.primaryCacheMap.computeIfAbsent(primaryKey, key -> new PrimaryDelayCache<>(key, duration));
-            newPrimaryCache.rollbackAll(entry.getValue().getAll());
-        }
-        for (Map.Entry<Long, PrimaryDelayCache<K, V>> entry : primaryCacheMap.entrySet()) {
-            PrimaryDelayCache<K, V> primaryCache = entry.getValue();
-            PrimaryDelayCache<K, V> failureCache = failurePrimaryCacheMap.get(entry.getKey());
-            if (failureCache != null && !failureCache.isEmpty()){
-                for (KeyDataValue<K, V> dataValue : failureCache.getAll()) {
-                    primaryCache.remove(dataValue.getKey());
-                }
-            }
-            if (primaryCache.isEmpty()){
+        Map<Long, PrimaryDelayCache<K, V>> primaryCacheMap0 = new HashMap<>();
+        for (long removePrimaryKey : removePrimaryKeyList) {
+            PrimaryDelayCache<K, V> primaryCache = primaryCacheMap.get(removePrimaryKey);
+            if (primaryCache == null || primaryCache.isEmpty()){
                 continue;
             }
-            for (Consumer<PrimaryDelayCache<K, V>> flushCallback : flushCallbacks) {
-                try {
-                    flushCallback.accept(primaryCache);
-                }
-                catch (Throwable t){
-                    logger.error("{} primaryKey:{} callback error.", getAClass().getName(), entry.getKey(), t);
-                }
-            }
+            primaryCacheMap0.put(removePrimaryKey, primaryCache.shallowCopy());
         }
-
-        return failurePrimaryCacheMap.isEmpty();
+        return flushPrimaryCacheDirectly(primaryCacheMap0);
     }
 
-    private List<V> replaceAllDataValueList(long primaryKey, List<V> dateValueList) {
+
+    private boolean flushPrimaryCacheDirectly(Map<Long, PrimaryDelayCache<K, V>> primaryCacheMap) {
+        Map<Long, PrimaryDelayCache<K, V>> successPrimaryCacheMap = executeWritePrimaryCache(primaryCacheMap);
+        for (Map.Entry<Long, PrimaryDelayCache<K, V>> entry : successPrimaryCacheMap.entrySet()) {
+            long primaryKey = entry.getValue().getPrimaryKey();
+            PrimaryDelayCache<K, V> currentPrimaryCache = primaryCacheMap.get(primaryKey);
+            if (currentPrimaryCache == null){
+                continue;
+            }
+            // 锁住不让更新操作, 所以不会改动primaryCacheMap的数据
+            DataSourceUtil.syncLock(cacheSource,primaryKey, "flushPrimaryCacheDirectly", ()->{
+                PrimaryDelayCache<K, V> successPrimaryCache = entry.getValue();
+                ArrayList<KeyDataCommand<K, V>> dataCommands = new ArrayList<>(successPrimaryCache.getAllDataCommands());
+                for (KeyDataCommand<K, V> dataCommand : dataCommands) {
+                    KeyDataCommand<K, V> kvKeyDataCommand = currentPrimaryCache.get(dataCommand.getKey());
+                    if (kvKeyDataCommand == null || kvKeyDataCommand.getVersionId() <= dataCommand.getVersionId()) {
+                        currentPrimaryCache.remove(dataCommand.getKey());
+                    }
+                    else {
+                        successPrimaryCache.remove(dataCommand.getKey());
+                    }
+                }
+                if (currentPrimaryCache.isEmpty()) {
+                    primaryCacheMap.remove(primaryKey);
+                }
+                writeBackSuccessCallBack.accept(successPrimaryCache);
+                return true;
+            });
+        }
+        return successPrimaryCacheMap.isEmpty();
+    }
+
+    private List<V> replaceWithDelayDataCommand(long primaryKey, List<V> dataList) {
         PrimaryDelayCache<K, V> primaryCache = primaryCacheMap.get(primaryKey);
         if (primaryCache == null) {
-            return dateValueList;
+            return dataList;
         }
-        Collection<KeyDataValue<K, V>> dataValues = primaryCache.getAll();
-        if (dataValues.isEmpty()) {
-            return dateValueList;
-        }
-        Map<K, V> key2DataValueMap = dateValueList.stream().collect(Collectors.toMap(V::secondaryKey, dataValue -> dataValue));
-        for (KeyDataValue<K, V> dataValue : dataValues) {
-            if (dataValue.isDeleted()) {
-                key2DataValueMap.remove(dataValue.getKey());
-            } else {
-                key2DataValueMap.put(dataValue.getKey(), dataValue.getDataValue());
+        Map<K, V> stream2Map = CommonUtil.stream2Map(dataList, V::secondaryKey);
+        for (KeyDataCommand<K, V> dataCommand : primaryCache.getAllDataCommands()) {
+            if (dataCommand.isDeleted()) {
+                stream2Map.remove(dataCommand.getKey());
+            }
+            else if (dataCommand.isUpsert()){
+                stream2Map.put(dataCommand.getKey(), dataCommand.getData());
             }
         }
-        return new ArrayList<>(key2DataValueMap.values());
+        return new ArrayList<>(stream2Map.values());
     }
 
     /**
@@ -372,7 +352,7 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
         if (modelList.isEmpty()){
             return Collections.emptyList();
         }
-        List<V> failureCacheList = new ArrayList<>();
+        List<V> successCacheList = new ArrayList<>();
         int batchCount = EvnCoreConfigs.getInstance(EvnCoreType.CACHE).getInt("flush.batchCount");
         while (modelList.size() > 0) {
             int count = modelList.size() / batchCount;
@@ -380,22 +360,22 @@ public abstract class CacheDelaySource<K, V extends IData<K>> implements ICacheD
             if (modelList.size() % batchCount == 0){
                 index -= batchCount;                 //刚好是整数的时候
             }
-            boolean success = false;
             try {
-                success = function.apply(modelList.subList(index, modelList.size()));
+                boolean success = function.apply(modelList.subList(index, modelList.size()));
+                if (success){
+                    successCacheList.addAll(cacheList.subList(index, modelList.size()));
+                }
             }
             catch (Throwable t){
                 logger.error("name:{} index:{} modelList:{}", name, index,  modelList.size(), t);
             }
-            finally {
-                if (success){
-                }
-                else {
-                    failureCacheList.addAll(cacheList.subList(index, modelList.size()));
-                }
-            }
             modelList = index > 0 ? modelList.subList(0, index) : Collections.emptyList();
         }
-        return failureCacheList;
+        return successCacheList;
+    }
+
+    protected PrimaryDelayCache cretePrimaryDelayCache(long primaryKey){
+        long duration = EvnCoreConfigs.getInstance(EvnCoreType.CACHE).getDuration("flush.expiredDuration", TimeUnit.MILLISECONDS);
+        return new PrimaryDelayCache(primaryKey, System.currentTimeMillis() + duration);
     }
 }

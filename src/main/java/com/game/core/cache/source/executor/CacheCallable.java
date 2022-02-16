@@ -1,5 +1,6 @@
 package com.game.core.cache.source.executor;
 
+import com.game.common.concurrent.QueueJob;
 import com.game.core.cache.exception.CacheException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -7,34 +8,28 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 
-public class CacheCallable<V> implements Callable<V> {
-
+public class CacheCallable<V> extends QueueJob<String> {
 
     private static final Logger logger = LoggerFactory.getLogger(CacheCallable.class);
 
-    private final String name;
     private final Callable<V> callable;
     private final Consumer<V> consumer;
 
-    public CacheCallable(String name, Callable<V> callable, Consumer<V> consumer) {
-        this.name = name;
+    public CacheCallable(String cacheName, String message, Callable<V> callable, Consumer<V> consumer) {
+        super(cacheName, message);
         this.callable = callable;
         this.consumer = consumer;
     }
 
-    public String getName() {
-        return name;
-    }
-
     @Override
-    public V call() {
+    protected void execute() {
         V value = null;
         try {
             value = callable.call();
-            logger.trace("callable:{} call success.", getName());
+            logger.trace("callable:{} call success.", getMessage());
         }
         catch (Throwable t){
-            throw new CacheException(name);
+            throw new CacheException(getMessage());
         }
         finally {
             try {
@@ -43,9 +38,8 @@ public class CacheCallable<V> implements Callable<V> {
                 }
             }
             catch (Throwable t){
-                logger.error("callable:{} call error.", getName());
+                logger.error("callable:{} call error.", getMessage());
             }
         }
-        return value;
     }
 }

@@ -1,20 +1,31 @@
 package com.game.core.cache.data;
 
+import com.game.core.cache.ICacheUniqueId;
+
 public interface IDataLifePredicate {
 
-    void setOldLife(long primaryKey);
+    boolean withoutUpdate(long primaryKey, ICacheUniqueId cacheUniqueId);
 
-    boolean isNewLife(long primaryKey);
+    void doneUpdate(long primaryKey, ICacheUniqueId cacheUniqueId);
+
+    default boolean compareAndUpdate(long primaryKey, ICacheUniqueId cacheUniqueId){
+        boolean withoutUpdate = withoutUpdate(primaryKey, cacheUniqueId);
+        if (withoutUpdate){
+            doneUpdate(primaryKey, cacheUniqueId);
+        }
+        return withoutUpdate;
+    }
 
     IDataLifePredicate DEFAULT = new IDataLifePredicate() {
-        @Override
-        public void setOldLife(long primaryKey) {
 
+        @Override
+        public boolean withoutUpdate(long primaryKey, ICacheUniqueId cacheUniqueId) {
+            return false;
         }
 
         @Override
-        public boolean isNewLife(long primaryKey) {
-            return false;
+        public void doneUpdate(long primaryKey, ICacheUniqueId cacheUniqueId) {
+
         }
     };
 }

@@ -19,11 +19,6 @@ public class DataValueContainer<V extends IData<Long>> extends DataContainer<Lon
     }
 
     @Override
-    public Holder<V> getNoCache(long primaryKey) {
-        return getNoCache(primaryKey, primaryKey);
-    }
-
-    @Override
     public V replace(V value) {
         return replaceOne(value.secondaryKey(), value);
     }

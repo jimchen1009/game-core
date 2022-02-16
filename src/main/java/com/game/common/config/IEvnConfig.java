@@ -1,6 +1,7 @@
 package com.game.common.config;
 
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 public interface IEvnConfig {
@@ -22,4 +23,6 @@ public interface IEvnConfig {
     <T> List<T> getList(String path);
 
     long getDuration(String path, TimeUnit timeUnit);
+
+    Properties toProperties();
 }

@@ -4,6 +4,7 @@ import com.game.core.cache.CacheKeyValue;
 import com.game.core.cache.ICacheUniqueId;
 import com.game.core.cache.key.IKeyValueBuilder;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -18,25 +19,36 @@ public class CacheKeyValueBuilder<K> implements ICacheKeyValueBuilder<K> {
     }
 
     @Override
-    public List<CacheKeyValue> createPrimaryKeyValue(long primaryKey) {
+    public String toSecondaryKeyString(K secondaryKey) {
+        return secondaryBuilder.toKeyString(secondaryKey);
+    }
+
+    @Override
+    public List<Object> createSecondaryValueList(K secondaryKey) {
+        return secondaryBuilder.toKeyValue(secondaryKey);
+    }
+
+    @Override
+    public List<Object> createCombineValueList(long primaryKey, K secondaryKey) {
+        List<Object> objectList = new ArrayList<>();
+        objectList.add(primaryKey);
+        objectList.addAll(secondaryBuilder.toKeyValue(secondaryKey));
+        return objectList;
+    }
+
+    @Override
+    public List<CacheKeyValue> createPrimaryKeyValue(Long primaryKey) {
         return cacheUniqueId.createPrimaryAndAdditionalKeys(primaryKey);
     }
 
     @Override
-    public List<CacheKeyValue> createCombineUniqueKeyValue(long primaryKey, K secondaryKey) {
-        List<CacheKeyValue> entryList = createPrimaryKeyValue(primaryKey);
-        return addKeyValue(entryList, cacheUniqueId.getSecondaryKeyList(), secondaryBuilder.toKeyValue(secondaryKey));
-    }
-
-    private List<CacheKeyValue> addKeyValue(List<CacheKeyValue> keyValue, List<String> keyNames, Object[] objectValues){
-        for (int i = 0; i < keyNames.size(); i++) {
-            keyValue.add(new CacheKeyValue(keyNames.get(i), objectValues[i]));
+    public List<CacheKeyValue> createCombineKeyValue(Long primaryKey, K secondaryKey) {
+        List<CacheKeyValue> keyValueList = createPrimaryKeyValue(primaryKey);
+        List<String> secondaryKeyList = cacheUniqueId.getSecondaryKeyList();
+        List<Object> objectList = secondaryBuilder.toKeyValue(secondaryKey);
+        for (int i = 0; i < secondaryKeyList.size(); i++) {
+            keyValueList.add(new CacheKeyValue(secondaryKeyList.get(i), objectList.get(i)));
         }
-        return keyValue;
-    }
-
-    @Override
-    public String toSecondaryKeyString(K secondaryKey) {
-        return secondaryBuilder.toKeyString(secondaryKey);
+        return keyValueList;
     }
 }

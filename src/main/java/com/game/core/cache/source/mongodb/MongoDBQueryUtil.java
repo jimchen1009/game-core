@@ -21,17 +21,15 @@ import java.util.Map;
  * db.system.profile.find( { op: { $ne : 'command' }, 'appName':'cache' } ).limit(50).sort( { ts : -1 } ).pretty()
  *
  */
-public class MongoDBQueryUtil {
-
-    public static final UpdateOptions UPDATE_OPTIONS = new UpdateOptions().upsert(true);
+public class MongoDbQueryUtil {
 
     public static Map<String, Object> queryOne(MongoCollection<Document> collection, List<CacheKeyValue> keyValue) {
-        Document queryDocument = CacheMongoDBUtil.getQueryDocument(keyValue);
+        Document queryDocument = CacheMongoDbUtil.getQueryDocument(keyValue);
         return collection.find(queryDocument).first();
     }
 
     public static Collection<Map<String, Object>> queryAll(MongoCollection<Document> collection, List<CacheKeyValue> keyValue) {
-        Document queryDocument = CacheMongoDBUtil.getQueryDocument(keyValue);
+        Document queryDocument = CacheMongoDbUtil.getQueryDocument(keyValue);
         return queryAll(collection, queryDocument);
     }
 

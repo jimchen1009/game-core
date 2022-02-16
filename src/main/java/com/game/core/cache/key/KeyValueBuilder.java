@@ -3,6 +3,9 @@ package com.game.core.cache.key;
 import com.game.core.cache.exception.CacheException;
 import jodd.util.StringUtil;
 
+import java.util.Collections;
+import java.util.List;
+
 /**
  * 作为主键的值，都是需要定义为基础类型
  * @param <K>
@@ -11,21 +14,21 @@ public abstract class KeyValueBuilder<K> implements IKeyValueBuilder<K>{
 
 
     @Override
-    public Object[] toKeyValue(K valueKey) {
-        Object[] objects = createValue0(valueKey);
-        checkOnlyPrimitiveClass(objects);
-        return objects;
+    public List<Object> toKeyValue(K valueKey) {
+        List<Object> objectList = createValue0(valueKey);
+        checkOnlyPrimitiveClass(objectList);
+        return objectList;
     }
 
-    protected abstract Object[] createValue0(K valueKey);
+    protected abstract List<Object> createValue0(K valueKey);
 
     @Override
     public String toKeyString(K valueKey) {
         return StringUtil.join(toKeyValue(valueKey), ".");
     }
 
-    private void checkOnlyPrimitiveClass(Object[] objects){
-        for (Object object : objects) {
+    private void checkOnlyPrimitiveClass(List<Object> objectList){
+        for (Object object : objectList) {
             Class<?> aClass = object.getClass();
             if (aClass.isPrimitive() || aClass.equals(Long.class)
                 || aClass.equals(Integer.class)
@@ -48,8 +51,8 @@ public abstract class KeyValueBuilder<K> implements IKeyValueBuilder<K>{
     public static final class ONE<K> extends KeyValueBuilder<K>{
 
         @Override
-        protected Object[] createValue0(K valueKey) {
-            return new Object[]{valueKey};
+        protected List<Object> createValue0(K valueKey) {
+            return Collections.singletonList(valueKey);
         }
     }
 }

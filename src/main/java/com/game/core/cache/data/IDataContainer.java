@@ -7,6 +7,8 @@ import java.util.function.Consumer;
 
 public interface IDataContainer<K, V extends IData<K>> {
 
+    IDataSource<K, V> getDataSource();
+
     boolean existCache(long primaryKey);
 
     int count(long primaryKey);

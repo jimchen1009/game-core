@@ -34,7 +34,7 @@ public class QueueJobServiceRunner {
 			service.addQueueJob(new MyJob(i));
 		}
 		ThreadUtil.sleep(TimeUnit.SECONDS.toMillis(50));
-		service.shutdownAsync();
+		service.shutdownSync();
 	}
 
 	private static class MyJob extends QueueJob<Long>{

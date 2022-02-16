@@ -1,5 +1,7 @@
 package com.game.core.cache.key;
 
+import java.util.List;
+
 public interface IKeyValueBuilder<K> {
 
     /**
@@ -8,7 +10,7 @@ public interface IKeyValueBuilder<K> {
      * @param valueKey
      * @return
      */
-    Object[] toKeyValue(K valueKey);
+    List<Object> toKeyValue(K valueKey);
 
     /**
      * 转化成字符串

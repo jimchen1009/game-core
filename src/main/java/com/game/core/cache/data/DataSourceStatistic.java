@@ -18,7 +18,6 @@ class DataSourceStatistic<K, V extends IData<K>> extends DataSourceDecorator<K, 
     protected void onGet(long primaryKey, K secondaryKey, V value) {
     }
 
-
     @Override
     protected void onGetAll(long primaryKey, List<V> values) {
     }

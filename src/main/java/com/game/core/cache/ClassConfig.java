@@ -1,13 +1,9 @@
 package com.game.core.cache;
 
-import com.game.common.config.EvnCoreConfigs;
-import com.game.common.config.EvnCoreType;
-
 import java.util.Objects;
 
 public class ClassConfig implements IClassConfig {
 
-    private static final CacheType CACHE_TYPE = CacheType.valueOf(EvnCoreConfigs.getInstance(EvnCoreType.CACHE).getString("type"));
 
     private final Class<?> aClass;
     private CacheType cacheType;
@@ -15,16 +11,17 @@ public class ClassConfig implements IClassConfig {
     private boolean accountCache;
     private boolean cacheLoadAdvance;
     private boolean redisSupport;
+    private long redisDuration;
     private boolean delayUpdate;
     private int versionId;
 
-
     public ClassConfig(Class<?> aClass) {
         this.aClass = aClass;
-        this.cacheType = CACHE_TYPE;
-        this.accountCache = true;
+        this.cacheType = CacheType.Memory;
+        this.accountCache = false;
         this.cacheLoadAdvance = false;
         this.redisSupport = false;
+        this.redisDuration = 0;
         this.versionId = 1;
         this.delayUpdate = false;
     }
@@ -76,11 +73,21 @@ public class ClassConfig implements IClassConfig {
 
     @Override
     public boolean isRedisSupport() {
-        return redisSupport && cacheType.isDBType();
+        return redisSupport && cacheType.isDB();
     }
 
     public ClassConfig setRedisSupport(boolean redisSupport) {
         this.redisSupport = redisSupport;
+        return this;
+    }
+
+    @Override
+    public long getRedisDuration() {
+        return redisDuration;
+    }
+
+    public ClassConfig setRedisDuration(long redisDuration) {
+        this.redisDuration = redisDuration;
         return this;
     }
 

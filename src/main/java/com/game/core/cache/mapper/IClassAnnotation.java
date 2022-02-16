@@ -6,11 +6,11 @@ public interface IClassAnnotation {
 
     String getPrimaryKey();
 
-    List<String> getAdditionalKeyList();
-
     List<String> getSecondaryKeyList();
 
     List<String> getCombineUniqueKeyList();
+
+    List<String> getOtherNameList();
 
     List<FieldAnnotation> getFiledAnnotationList();
 }

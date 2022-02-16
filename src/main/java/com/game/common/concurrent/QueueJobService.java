@@ -33,17 +33,21 @@ public class QueueJobService<K> {
 			getJobContainer(queueJob).addQueueJob(queueJob);
 		}
 		else {
-			logger.error("Service's shutdownAsync, queueJob: {}", queueJob.messageJobLog());
+			logger.error("Service's shutdownSync, queueJob: {}", queueJob.toJobLog());
 		}
 	}
-	public void shutdownAsync(){
+	public void shutdownSync(){
 		if (!runningBool.compareAndSet(true, false)) {
 			return;
 		}
 		for (QueueJobContainer<K> container : containerMap.values()) {
-			container.shutdownAsync();
+			container.shutdownSync();
 		}
 		executor.shutdown();
+	}
+
+	public QueueJobCoreExecutor getExecutor() {
+		return executor;
 	}
 
 	private QueueJobContainer getJobContainer(QueueJob<K> queueJob){

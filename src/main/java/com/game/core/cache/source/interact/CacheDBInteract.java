@@ -16,6 +16,6 @@ public class CacheDBInteract extends CacheInteract<CacheDBCollection> implements
 
     @Override
     protected List<ICacheUniqueId> getSharedCacheUniqueIdList(long primaryKey, ICacheUniqueId iCacheUniqueId, Collection<ICacheUniqueId> cacheUniqueIds) {
-        return cacheUniqueIds.stream().filter( cacheUniqueId0 -> cacheUniqueId0.getCacheType().isDBType() && cacheUniqueId0.getName().equals(iCacheUniqueId.getName())).collect(Collectors.toList());
+        return cacheUniqueIds.stream().filter( cacheUniqueId0 -> cacheUniqueId0.getCacheType().isDB() && cacheUniqueId0.getName().equals(iCacheUniqueId.getName())).collect(Collectors.toList());
     }
 }

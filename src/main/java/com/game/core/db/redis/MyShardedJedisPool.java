@@ -1,7 +1,7 @@
 package com.game.core.db.redis;
 
-import com.game.core.cache.exception.CacheException;
 import com.game.common.config.IEvnConfig;
+import com.game.core.cache.exception.CacheException;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.JedisShardInfo;
@@ -43,7 +43,11 @@ public class MyShardedJedisPool extends MyJedisClientPool<ShardedJedis> {
         JedisPoolConfig poolConfig = getPoolConfig(redisConfig);
         this.destroy();
 //        this.pool = new ShardedJedisPool(poolConfig, shardInfoList, Pattern.compile(ClassConfig.getRedisPatternString()));
+        ShardedJedisPool oldPool = this.pool;
         this.pool = new ShardedJedisPool(poolConfig, shardInfoList);
+        if (oldPool != null){
+            oldPool.destroy();
+        }
     }
 
     @Override
@@ -152,6 +156,21 @@ public class MyShardedJedisPool extends MyJedisClientPool<ShardedJedis> {
         @Override
         public void pexpireAt(String key, long millisecondsTimestamp) {
             responseList.add(new AbstractMap.SimpleEntry<>(key, pipeline.pexpireAt(key, millisecondsTimestamp)));
+        }
+
+        @Override
+        public void del(String key) {
+            responseList.add(new AbstractMap.SimpleEntry<>(key, pipeline.del(key)));
+        }
+
+        @Override
+        public void hdel(String key, String... field) {
+            responseList.add(new AbstractMap.SimpleEntry<>(key, pipeline.hdel(key, field)));
+        }
+
+        @Override
+        public int commandCount() {
+            return responseList.size();
         }
 
         public List<Map.Entry<String, Object>> syncResponse() {

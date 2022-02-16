@@ -1,9 +1,8 @@
 package com.game.core.cache.data;
 
-import com.game.core.cache.CacheInformation;
+import com.game.common.lock.LockKey;
 import com.game.core.cache.ICacheUniqueId;
 import com.game.core.cache.mapper.IClassConverter;
-import com.game.common.lock.LockKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,10 +53,10 @@ abstract class DataSourceDecorator<K, V extends IData<K>> implements IDataSource
     protected abstract void onGetAll(long primaryKey, List<V> values);
 
     @Override
-    public boolean replaceOne(long primaryKey, V value) {
-        boolean isSuccess = dataSource.replaceOne(primaryKey, value);
+    public boolean replaceOne(long primaryKey, V data) {
+        boolean isSuccess = dataSource.replaceOne(primaryKey, data);
         if (decoratorEnable()) {
-            onReplaceOne(primaryKey, value, isSuccess);
+            onReplaceOne(primaryKey, data, isSuccess);
         }
         return isSuccess;
     }
@@ -65,10 +64,10 @@ abstract class DataSourceDecorator<K, V extends IData<K>> implements IDataSource
     protected abstract void onReplaceOne(long primaryKey, V value, boolean isSuccess);
 
     @Override
-    public boolean replaceBatch(long primaryKey, Collection<V> values) {
-        boolean isSuccess = dataSource.replaceBatch(primaryKey, values);
+    public boolean replaceBatch(long primaryKey, Collection<V> dataList) {
+        boolean isSuccess = dataSource.replaceBatch(primaryKey, dataList);
         if (decoratorEnable()){
-            onReplaceBatch(primaryKey, values, isSuccess);
+            onReplaceBatch(primaryKey, dataList, isSuccess);
         }
         return isSuccess;
     }
@@ -111,8 +110,8 @@ abstract class DataSourceDecorator<K, V extends IData<K>> implements IDataSource
 
     @Override
     @SuppressWarnings("unchecked")
-    public V cloneValue(V value) {
-        return dataSource.cloneValue(value);
+    public V cloneValue(V data) {
+        return dataSource.cloneValue(data);
     }
 
     @Override
@@ -130,10 +129,5 @@ abstract class DataSourceDecorator<K, V extends IData<K>> implements IDataSource
     @Override
     public void flushOne(long primaryKey, long currentTime, Consumer<Boolean> consumer) {
         dataSource.flushOne(primaryKey, currentTime, consumer);
-    }
-
-    @Override
-    public boolean updateCacheInformation(long primaryKey, CacheInformation cacheInformation) {
-        return dataSource.updateCacheInformation(primaryKey, cacheInformation);
     }
 }

@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 class DataSourceLogger<K, V extends IData<K>> extends DataSourceDecorator<K, V>{
 
@@ -25,7 +26,7 @@ class DataSourceLogger<K, V extends IData<K>> extends DataSourceDecorator<K, V>{
 
     @Override
     protected void onGetAll(long primaryKey, List<V> values) {
-        List<Map<String, Object>> convert2CacheList = getConverter().convert2CacheList(values);
+        List<Map<String, Object>> convert2CacheList = values.stream().map(value -> getConverter().convert2Cache(value)).collect(Collectors.toList());
         logger.trace("primaryKey:{} getCacheAll:{}", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(convert2CacheList));
     }
 
@@ -38,7 +39,7 @@ class DataSourceLogger<K, V extends IData<K>> extends DataSourceDecorator<K, V>{
 
     @Override
     protected void onReplaceBatch(long primaryKey, Collection<V> values, boolean isSuccess) {
-        List<Map<String, Object>> convert2CacheList = getConverter().convert2CacheList(values);
+        List<Map<String, Object>> convert2CacheList = values.stream().map(value -> getConverter().convert2Cache(value)).collect(Collectors.toList());
         logger.trace("primaryKey:{} replaceBatch:{} isSuccess:{}", LogUtil.toJSONString(primaryKey), LogUtil.toJSONString(convert2CacheList), isSuccess);
     }
 

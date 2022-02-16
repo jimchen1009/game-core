@@ -1,11 +1,8 @@
 package com.game.core.cache.mapper;
 
-import com.game.core.cache.CacheName;
-import com.game.core.cache.data.DataBitIndex;
 import com.game.core.cache.exception.CacheException;
 import com.game.core.cache.mapper.annotation.CacheFiled;
 import com.game.core.cache.mapper.annotation.CacheIndexes;
-import jodd.util.StringUtil;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -17,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class ClassAnnotation implements IClassAnnotation {
 
@@ -28,7 +26,6 @@ public class ClassAnnotation implements IClassAnnotation {
 
     private String primaryKey;
     private List<String> secondaryKeyList;
-    private List<String> additionalKeyList;
     private List<String> combineUniqueKeyList;
     private List<FieldAnnotation> fieldAnnotationList;
 
@@ -45,11 +42,6 @@ public class ClassAnnotation implements IClassAnnotation {
     }
 
     @Override
-    public List<String> getAdditionalKeyList() {
-        return additionalKeyList;
-    }
-
-    @Override
     public List<String> getSecondaryKeyList() {
         return secondaryKeyList;
     }
@@ -57,6 +49,13 @@ public class ClassAnnotation implements IClassAnnotation {
     @Override
     public List<String> getCombineUniqueKeyList() {
         return combineUniqueKeyList;
+    }
+
+    @Override
+    public List<String> getOtherNameList() {
+        return fieldAnnotationList.stream().map(FieldAnnotation::getName)
+                .filter( name -> !secondaryKeyList.contains(name) && !secondaryKeyList.contains(name))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -71,11 +70,9 @@ public class ClassAnnotation implements IClassAnnotation {
         //字段处理~
         searchAnnotationFields(aClass, fieldAnnotationList);
         this.primaryKey = cacheIndexes.primaryKey();
-        this.additionalKeyList = Arrays.asList(cacheIndexes.additionalKeys());
         this.secondaryKeyList = Arrays.asList(cacheIndexes.secondaryKeys());
         List<String> combineUniqueKeys = new ArrayList<>();
         combineUniqueKeys.add(cacheIndexes.primaryKey());
-        combineUniqueKeys.addAll(additionalKeyList);
         combineUniqueKeys.addAll(secondaryKeyList);
         if (new HashSet<>(combineUniqueKeys).size() != combineUniqueKeys.size()){
             throw new CacheException("combineUniqueKeyList:%s, class:%s", combineUniqueKeys, aClass.getName());
@@ -84,22 +81,12 @@ public class ClassAnnotation implements IClassAnnotation {
 
         Set<Integer> indexes = new HashSet<>();
         Set<String> fieldNames = new HashSet<>();
-        Set<String> annotationNames = new HashSet<>();
         for (FieldAnnotation fieldAnnotation : fieldAnnotationList) {
             if (!fieldNames.add(fieldAnnotation.getName())) {
                 throw new CacheException("multiple name:%s, class:%s", fieldAnnotation.getName(), aClass.getName());
             }
             if (!indexes.add(fieldAnnotation.getUniqueId())){
                 throw new CacheException("multiple uniqueId:%s, class:%s", fieldAnnotation.getUniqueId(), aClass.getName());
-            }
-            if (!annotationNames.add(fieldAnnotation.getAnnotationName())) {
-                throw new CacheException("multiple annotation name:%s, class:%s", fieldAnnotation.getAnnotationName(),aClass.getName());
-            }
-            if (CacheName.Names.contains(fieldAnnotation.getAnnotationName())){
-                throw new CacheException("annotation name can't be %s, class:%s", fieldAnnotation.getAnnotationName(), aClass.getName());
-            }
-            if (fieldAnnotation.getUniqueId() > DataBitIndex.MaximumIndex){
-                throw new CacheException("field count is exceeds the maximum of %s, class:%s", DataBitIndex.MaximumIndex, aClass.getName());
             }
         }
         this.fieldAnnotationList = sortUniqueIdAndUnmodifiableList(fieldAnnotationList);
@@ -123,8 +110,7 @@ public class ClassAnnotation implements IClassAnnotation {
             }
             String name = field.getName();
             field.setAccessible(true);
-            String annotationName = StringUtil.isEmpty(cacheFiled.name()) ? name : cacheFiled.name();
-            FieldAnnotation information = new FieldAnnotation(cacheFiled.index(), field, annotationName);
+            FieldAnnotation information = new FieldAnnotation(cacheFiled.index(), field);
             descriptions.add(information);
         }
     }

@@ -9,7 +9,9 @@ import com.game.core.cache.data.IData;
 import com.game.core.cache.data.IDataLifePredicate;
 import com.game.core.cache.exception.CacheException;
 import com.game.core.cache.key.IKeyValueBuilder;
-import com.game.core.cache.source.compose.CacheComposeSource;
+import com.game.core.cache.source.ICacheDelaySource;
+import com.game.core.cache.source.compose.RedisDbSource;
+import com.game.core.cache.source.executor.ICacheExecutor;
 import com.game.core.cache.source.executor.ICacheSource;
 import com.game.core.cache.source.redis.ICacheRedisSource;
 
@@ -19,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class DataDaoBuilder <K, V extends IData<K>> {
+public class DataDaoBuilder<K, V extends IData<K>> {
 
 	protected final ClassConfig classConfig;
 	protected final IKeyValueBuilder<K> secondaryBuilder;
@@ -35,12 +37,9 @@ public class DataDaoBuilder <K, V extends IData<K>> {
 		this.additionalKeValueList = new ArrayList<>();
 	}
 
-	void setDaoManager(DataDaoManager daoManager) {
-		this.daoManager = daoManager;
-	}
-
-	public void setLifePredicate(IDataLifePredicate lifePredicate) {
+	public DataDaoBuilder<K, V> setLifePredicate(IDataLifePredicate lifePredicate) {
 		this.lifePredicate = lifePredicate;
+		return this;
 	}
 
 	public ClassConfig getClassConfig() {
@@ -51,18 +50,22 @@ public class DataDaoBuilder <K, V extends IData<K>> {
 		additionalKeValueList.add(cacheKeyValue);
 	}
 
-	protected ICacheSource<K, V> createCacheSource(){
+	void setDaoManager(DataDaoManager daoManager) {
+		this.daoManager = daoManager;
+	}
+
+	ICacheSource<K, V> createCacheSource(){
 		return createCacheSource(classConfig);
 	}
 
-	protected ICacheSource<K, V> createCacheSource(ClassConfig classConfig){
+	ICacheSource<K, V> createCacheSource(ClassConfig classConfig){
 		CacheUniqueId cacheUniqueId = new CacheUniqueId(classConfig, additionalKeValueList);
 		try {
 			ICacheSource<K, V> cacheSource;
 			cacheSource = changeIfDelayCacheSource(createCacheSource(cacheUniqueId, cacheUniqueId.getCacheType()));
-			if (cacheUniqueId.isRedisSupport()){
+			if (cacheUniqueId.isRedisSupport() && (cacheSource instanceof ICacheDelaySource)){
 				ICacheRedisSource<K, V> redisSource = (ICacheRedisSource<K, V>)createCacheSource(cacheUniqueId, CacheType.Redis);
-				cacheSource = new CacheComposeSource<>(Objects.requireNonNull(redisSource), cacheSource, daoManager.getExecutor());
+				cacheSource = new RedisDbSource<>(redisSource, (ICacheDelaySource<K, V>)cacheSource);
 			}
 			return cacheSource;
 		}
@@ -74,14 +77,14 @@ public class DataDaoBuilder <K, V extends IData<K>> {
 	@SuppressWarnings("unchecked")
 	private ICacheSource<K, V> createCacheSource(CacheUniqueId cacheUniqueId, CacheType cacheType) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, InstantiationException {
 		Class<? extends ICacheSource> cacheClass = cacheType.getCacheClass();
-		Constructor<? extends ICacheSource> constructor = cacheClass.getConstructor(ICacheUniqueId.class, IKeyValueBuilder.class);
-		ICacheSource<K, V> newInstance = (ICacheSource<K, V>) constructor.newInstance(cacheUniqueId, secondaryBuilder);
+		Constructor<? extends ICacheSource> constructor = cacheClass.getConstructor(ICacheUniqueId.class, IKeyValueBuilder.class, ICacheExecutor.class);
+		ICacheSource<K, V> newInstance = (ICacheSource<K, V>) constructor.newInstance(cacheUniqueId, secondaryBuilder, daoManager.getExecutor());
 		return Objects.requireNonNull(newInstance);
 	}
 
 	private ICacheSource<K, V> changeIfDelayCacheSource(ICacheSource<K, V> cacheSource){
 		if (cacheSource.getCacheUniqueId().isDelayUpdate()){
-			cacheSource = cacheSource.createDelayUpdateSource(daoManager.getExecutor());
+			cacheSource = cacheSource.createDelayUpdateSource();
 		}
 		return cacheSource;
 	}

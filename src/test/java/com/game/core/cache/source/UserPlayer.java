@@ -4,7 +4,7 @@ import com.game.core.cache.data.Data;
 import com.game.core.cache.mapper.annotation.CacheFiled;
 import com.game.core.cache.mapper.annotation.CacheIndexes;
 
-@CacheIndexes(primaryKey = "userId", secondaryKeys = {})
+@CacheIndexes(primaryKey = "userId")
 public class UserPlayer extends Data<Long> {
 
     @CacheFiled(index = 0)

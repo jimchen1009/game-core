@@ -17,8 +17,8 @@ public class RedisClientManager {
 
     private static final Map<String, RedisClientManager> managers = new HashMap<>();
 
-    public static void init(){
-        List<IEvnConfig> configList = EvnCoreConfigs.getInstance(EvnCoreType.DB).getConfigList("redis");
+    public static void initilize(){
+        List<IEvnConfig> configList = EvnCoreConfigs.getInstance(EvnCoreType.REDIS).getConfigList("redis");
         for (IEvnConfig iEvnConfig : configList) {
             RedisClientManager manager = new RedisClientManager(iEvnConfig);
             for (String s : manager.names) {

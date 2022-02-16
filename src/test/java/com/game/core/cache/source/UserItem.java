@@ -35,13 +35,10 @@ public class UserItem extends Data<Long> {
     public void incCount(long count) {
         this.count += count;
         this.gainedCount += count;
-        onIndexValueChanged(2);
-        onIndexValueChanged(3);
     }
 
     public void decCount(long count) {
         this.count -= count;
-        onIndexValueChanged(2);
     }
 
     @Override

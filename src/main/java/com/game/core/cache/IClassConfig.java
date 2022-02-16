@@ -14,6 +14,8 @@ public interface IClassConfig {
 
 	boolean isRedisSupport();
 
+	long getRedisDuration();
+
 	boolean isDelayUpdate();
 
 	int getVersionId();

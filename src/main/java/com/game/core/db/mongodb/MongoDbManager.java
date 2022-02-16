@@ -43,7 +43,7 @@ public class MongoDbManager {
 
 
     public static void init(){
-        List<IEvnConfig> configList = EvnCoreConfigs.getInstance(EvnCoreType.DB).getConfigList("mongodb");
+        List<IEvnConfig> configList = EvnCoreConfigs.getInstance(EvnCoreType.MONGO).getConfigList("mongodb");
         for (IEvnConfig iEvnConfig : configList) {
             MongoDbManager manager = new MongoDbManager(Objects.requireNonNull(iEvnConfig));
             for (String s : manager.names) {

@@ -1,14 +1,11 @@
 package com.game.core.cache.data;
 
-import com.game.core.cache.CacheInformation;
-import com.game.core.cache.exception.CacheException;
 import com.game.common.arg.Args;
-import com.game.common.lock.LockUtil;
 import com.game.common.log.LogUtil;
+import com.game.core.cache.exception.CacheException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,16 +16,14 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
 
     private final long primaryKey;
     private ConcurrentHashMap<K, V> secondary2Values;
-    private CacheInformation cacheInformation;
     private final IDataSource<K, V> dataSource;
-    private final IDataLifePredicate loadPredicate;
+    private final IDataLifePredicate lifePredicate;
 
-    public PrimaryDataContainer(long primaryKey, IDataSource<K, V> dataSource, IDataLifePredicate loadPredicate) {
+    public PrimaryDataContainer(long primaryKey, IDataSource<K, V> dataSource, IDataLifePredicate lifePredicate) {
         this.primaryKey = primaryKey;
-        this.secondary2Values = new ConcurrentHashMap<>();
-        this.cacheInformation = null;
+        this.secondary2Values = null;
         this.dataSource = dataSource;
-        this.loadPredicate = loadPredicate;
+        this.lifePredicate = lifePredicate;
     }
 
     @Override
@@ -53,7 +48,7 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
 
     @Override
     public V replaceOne(V value) {
-        Args.Two<Boolean, V> resultValue = LockUtil.syncLock(dataSource.getLockKey(primaryKey), "deleteOne", () -> {
+        Args.Two<Boolean, V> resultValue = DataSourceUtil.syncLock(dataSource, primaryKey, "deleteOne", () -> {
             boolean success = dataSource.replaceOne(primaryKey, value);
             V oldValue = null;
             if (success){
@@ -71,7 +66,7 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
 
     @Override
     public void replaceBatch(Collection<V> values) {
-        Boolean isSuccess = LockUtil.syncLock(dataSource.getLockKey(primaryKey), "deleteBatch", () -> {
+        Boolean isSuccess = DataSourceUtil.syncLock(dataSource, primaryKey, "deleteBatch", () -> {
             boolean success = dataSource.replaceBatch(primaryKey, values);
             if (success){
                 ConcurrentHashMap<K, V> currentMap = currentMap();
@@ -91,16 +86,12 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
 
     @Override
     public V removeOne(K secondaryKey) {
-        Args.Two<Boolean, V> resultValue = LockUtil.syncLock(dataSource.getLockKey(primaryKey), "deleteOne", () -> {
-            boolean success = true;
+        Args.Two<Boolean, V> resultValue = DataSourceUtil.syncLock(dataSource, primaryKey, "deleteOne", () -> {
             ConcurrentHashMap<K, V> currentMap = currentMap();
-            V data = currentMap.get(secondaryKey);
-            if (data != null) {
-                data.delete(System.currentTimeMillis());
-                success = dataSource.replaceOne(primaryKey, data);
-                if (success){
-                    currentMap.remove(secondaryKey);
-                }
+            boolean success = dataSource.deleteOne(primaryKey, secondaryKey);
+            V data = null;
+            if (success){
+                data = currentMap.remove(secondaryKey);
             }
             return Args.create(success, data);
         });
@@ -114,26 +105,11 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
 
     @Override
     public void removeBatch(Collection<K> secondaryKeys) {
-        Boolean isSuccess = LockUtil.syncLock(dataSource.getLockKey(primaryKey), "deleteBatch", () -> {
-            boolean success = true;
-            long currentTime = System.currentTimeMillis();
+        Boolean isSuccess = DataSourceUtil.syncLock(dataSource, primaryKey, "deleteBatch", () -> {
             ConcurrentHashMap<K, V> currentMap = currentMap();
-            List<V> dataList = new ArrayList<>();
-            for (K secondaryKey : secondaryKeys) {
-                V data = currentMap.get(secondaryKey);
-                if (data == null){
-                    continue;
-                }
-                data.delete(currentTime);
-                dataList.add(data);
-            }
-            if (!dataList.isEmpty()){
-                success = dataSource.replaceBatch(primaryKey, dataList);
-                if (success) {
-                    for (V data : dataList) {
-                        currentMap.remove(data.secondaryKey());
-                    }
-                }
+            boolean success = dataSource.deleteBatch(primaryKey, secondaryKeys);
+            if (success) {
+                secondaryKeys.forEach(currentMap::remove);
             }
             return success;
         });
@@ -144,29 +120,8 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
         }
     }
 
-    @Override
-    public void onSchedule(long currentTime) {
-        if (cacheInformation == null){
-            return;
-        }
-        if (!cacheInformation.needUpdateExpired(currentTime)){
-            return;
-        }
-        LockUtil.syncLock(dataSource.getLockKey(primaryKey), "onSchedule", () -> {
-            CacheInformation cacheInformation = PrimaryDataContainer.this.cacheInformation.cloneInformation();
-            cacheInformation.updateCurrentTime(currentTime);
-            boolean updateSuccess = dataSource.updateCacheInformation(primaryKey, cacheInformation);
-            if (updateSuccess){
-                PrimaryDataContainer.this.cacheInformation = cacheInformation;
-            }
-            else {
-                logger.error("primaryKey:{} updateCacheInformation error.", primaryKey);
-            }
-        });
-    }
-
     private ConcurrentHashMap<K, V> lockCurrentMap(){
-        ConcurrentHashMap<K, V> currentMap = LockUtil.syncLock(dataSource.getLockKey(primaryKey), "currentMap", this::currentMap);
+        ConcurrentHashMap<K, V> currentMap = DataSourceUtil.syncLock(dataSource, primaryKey, "currentMap", this::currentMap);
         if (currentMap == null){
             throw new CacheException("primaryKey:%s load cache exception.", LogUtil.toJSONString(primaryKey));
         }
@@ -174,14 +129,12 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
     }
 
     private ConcurrentHashMap<K, V> currentMap(){
-        long currentTime = System.currentTimeMillis();
-        if (cacheInformation == null || cacheInformation.isExpired(currentTime)){
-            if (loadPredicate.isNewLife(primaryKey)){
-                cacheInformation = new CacheInformation();
-                loadPredicate.setOldLife(primaryKey);
-                cacheInformation.updateCurrentTime(currentTime);
+        if (secondary2Values == null){
+            if (lifePredicate.compareAndUpdate(primaryKey, dataSource.getCacheUniqueId())){
+                secondary2Values = new ConcurrentHashMap<>();
             }
             else {
+                secondary2Values = new ConcurrentHashMap<>();
                 DataCollection<K, V> collection = dataSource.getCollection(primaryKey);
                 List<V> valueList = collection.getDataList();
                 for (V value : valueList) {
@@ -190,7 +143,6 @@ public class PrimaryDataContainer<K, V extends IData<K>> implements IPrimaryData
                     }
                     secondary2Values.put(value.secondaryKey(), value);
                 }
-                cacheInformation = collection.getCacheInformation();
             }
         }
         return secondary2Values;

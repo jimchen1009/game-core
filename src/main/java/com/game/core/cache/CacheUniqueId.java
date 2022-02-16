@@ -1,6 +1,5 @@
 package com.game.core.cache;
 
-import com.game.common.util.CommonUtil;
 import com.game.core.cache.mapper.ClassAnnotation;
 import com.game.core.cache.mapper.FieldAnnotation;
 import jodd.util.StringUtil;
@@ -8,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -24,17 +24,22 @@ public class CacheUniqueId implements ICacheUniqueId {
 	public CacheUniqueId(ClassConfig classConfig, List<CacheKeyValue> additionalKeyValueList) {
 		this.classConfig = classConfig;
 		this.information = ClassAnnotation.create(classConfig.getAClass());
-		List<String> additionalKeyList = information.getAdditionalKeyList();
-		this.additionalKeyValueList = new ArrayList<>(additionalKeyValueList.size());
-		for (String additionalKey : additionalKeyList) {
-			CacheKeyValue oneUtilOkay = CommonUtil.findOneUtilOkay(additionalKeyValueList, findOne -> findOne.getKey() == additionalKey);
-			this.additionalKeyValueList.add(Objects.requireNonNull(oneUtilOkay));
-		}
+		this.additionalKeyValueList = Collections.unmodifiableList(additionalKeyValueList);
 		this.redisPrimaryKeyFormatString = createRedisPrimaryKeyFormatString();
 	}
 
 	@Override
-	public List<CacheKeyValue> createPrimaryAndAdditionalKeys(long primaryKey) {
+	public String getCacheName() {
+		return classConfig.getName();
+	}
+
+	@Override
+	public List<CacheKeyValue> getAdditionalKeyValueList() {
+		return additionalKeyValueList;
+	}
+
+	@Override
+	public List<CacheKeyValue> createPrimaryAndAdditionalKeys(Long primaryKey) {
 		List<CacheKeyValue> cacheKeyValueList = new ArrayList<>(additionalKeyValueList.size() + 1);
 		cacheKeyValueList.add(new CacheKeyValue(getPrimaryKey(), primaryKey));
 		cacheKeyValueList.addAll(additionalKeyValueList);
@@ -87,6 +92,11 @@ public class CacheUniqueId implements ICacheUniqueId {
 	}
 
 	@Override
+	public long getRedisDuration() {
+		return classConfig.getRedisDuration();
+	}
+
+	@Override
 	public String getRedisKeyString(long primaryKey) {
 		return String.format(redisPrimaryKeyFormatString, primaryKey);
 	}
@@ -97,11 +107,6 @@ public class CacheUniqueId implements ICacheUniqueId {
 	}
 
 	@Override
-	public List<String> getAdditionalKeyList() {
-		return information.getAdditionalKeyList();
-	}
-
-	@Override
 	public List<String> getSecondaryKeyList() {
 		return information.getSecondaryKeyList();
 	}
@@ -109,6 +114,11 @@ public class CacheUniqueId implements ICacheUniqueId {
 	@Override
 	public List<String> getCombineUniqueKeyList() {
 		return information.getCombineUniqueKeyList();
+	}
+
+	@Override
+	public List<String> getOtherNameList() {
+		return information.getOtherNameList();
 	}
 
 	@Override
@@ -132,7 +142,7 @@ public class CacheUniqueId implements ICacheUniqueId {
 	private String createRedisPrimaryKeyFormatString(){
 		if (additionalKeyValueList.isEmpty()){
 			String string = StringUtil.join(additionalKeyValueList.stream().map(CacheKeyValue::getValue).collect(Collectors.toList()), "_");
-			return "100:%s_" + String.format("%s.%s.v%s", classConfig.getName() , string, classConfig.getVersionId());
+			return "100:%s_" + String.format("%s.v%s.%s", classConfig.getName() , classConfig.getVersionId(), string);
 		}
 		else {
 			return "100:%s_" + String.format("%s.v%s", classConfig.getName() , classConfig.getVersionId());

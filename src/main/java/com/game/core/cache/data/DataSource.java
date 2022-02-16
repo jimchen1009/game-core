@@ -1,10 +1,9 @@
 package com.game.core.cache.data;
 
-import com.game.core.cache.CacheInformation;
+import com.game.common.lock.LockKey;
 import com.game.core.cache.ICacheUniqueId;
 import com.game.core.cache.mapper.IClassConverter;
 import com.game.core.cache.source.executor.ICacheSource;
-import com.game.common.lock.LockKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,8 +44,8 @@ class DataSource<K, V extends IData<K>> implements IDataSource<K, V>{
     }
 
     @Override
-    public boolean replaceOne(long primaryKey, V value) {
-        boolean isSuccess = cacheSource.replaceOne(primaryKey, value);
+    public boolean replaceOne(long primaryKey, V data) {
+        boolean isSuccess = cacheSource.replaceOne(primaryKey, data);
         if (isSuccess){
 
         }
@@ -54,8 +53,8 @@ class DataSource<K, V extends IData<K>> implements IDataSource<K, V>{
     }
 
     @Override
-    public boolean replaceBatch(long primaryKey, Collection<V> values) {
-        boolean isSuccess = cacheSource.replaceBatch(primaryKey, values);
+    public boolean replaceBatch(long primaryKey, Collection<V> dataList) {
+        boolean isSuccess = cacheSource.replaceBatch(primaryKey, dataList);
         if (isSuccess){
         }
         return isSuccess;
@@ -79,8 +78,8 @@ class DataSource<K, V extends IData<K>> implements IDataSource<K, V>{
 
     @Override
     @SuppressWarnings("unchecked")
-    public V cloneValue(V value) {
-        return cacheSource.cloneValue(value);
+    public V cloneValue(V data) {
+        return cacheSource.cloneValue(data);
     }
 
     @Override
@@ -96,10 +95,5 @@ class DataSource<K, V extends IData<K>> implements IDataSource<K, V>{
     @Override
     public void flushOne(long primaryKey, long currentTime, Consumer<Boolean> consumer) {
         cacheSource.flushOne(primaryKey, currentTime, consumer);
-    }
-
-    @Override
-    public boolean updateCacheInformation(long primaryKey, CacheInformation cacheInformation) {
-        return cacheSource.updateCacheInformation(primaryKey, cacheInformation);
     }
 }

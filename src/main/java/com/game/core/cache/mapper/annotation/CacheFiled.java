@@ -10,14 +10,14 @@ import java.lang.annotation.Target;
 public @interface CacheFiled {
 
     /**
-     * 字段的唯一ID,范围[0-63]
+     * 字段的唯一ID
      * @return
      */
     int index();
 
     /**
-     * 名字
+     * 是否代表删除字段
      * @return
      */
-    String name() default "";
+    boolean isDeleted() default false;
 }

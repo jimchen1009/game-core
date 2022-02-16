@@ -1,9 +1,9 @@
 package com.game.core.cache.dao;
 
+import com.game.common.log.LogUtil;
 import com.game.core.cache.data.IData;
 import com.game.core.cache.data.IDataSource;
 import com.game.core.cache.exception.CacheException;
-import com.game.common.log.LogUtil;
 
 class DataValueDao<V extends IData<Long>> implements IDataValueDao<V> {
 
@@ -15,14 +15,14 @@ class DataValueDao<V extends IData<Long>> implements IDataValueDao<V> {
 
     @Override
     public V get(long primaryKey) {
-        return dataSource.get(primaryKey, primaryKey);
+        V value = dataSource.get(primaryKey, primaryKey);
+        return value == null || value.isDeleted() ? null : value;
     }
 
     @Override
     public V replace(V value) {
         boolean isSuccess = dataSource.replaceOne(value.secondaryKey(), value);
         if (isSuccess){
-            value.clearCacheBitIndex();
             return null;
         }
         else {

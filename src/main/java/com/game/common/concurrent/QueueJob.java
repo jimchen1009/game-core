@@ -8,29 +8,29 @@ public abstract class QueueJob<K> implements Runnable {
 	private static final Logger logger = LoggerFactory.getLogger(QueueJob.class);
 
 	private final K queueId;
-	private final String name;
-	private final long nanoTimeout;
+	private final String message;
+	private volatile long nanoTimeout;
 
-	public QueueJob(K queueId, String name) {
-		this(queueId, name, 0);
-	}
-
-	public QueueJob(K queueId, String name, long nanoTimeout) {
+	public QueueJob(K queueId, String message) {
 		this.queueId = queueId;
-		this.name = name;
-		this.nanoTimeout = nanoTimeout;
+		this.message = message;
 	}
 
 	public K getQueueId() {
 		return queueId;
 	}
 
-	public String getName() {
-		return name;
+	public String getMessage() {
+		return message;
 	}
 
 	public long getNanoTimeout() {
 		return nanoTimeout;
+	}
+
+	public QueueJob<K> setNanoTimeout(long nanoTimeout) {
+		this.nanoTimeout = nanoTimeout;
+		return this;
 	}
 
 	@Override
@@ -39,7 +39,7 @@ public abstract class QueueJob<K> implements Runnable {
 			execute();
 		}
 		catch (Throwable throwable){
-			logger.error("queueJob error, {}", messageJobLog());
+			logger.error("queueJob error, {}", toJobLog());
 		}
 		finally {
 		}
@@ -47,7 +47,7 @@ public abstract class QueueJob<K> implements Runnable {
 
 	protected abstract void execute();
 
-	protected final String messageJobLog(){
+	protected final String toJobLog(){
 		try {
 			return this.toString();
 		}
@@ -64,7 +64,7 @@ public abstract class QueueJob<K> implements Runnable {
 	private static String toString(QueueJob<?> queueJob) {
 		return "{" +
 				"queueId=" + queueJob.queueId +
-				", name='" + queueJob.name + '\'' +
+				", message='" + queueJob.message + '\'' +
 				", nanoTimeout=" + queueJob.nanoTimeout +
 				'}';
 	}

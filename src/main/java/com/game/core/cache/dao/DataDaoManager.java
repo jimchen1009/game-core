@@ -48,7 +48,6 @@ public class DataDaoManager {
         for (Map.Entry<ICacheUniqueId, IDataCacheDao> entry : cacheDaoMap.entrySet()) {
             try {
                 if (entry.getValue().flushAll(currentTime)){
-
                 }
                 else {
                     logger.error("flushOne:{} failure.", entry.getKey());
@@ -69,11 +68,11 @@ public class DataDaoManager {
         }
         List<String> stringList = new ArrayList<>();
         CountDownLatch downLatch = new CountDownLatch(entryList.size());
-        AtomicBoolean atomicBoolean = new AtomicBoolean(false);
+        AtomicBoolean atomicBoolean = new AtomicBoolean(true);
         for (Map.Entry<ICacheUniqueId, IDataCacheDao> entry : entryList) {
             entry.getValue().flushOne(primaryId, currentTime, success -> {
                 downLatch.countDown();
-                atomicBoolean.compareAndSet(false, success != null && success);
+                atomicBoolean.compareAndSet(true, success == null || !success);
             });
         }
         try {

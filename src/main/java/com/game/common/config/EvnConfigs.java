@@ -1,8 +1,12 @@
 package com.game.common.config;
 
 import com.typesafe.config.ConfigList;
+import com.typesafe.config.ConfigValue;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -66,5 +70,20 @@ public class EvnConfigs implements IEvnConfig {
     @Override
     public long getDuration(String path, TimeUnit timeUnit) {
         return config.getDuration(path, timeUnit);
+    }
+
+    @Override
+    public Properties toProperties(){
+        Properties properties = new Properties();
+        Set<Map.Entry<String, ConfigValue>> entries = config.entrySet();
+        for (Map.Entry<String, ConfigValue> entry : entries) {
+            properties.put(entry.getKey(), config.getString(entry.getKey()));
+        }
+        return properties;
+    }
+
+    @Override
+    public String toString() {
+        return config.toString();
     }
 }

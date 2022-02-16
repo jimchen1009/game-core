@@ -18,11 +18,7 @@ public class DataValueDaoBuilder <V extends IData<Long>>  extends DataDaoBuilder
 	public IDataCacheValueDao<V> getCacheInstance(){
 		IDataSource<Long, V> dataSource = DataSourceUtil.createDataSource(createCacheSource());
 		DataValueContainer<V> container = new DataValueContainer<>(dataSource, lifePredicate, daoManager.getExecutor());
-
-		ClassConfig classConfig = this.classConfig.cloneConfig().setDelayUpdate(false);
-		IDataSource<Long, V> dataSource0 = DataSourceUtil.createDataSource(createCacheSource(classConfig));
-
-		IDataCacheValueDao<V> cacheMapDao = new DataCacheValueDao<>(dataSource0, container);
+		IDataCacheValueDao<V> cacheMapDao = new DataCacheValueDao<>(container);
 		return daoManager.addCacheValueDao(cacheMapDao);
 	}
 

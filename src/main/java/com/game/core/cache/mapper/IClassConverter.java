@@ -2,21 +2,31 @@ package com.game.core.cache.mapper;
 
 import com.game.core.cache.data.IData;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.function.BiConsumer;
 
 public interface IClassConverter<K, V extends IData<K>> {
 
     Class<V> getConvertedClass();
 
-    IClassAnnotation getClassAnnotation();
+    default V convert2Data(Map<String, Object> dataValueMap){
+        return convert2Data(dataValueMap::get);
+    }
 
-    V convert2Value(Map<String, Object> cacheValue);
+    V convert2Data(Function function);
 
-    List<V> convert2ValueList(Collection<Map<String, Object>> cacheValues);
+    default Map<String, Object> convert2Cache(V data){
+        Map<String, Object> cacheValue = new HashMap<>();
+        convert2Cache(data, cacheValue::put);
+        return cacheValue;
+    }
 
-    Map<String, Object> convert2Cache(V dataValue);
+    void convert2Cache(V dataValue, BiConsumer<String, Object> consumer);
 
-    List<Map<String, Object>> convert2CacheList(Collection<V> dataValues);
+
+    interface Function{
+
+        Object apply(String t) throws Exception;
+    }
 }

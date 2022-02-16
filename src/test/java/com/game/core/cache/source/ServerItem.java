@@ -29,12 +29,10 @@ public class ServerItem extends Data<Long> {
 
     public void incCount(long count) {
         this.count += count;
-        onIndexValueChanged(2);
     }
 
     public void decCount(long count) {
         this.count -= count;
-        onIndexValueChanged(2);
     }
 
     @Override

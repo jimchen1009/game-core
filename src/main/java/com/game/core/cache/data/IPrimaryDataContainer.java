@@ -1,6 +1,11 @@
 package com.game.core.cache.data;
 
+import com.game.common.lock.LockUtil;
+import com.game.common.util.Holder;
+import com.game.core.cache.exception.CacheException;
+
 import java.util.Collection;
+import java.util.List;
 
 public interface IPrimaryDataContainer<K, V extends IData<K>> {
 
@@ -19,6 +24,4 @@ public interface IPrimaryDataContainer<K, V extends IData<K>> {
     V removeOne(K secondaryKey);
 
     void removeBatch(Collection<K> secondaryKeys);
-
-    void onSchedule(long currentTime);
 }

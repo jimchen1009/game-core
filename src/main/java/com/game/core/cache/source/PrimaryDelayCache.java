@@ -1,113 +1,72 @@
 package com.game.core.cache.source;
 
-import com.game.common.config.EvnCoreConfigs;
-import com.game.common.config.EvnCoreType;
 import com.game.core.cache.data.IData;
-import com.game.core.cache.exception.CacheException;
 
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 
 public class PrimaryDelayCache<K, V extends IData<K>>{
 
     private final long primaryKey;
     private volatile long expiredTime;
-    private final Map<K, KeyDataValue<K, V>> keyDataValuesMap;
+    private final Map<K, KeyDataCommand<K, V>> dataCommandMap;
 
-    public PrimaryDelayCache(long primaryKey, long duration) {
+    private PrimaryDelayCache(long primaryKey, long expiredTime, Map<K, KeyDataCommand<K, V>> dataCommandMap) {
         this.primaryKey = primaryKey;
-        if (duration == 0){
-            duration = EvnCoreConfigs.getInstance(EvnCoreType.CACHE).getDuration("flush.expiredDuration", TimeUnit.MILLISECONDS);
-        }
-        this.expiredTime = System.currentTimeMillis() + duration;
-        this.keyDataValuesMap = new ConcurrentHashMap<>();
+        this.expiredTime = expiredTime;
+        this.dataCommandMap = dataCommandMap;
     }
 
-    public PrimaryDelayCache(long primaryKey) {
-        this(primaryKey, 0);
+    public PrimaryDelayCache(long primaryKey, long expiredTime) {
+        this(primaryKey, expiredTime, new ConcurrentHashMap<>());
     }
 
     public long getPrimaryKey() {
         return primaryKey;
     }
 
+    public boolean isExpired(long currentTime){
+        return currentTime >= expiredTime;
+    }
+
     public long getExpiredTime() {
         return expiredTime;
     }
 
-    public void setExpiredTime(long expiredTime) {
-        this.expiredTime = expiredTime;
+    public void incExpiredTime(long incTime){
+        expiredTime += incTime;
     }
 
     public boolean isEmpty(){
-        return keyDataValuesMap.isEmpty();
+        return dataCommandMap.isEmpty();
     }
 
-    /**
-     * @param secondaryKey
-     * @return
-     */
-    public V getDataValue(K secondaryKey){
-        KeyDataValue<K, V> keyDataValue = keyDataValuesMap.get(secondaryKey);
-        if (keyDataValue == null || keyDataValue.isDeleted()){
-            return null;
-        }
-        return keyDataValue.getDataValue();
+    public Map<K, KeyDataCommand<K, V>> getDataCommandMap() {
+        return dataCommandMap;
     }
 
-    /**
-     * @param secondaryKey
-     * @return
-     */
-    public V deleteCacheValue(K secondaryKey){
-        KeyDataValue<K, V> oldKeyDataValue = keyDataValuesMap.remove(secondaryKey);
-        if (oldKeyDataValue == null){
-            keyDataValuesMap.put(secondaryKey, KeyDataValue.createDelete(secondaryKey));
-            return null;
-        }
-        if (oldKeyDataValue.isDeleted()) {
-            return null;
-        }
-        if (oldKeyDataValue.isUpsert()){
-            keyDataValuesMap.put(secondaryKey, KeyDataValue.createDelete(secondaryKey));
-            return oldKeyDataValue.getDataValue();
-        }
-        throw new CacheException(oldKeyDataValue.getCacheCommand().name());
+    public Collection<K> getUpdateKeys(){
+        return dataCommandMap.keySet();
     }
 
-    /**
-     * @param keyDataValue
-     */
-    public void add(KeyDataValue<K, V> keyDataValue){
-        keyDataValuesMap.put(keyDataValue.getKey(), keyDataValue);
+    public Collection<KeyDataCommand<K, V>> getAllDataCommands(){
+        return dataCommandMap.values();
     }
 
-    public KeyDataValue<K, V> get(K secondaryKey){
-        return keyDataValuesMap.get(secondaryKey);
+    public void add(KeyDataCommand<K, V> updateData){
+        dataCommandMap.put(updateData.getKey(), updateData);
     }
 
-    public KeyDataValue<K, V> remove(K secondaryKey){
-        return keyDataValuesMap.remove(secondaryKey);
+    public KeyDataCommand<K, V> get(K key){
+        return dataCommandMap.get(key);
     }
 
-    public void addAll(Collection<KeyDataValue<K, V>> keyDataValues){
-        for (KeyDataValue<K, V> keyDataValue : keyDataValues) {
-            keyDataValuesMap.putIfAbsent(keyDataValue.getKey(), keyDataValue);
-        }
+    public KeyDataCommand<K, V> remove(K key){
+        return dataCommandMap.remove(key);
     }
 
-    /**
-     * @param keyDataValues
-     */
-    public void rollbackAll(Collection<KeyDataValue<K, V>> keyDataValues){
-        for (KeyDataValue<K, V> keyDataValue : keyDataValues) {
-            keyDataValuesMap.putIfAbsent( keyDataValue.getKey(), keyDataValue);
-        }
-    }
-
-    public Collection<KeyDataValue<K, V>> getAll(){
-        return keyDataValuesMap.values();
+    public PrimaryDelayCache<K, V> shallowCopy(){
+        return new PrimaryDelayCache<>(primaryKey, expiredTime, new ConcurrentHashMap<>(dataCommandMap));
     }
 }

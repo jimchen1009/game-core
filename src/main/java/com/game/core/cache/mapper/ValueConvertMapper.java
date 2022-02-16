@@ -15,7 +15,6 @@ public class ValueConvertMapper {
 
     private static final Logger logger = LoggerFactory.getLogger(ValueConvertMapper.class);
 
-
     private final JsonValueConverter defaultConverter;
     private final Map<String, ValueConverter<?>> convertMap;
 

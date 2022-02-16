@@ -35,7 +35,6 @@ class DataMapDao<K, V extends IData<K>> implements IDataMapDao<K, V> {
     public V replaceOne(long primaryKey, V value) {
         boolean isSuccess = dataSource.replaceOne(primaryKey, value);
         if (isSuccess){
-            value.clearCacheBitIndex();
             return null;
         }
         else {
@@ -47,7 +46,6 @@ class DataMapDao<K, V extends IData<K>> implements IDataMapDao<K, V> {
     public void replaceBatch(long primaryKey, Collection<V> values) {
         boolean isSuccess = dataSource.replaceBatch(primaryKey, values);
         if (isSuccess){
-            values.forEach(V::clearCacheBitIndex);
         }
         else {
             throw new CacheException("primaryKey:%s replaceBatch error, %s", primaryKey, LogUtil.toJSONString(values));

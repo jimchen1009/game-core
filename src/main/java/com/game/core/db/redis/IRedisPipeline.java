@@ -15,4 +15,10 @@ public interface IRedisPipeline {
     void pttl(String key);
 
     void pexpireAt(final String key, final long millisecondsTimestamp);
+
+    void del(String key);
+
+    void hdel(final String key, final String... field);
+
+    int commandCount();
 }

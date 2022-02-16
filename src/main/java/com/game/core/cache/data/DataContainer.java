@@ -1,15 +1,14 @@
 package com.game.core.cache.data;
 
+import com.game.common.util.Holder;
 import com.game.common.util.RandomUtil;
-import com.game.core.cache.CacheInformation;
 import com.game.core.cache.source.executor.CacheRunnable;
 import com.game.core.cache.source.executor.ICacheExecutor;
-import com.game.common.util.Holder;
-import org.apache.commons.lang3.RandomUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -19,22 +18,24 @@ public class DataContainer<K, V extends IData<K>> implements IDataContainer<K, V
 
     private static final Logger logger = LoggerFactory.getLogger(DataContainer.class);
 
-    private static final CacheInformation INIT_INFO = new CacheInformation();
-
     private final IDataSource<K, V> dataSource;
-    private final IDataLifePredicate loadPredicate;
+    private final IDataLifePredicate lifePredicate;
     private ConcurrentHashMap<Long, IPrimaryDataContainer<K, V>> primaryDataMap;
 
-    public DataContainer(IDataSource<K, V> dataSource, IDataLifePredicate loadPredicate, ICacheExecutor executor) {
+    public DataContainer(IDataSource<K, V> dataSource, IDataLifePredicate lifePredicate, ICacheExecutor executor) {
         this.dataSource = dataSource;
-        this.loadPredicate = loadPredicate;
+        this.lifePredicate = lifePredicate;
         this.primaryDataMap = new ConcurrentHashMap<>();
         //初始化~
         String name = "dataContainer." + dataSource.getCacheUniqueId().getName();
         long initialDelay = RandomUtil.nextLong(1000, 2000) / 50;
-        executor.scheduleAtFixedRate(new CacheRunnable(name, this::onScheduleAll), initialDelay, 1000L, TimeUnit.MILLISECONDS);
+        executor.scheduleWithFixedDelay(new CacheRunnable(name, this::onScheduleAll), initialDelay, 1000L, TimeUnit.MILLISECONDS);
     }
 
+    @Override
+    public IDataSource<K, V> getDataSource() {
+        return dataSource;
+    }
 
     @Override
     public boolean existCache(long primaryKey) {
@@ -53,15 +54,12 @@ public class DataContainer<K, V extends IData<K>> implements IDataContainer<K, V
 
     @Override
     public Holder<V> getNoCache(long primaryKey, K secondaryKey) {
-        IPrimaryDataContainer<K, V> primaryDataContainer = primaryDataMap.get(primaryKey);
-        if (primaryDataContainer == null){
-            return null;
+        boolean primaryCache = primaryDataMap.containsKey(primaryKey);
+        V data = primaryDataContainer(primaryKey).get(secondaryKey);
+        if (!primaryCache){
+            primaryDataMap.remove(primaryKey);
         }
-        V value = primaryDataContainer.get(secondaryKey);
-        if (value != null){
-            value = dataSource.cloneValue(value);
-        }
-        return new Holder<>(value);
+        return new Holder<>(data == null ? null : dataSource.cloneValue(data));
     }
 
     @Override
@@ -71,11 +69,12 @@ public class DataContainer<K, V extends IData<K>> implements IDataContainer<K, V
 
     @Override
     public Collection<V> getAllNoCache(long primaryKey) {
-        IPrimaryDataContainer<K, V> primaryDataContainer = primaryDataMap.get(primaryKey);
-        if (primaryDataContainer == null){
-            return null;
+        boolean primaryCache = primaryDataMap.containsKey(primaryKey);
+        List<V> dataList = primaryDataContainer(primaryKey).getAll().stream().map(dataSource::cloneValue).collect(Collectors.toList());
+        if (!primaryCache){
+            primaryDataMap.remove(primaryKey);
         }
-        return primaryDataContainer.getAll().stream().map(dataSource::cloneValue).collect(Collectors.toList());
+        return dataList;
     }
 
     @Override
@@ -105,18 +104,22 @@ public class DataContainer<K, V extends IData<K>> implements IDataContainer<K, V
 
     @Override
     public void flushOne(long primaryKey, long currentTime, Consumer<Boolean> consumer) {
-        dataSource.flushOne(primaryKey, currentTime, consumer);
+        dataSource.flushOne(primaryKey, currentTime, success->{
+            if (success) {
+                primaryDataMap.remove(primaryKey);
+            }
+            consumer.accept(success);
+        });
     }
 
     private IPrimaryDataContainer<K, V> primaryDataContainer(long primaryKey){
-        return primaryDataMap.computeIfAbsent(primaryKey, key -> new PrimaryDataContainer<>(key, dataSource, loadPredicate));
+        return primaryDataMap.computeIfAbsent(primaryKey, key -> new PrimaryDataContainer<>(key, dataSource, lifePredicate));
     }
 
     private void onScheduleAll(){
         long currentTime = System.currentTimeMillis();
         for (IPrimaryDataContainer<K, V> container : primaryDataMap.values()) {
             try {
-                container.onSchedule(currentTime);
             }
             catch (Throwable t){
                 logger.error("primaryKey:{} onSchedule error.", container.primaryKey());

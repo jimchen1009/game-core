@@ -1,5 +1,6 @@
 package com.game.core.cache.source;
 
+import com.game.core.cache.CacheType;
 import com.game.core.cache.ICacheUniqueId;
 import com.game.core.cache.dao.DataDaoManager;
 import com.game.core.cache.dao.DataDaoUtil;
@@ -7,28 +8,20 @@ import com.game.core.cache.dao.IDataCacheMapDao;
 import com.game.core.cache.dao.IDataMapDao;
 import com.game.core.cache.data.IDataLifePredicate;
 import com.game.core.cache.key.KeyValueBuilder;
-import com.game.core.cache.source.interact.ICacheLifeInteract;
-import com.game.core.cache.source.redis.RedisClientUtil;
-import com.game.core.db.mongodb.MongoDbManager;
-import com.game.core.db.redis.IRedisClient;
-import com.game.core.db.redis.RedisClientManager;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
+import com.game.core.db.sql.SqlDbs;
 import jodd.util.ThreadUtil;
-import org.bson.Document;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class CacheRunner {
 
@@ -38,9 +31,9 @@ public class CacheRunner {
     @Test
     public void item() throws InterruptedException {
         System.setProperty("game.core.config.path", "D:/demo/game-core/src/main/resources");
-//        MongoDbManager.init();
-//        RedisClientManager.init();
-//        IRedisClient redisClient = RedisClientUtil.getRedisClient();
+//        MongoDbManager.initialize();
+//        RedisClientManager.initialize();
+//        IRedisClient redisClient = RedisUtil.getClient();
 //        MongoDatabase database = MongoDbManager.get("cache").getDb("demo");
 //        MongoCollection<Document> collection = database.getCollection("material");
 //        collection.drop();
@@ -50,44 +43,40 @@ public class CacheRunner {
 
 //        collection.insertOne(new Document("userId", userId).append("item", Collections.emptyList()));
 
+        List<Object> collect = Collections.singletonList(1).stream().map(a -> null).collect(Collectors.toList());
+        SqlDbs.initialize();
         IDataLifePredicate lifePredicate = new IDataLifePredicate() {
-            @Override
-            public void setOldLife(long primaryKey) {
-            }
 
             @Override
-            public boolean isNewLife(long primaryKey) {
+            public boolean withoutUpdate(long primaryKey, ICacheUniqueId cacheUniqueId) {
                 return false;
             }
-        };
 
-        AtomicBoolean atomicBoolean = new AtomicBoolean(false);
-        ICacheLifeInteract loginPredicate = new ICacheLifeInteract() {
-
-            private final Map<Long, AtomicBoolean> atomicBoolean0 = new ConcurrentHashMap<>();
             @Override
-            public boolean getAndSetSharedLoad(long primaryKey, ICacheUniqueId cacheDaoUnique) {
-                return atomicBoolean0.computeIfAbsent(primaryKey, key -> new AtomicBoolean(false)).compareAndSet(false, true);
+            public void doneUpdate(long primaryKey, ICacheUniqueId cacheUniqueId) {
+
             }
         };
 
         IDataCacheMapDao<Long, UserItem> itemDao = DataDaoUtil.newMapDaoBuilder(UserItem.class, new KeyValueBuilder.ONE<>(), builder -> {
             builder.setLifePredicate(lifePredicate);
-            builder.getClassConfig().setDelayUpdate(true)
-                    .setName("material")
-                    .setRedisSupport(true)
+            builder.getClassConfig().setDelayUpdate(false)
+                    .setName("item")
+                    .setRedisSupport(false)
                     .setCacheLoadAdvance(true)
-                    .setAccountCache(true);
+                    .setAccountCache(true)
+                    .setCacheType(CacheType.MySQL);
         }).getCacheInstance();
 
 
         IDataMapDao<Integer, UserCurrency> currencyDao = DataDaoUtil.newMapDaoBuilder(UserCurrency.class, new KeyValueBuilder.ONE<>(), builder -> {
             builder.setLifePredicate(lifePredicate);
             builder.getClassConfig().setDelayUpdate(true)
-                    .setName("material")
+                    .setName("currency")
                     .setRedisSupport(true)
                     .setCacheLoadAdvance(true)
-                    .setAccountCache(true);
+                    .setAccountCache(true)
+                    .setCacheType(CacheType.MySQL);
         }).getCacheInstance();
 
 
@@ -100,7 +89,7 @@ public class CacheRunner {
         userDaoAllList.get(0).execute();
 
 //        for (int i = 0; i < 2; i++) {
-//            executorService.scheduleAtFixedRate(()-> {
+//            executorService.scheduleWithFixedDelay(()-> {
 //                int index = RandomUtils.select(0, userDaoAllList.size());
 //                try {
 //                    userDaoAllList.get(index).execute();

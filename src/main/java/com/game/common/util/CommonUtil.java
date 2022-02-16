@@ -81,7 +81,7 @@ public class CommonUtil {
         return map;
     }
 
-    public static <K, V, C extends Collection<V>> Map<K, C> splitUpIntoNGroup(Map<K, C> map, Collection<V> collection, Supplier<C> supplier, Function<V, Collection<K>> function) {
+    public static <K, V, C extends Collection<V>> Map<K, C> splitUp1IntoNGroup(Map<K, C> map, Collection<V> collection, Supplier<C> supplier, Function<V, Collection<K>> function) {
         for (V data : collection) {
             Collection<K> keys = function.apply(data);
             if (keys == null || keys.isEmpty()) {

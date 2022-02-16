@@ -1,57 +1,35 @@
 package com.game.core.cache.source.executor;
 
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
+import com.game.common.concurrent.QueueJobService;
+import com.game.common.thread.PoolThreadFactory;
+
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /**
  * 线程池需要优化：
  * 确保一个任务类型：name 同时只有一个线程在处理。
  * 使用单线程模式处理，存在空闲线程的时候，共享任务堵类型会堵塞name任务。
  */
-public class CacheExecutor implements ICacheExecutor{
+public class CacheExecutor implements ICacheExecutor {
 
-    private final ScheduledExecutorService executorService;
+    private final QueueJobService<String> jobService;
 
     public CacheExecutor(int poolSize) {
-        this.executorService = Executors.newScheduledThreadPool(poolSize);
+        this.jobService = new QueueJobService<>(poolSize, new PoolThreadFactory("Cache"));
     }
 
     @Override
-    public <T> ICacheFuture<T> submit(CacheCallable<T> callable) {
-        Future<T> future = executorService.submit(callable);
-        return new CacheFuture<>(future);
+    public <T> void submit(CacheCallable<T> callable) {
+        jobService.addQueueJob(callable);
     }
 
     @Override
-    public <V> void schedule(CacheCallable<V> callable, long delay, TimeUnit unit) {
-        executorService.schedule(callable, delay, unit);
+    public void scheduleWithFixedDelay(CacheRunnable command, long initialDelay, long period, TimeUnit timeUnit) {
+        jobService.getExecutor().scheduleWithFixedDelay(command, initialDelay, period, timeUnit);
     }
 
     @Override
-    public void scheduleAtFixedRate(CacheRunnable command, long initialDelay, long period, TimeUnit unit) {
-        executorService.scheduleAtFixedRate(command, initialDelay, period, unit);
-    }
-
-    @Override
-    public void shutdown() {
-        executorService.shutdown();
-    }
-
-    private static class CacheFuture<T> implements ICacheFuture<T>{
-
-        private volatile Future<T> future;
-
-        public CacheFuture(Future<T> future) {
-            this.future = future;
-        }
-
-        @Override
-        public T get(long timeout, TimeUnit timeUnit) throws InterruptedException, ExecutionException, TimeoutException {
-            return future.get(timeout, timeUnit);
-        }
+    public void shutdownAsync() {
+        jobService.shutdownSync();
     }
 }

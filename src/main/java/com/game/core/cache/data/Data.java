@@ -1,7 +1,5 @@
 package com.game.core.cache.data;
 
-import com.game.core.cache.exception.CacheException;
-import com.game.core.cache.mapper.annotation.CacheFiled;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,54 +8,32 @@ import java.util.function.Supplier;
 public abstract class Data<K> implements IData<K> {
 
     private static final Logger logger = LoggerFactory.getLogger(Data.class);
-    private static final long VALUE_ERASER;
-    static {
-        long value = 0;
-        for (int uniqueId = 0; uniqueId <= DataBitIndex.MaximumIndex; uniqueId++) {
-            value = value | (1L << uniqueId);
-        }
-        VALUE_ERASER = ~value;
+
+    private int $cacheBitValue$ = 0;
+
+    boolean existIndexBit(int index) {
+        return (this.$cacheBitValue$ & (1L << index)) != 0;
     }
 
-    @CacheFiled(index = DataBitIndex.MaximumIndex)
-    private long deleteTime = 0;
-
-    private long dataBitIndexBits = 0;
-
-    @Override
-    public boolean hasBitIndex(int index) {
-        return (this.dataBitIndexBits & (1L << index)) != 0;
+    void clearIndexBit(int index){
+        $cacheBitValue$ = this.$cacheBitValue$ ^ (1 << index);
     }
 
-    private void clearBitIndex(DataBitIndex bitIndex){
-        dataBitIndexBits = this.dataBitIndexBits ^ (1L << bitIndex.getId());
+    void setIndexBit(int index) {
+        this.$cacheBitValue$ = this.$cacheBitValue$ | (1 << index);
     }
 
-    private void setBitIndex(DataBitIndex bitIndex) {
-        this.dataBitIndexBits = this.dataBitIndexBits | (1L << bitIndex.getId());
-    }
-
-    private void setDataBitIndexBits(long dataBitIndexBits) {
-        this.dataBitIndexBits = dataBitIndexBits;
-    }
-
-    @Override
-    public long getBitIndexBits() {
-        return dataBitIndexBits;
-    }
-
-
-    @Override
-    public void clearCacheBitIndex() {
-        this.dataBitIndexBits = this.dataBitIndexBits & VALUE_ERASER;
-    }
-
-    public void onIndexValueChanged(int uniqueId){
-        if (uniqueId > DataBitIndex.MaximumIndex){
-            throw new UnsupportedOperationException(String.valueOf(uniqueId));
-        }
-        dataBitIndexBits = dataBitIndexBits | (1 << uniqueId);
-    }
+//    void setCacheBitValue(int cacheBitValue) {
+//        this.$cacheBitValue$ = cacheBitValue;
+//    }
+//
+//    long getCacheBitValue() {
+//        return $cacheBitValue$;
+//    }
+//
+//    void clearCacheBitValue() {
+//        this.$cacheBitValue$ = 0;
+//    }
 
     @Override
     public final Object clone(Supplier<Object> supplier) {
@@ -68,18 +44,5 @@ public abstract class Data<K> implements IData<K> {
             logger.error("{}", this.getClass().getName(), e);
         }
         return supplier.get();
-    }
-
-    @Override
-    public boolean isDeleted() {
-        return deleteTime > 0;
-    }
-
-    @Override
-    public void delete(long currentTime) {
-        if (currentTime <= 0){
-            throw new CacheException("currentTime==%s", currentTime);
-        }
-        deleteTime = currentTime;
     }
 }

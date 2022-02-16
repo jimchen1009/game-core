@@ -15,12 +15,6 @@ public @interface CacheIndexes {
      */
     String primaryKey();
 
-    /***
-     * 额外的主键
-     * @return
-     */
-    String[] additionalKeys() default {};
-
     /**
      * 联合二级键
      * @return

@@ -20,7 +20,6 @@ public class UserActBoss extends Data<Long> {
     private long thp;
 
 
-
     @Override
     public Long secondaryKey() {
         return id;

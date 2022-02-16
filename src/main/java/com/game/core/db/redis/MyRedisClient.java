@@ -15,7 +15,6 @@ public abstract class MyRedisClient implements IRedisClient {
         T execute(Jedis jedis) throws Exception;
     }
 
-
     interface IRedisMultiCommand<T> {
         void execute(T cache, Jedis jedis, Collection<String> keys) throws Exception;
     }

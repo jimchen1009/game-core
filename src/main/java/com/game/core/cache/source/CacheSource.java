@@ -1,32 +1,31 @@
 package com.game.core.cache.source;
 
-import com.game.core.cache.CacheInformation;
+import com.game.common.lock.LockKey;
 import com.game.core.cache.ICacheUniqueId;
 import com.game.core.cache.data.IData;
 import com.game.core.cache.key.IKeyValueBuilder;
 import com.game.core.cache.mapper.ClassConverter;
 import com.game.core.cache.mapper.IClassConverter;
+import com.game.core.cache.source.executor.ICacheExecutor;
 import com.game.core.cache.source.executor.ICacheSource;
-import com.game.common.lock.LockKey;
 
 import java.util.Map;
 import java.util.function.Consumer;
 
 public abstract class CacheSource<K, V extends IData<K>> implements ICacheSource<K, V> {
 
-    private static final Object[] EMPTY = new Object[0];
-
     private final ICacheUniqueId cacheUniqueId;
     private final LockKey lockKey;
     protected final CacheKeyValueBuilder<K> keyValueBuilder;
     protected final IClassConverter<K, V> converter;
+    private final ICacheExecutor executor;
 
-    public CacheSource(ICacheUniqueId cacheUniqueId, IKeyValueBuilder<K> secondaryBuilder) {
+    public CacheSource(ICacheUniqueId cacheUniqueId, IKeyValueBuilder<K> secondaryBuilder, ICacheExecutor executor) {
         this.cacheUniqueId = cacheUniqueId;
-        Class<V> aClass = cacheUniqueId.getAClass();
-        this.lockKey = LockKey.systemLockKey("cache").createLockKey(aClass.getSimpleName());
+        this.lockKey = LockKey.systemLockKey("cache").createLockKey(cacheUniqueId.getName());
         this.keyValueBuilder = new CacheKeyValueBuilder<>(cacheUniqueId, secondaryBuilder);
-        this.converter = new ClassConverter<>(aClass, cacheUniqueId, getCacheType());
+        this.converter = new ClassConverter<>(cacheUniqueId.getAClass(), cacheUniqueId, getCacheType());
+        this.executor = executor;
     }
 
     @Override
@@ -36,8 +35,8 @@ public abstract class CacheSource<K, V extends IData<K>> implements ICacheSource
 
     @SuppressWarnings("unchecked")
     @Override
-    public V cloneValue(V value) {
-        return (V)value.clone(()-> convertClone(value));
+    public V cloneValue(V data) {
+        return (V) data.clone(()-> convertClone(data));
     }
 
     @Override
@@ -62,7 +61,7 @@ public abstract class CacheSource<K, V extends IData<K>> implements ICacheSource
 
     private V convertClone(V value){
         Map<String, Object> cacheValue = converter.convert2Cache(value);
-        return converter.convert2Value(cacheValue);
+        return converter.convert2Data(cacheValue);
     }
 
     @Override
@@ -76,7 +75,12 @@ public abstract class CacheSource<K, V extends IData<K>> implements ICacheSource
     }
 
     @Override
-    public boolean updateCacheInformation(long primaryKey, CacheInformation cacheInformation) {
-        return true;
+    public ICacheDelaySource<K, V> createDelayUpdateSource() {
+       throw new UnsupportedOperationException(getCacheType().name());
+    }
+
+    @Override
+    public ICacheExecutor getExecutor() {
+        return executor;
     }
 }

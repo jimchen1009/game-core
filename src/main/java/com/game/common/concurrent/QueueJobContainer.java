@@ -49,10 +49,10 @@ public class QueueJobContainer<K> {
 
 	public boolean addQueueJob(QueueJob queueJob){
 		if (queueJob.getQueueId() != this.queueId){
-			throw new UnsupportedOperationException(queueJob.messageJobLog());
+			throw new UnsupportedOperationException(queueJob.toJobLog());
 		}
 		if (!runningBool.get()) {
-			logger.error("shutdownAsync, queueJob: {}", queueJob.messageJobLog());
+			logger.error("shutdownSync, queueJob: {}", queueJob.toJobLog());
 			return false;
 		}
 		innerJobQueue.add(new QueueInnerJob(atomicLong.incrementAndGet(), queueJob, this::finishQueueJob));
@@ -60,7 +60,7 @@ public class QueueJobContainer<K> {
 		return true;
 	}
 
-	public void shutdownAsync(){
+	public void shutdownSync(){
 		if (!runningBool.compareAndSet(true, false)) {
 			return;
 		}
@@ -74,7 +74,7 @@ public class QueueJobContainer<K> {
 			LockCode timeoutCode = lockCheckRunningJobAndPollQueue(innerJob -> innerJob != null && innerJob.timeoutBool());
 			if (timeoutCode.isSuccess()) {
 				timeoutCode.currentInnerJob.timeoutCancel();
-				logger.error("cancel timeout queueJob: {}", timeoutCode.currentInnerJob.queueJob.messageJobLog());
+				logger.error("cancel timeout queueJob: {}", timeoutCode.currentInnerJob.queueJob.toJobLog());
 			}
 			if (currentIsIdle()) {
 				requestQueueJobs();
@@ -190,11 +190,11 @@ public class QueueJobContainer<K> {
 
 		public void timeoutCancel(){
 			future.cancel(true);
-			logger.debug("取消任务: {}", queueJob.messageJobLog());
+			logger.debug("取消任务: {}", queueJob.toJobLog());
 		}
 
 		public void completeInAdvance(){
-			logger.debug("任务完成: {}", queueJob.messageJobLog());
+			logger.debug("任务完成: {}", queueJob.toJobLog());
 		}
 
 		@Override
